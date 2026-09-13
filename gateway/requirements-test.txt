@@ -1,0 +1,3 @@
+-r requirements.txt
+# 与当前 FastAPI/Starlette TestClient 兼容的测试客户端。
+httpx==0.27.2
