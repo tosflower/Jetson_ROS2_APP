@@ -1,0 +1,5 @@
+# rclpy 和 sensor_msgs 由 Jetson 上的 ROS2 安装提供，不通过 pip 安装。
+fastapi==0.103.2
+uvicorn==0.23.2
+websockets==11.0.3
+PyYAML>=5.3

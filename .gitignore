@@ -1,0 +1,8 @@
+node_modules/
+.expo/
+.cache/
+dist/
+
+# Jetson 本地命令历史与预设，不提交到仓库。
+gateway/command_store.json
+gateway/command_store.tmp
