@@ -5,6 +5,8 @@ import { Appearance, StatusBar, useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { CommandProvider } from '@/providers/command-provider';
 import { GatewayProvider } from '@/providers/gateway-provider';
+import { PhoneSensorsProvider } from '@/providers/phone-sensors-provider';
+import { RosbridgeProvider } from '@/providers/rosbridge-provider';
 import { useThemeColors } from '@/ui/tokens';
 
 export default function RootLayout(): React.JSX.Element {
@@ -25,16 +27,20 @@ export default function RootLayout(): React.JSX.Element {
     <SafeAreaProvider>
       <ThemeProvider value={theme}>
         <GatewayProvider>
-          <CommandProvider>
-            <StatusBar barStyle={light ? 'dark-content' : 'light-content'} />
-            <Stack screenOptions={{ contentStyle: { backgroundColor: colors.background }, animation: 'slide_from_right', ...nativeStatusBar }}>
-              <Stack.Screen name="index" options={{ headerShown: false }} />
-              <Stack.Screen name="connection" options={{ title: '连接 Jetson', headerLargeTitle: true }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="image-viewer" options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: false, contentStyle: { backgroundColor: '#000000' } }} />
-              <Stack.Screen name="+not-found" options={{ title: '页面不存在' }} />
-            </Stack>
-          </CommandProvider>
+          <RosbridgeProvider>
+            <PhoneSensorsProvider>
+              <CommandProvider>
+                <StatusBar barStyle={light ? 'dark-content' : 'light-content'} />
+                <Stack screenOptions={{ contentStyle: { backgroundColor: colors.background }, animation: 'slide_from_right', ...nativeStatusBar }}>
+                  <Stack.Screen name="index" options={{ headerShown: false }} />
+                  <Stack.Screen name="connection" options={{ title: '连接 Jetson', headerLargeTitle: true }} />
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  <Stack.Screen name="image-viewer" options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: false, contentStyle: { backgroundColor: '#000000' } }} />
+                  <Stack.Screen name="+not-found" options={{ title: '页面不存在' }} />
+                </Stack>
+              </CommandProvider>
+            </PhoneSensorsProvider>
+          </RosbridgeProvider>
         </GatewayProvider>
       </ThemeProvider>
     </SafeAreaProvider>

@@ -1,8 +1,9 @@
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
-import { Appearance, Switch, Text, useColorScheme, View } from 'react-native';
+import { Alert, Appearance, Switch, Text, useColorScheme, View } from 'react-native';
 import { useCommands } from '@/providers/command-provider';
 import { useGateway } from '@/providers/gateway-provider';
+import { usePhoneSensors } from '@/providers/phone-sensors-provider';
 import { Row, Screen, Section } from '@/ui/primitives';
 import { spacing, useThemeColors } from '@/ui/tokens';
 
@@ -10,7 +11,12 @@ export default function SettingsScreen(): React.JSX.Element {
   const colors = useThemeColors();
   const gateway = useGateway();
   const commands = useCommands();
+  const sensors = usePhoneSensors();
   const dark = useColorScheme() !== 'light';
+  const sensorHistoryCount = sensors.gpsMessages.length
+    + sensors.headingMessages.length
+    + sensors.imuMessages.length
+    + sensors.magneticMessages.length;
   return (
     <Screen>
       <Section title="连接">
@@ -19,6 +25,19 @@ export default function SettingsScreen(): React.JSX.Element {
       </Section>
       <Section title="应用">
         <Row label="运行中程序" value={`${commands.snapshot?.active_runs.length ?? 0}`} />
+        <Row
+          label="清除传感器监控历史"
+          value={`${sensorHistoryCount} 条`}
+          destructive
+          onPress={() => Alert.alert(
+            '清除传感器监控历史？',
+            '这会清空 GPS、航向、IMU 和磁力计终端的当前会话数据，不会停止发布。',
+            [
+              { text: '取消', style: 'cancel' },
+              { text: '清除', style: 'destructive', onPress: () => sensors.clearHistory() },
+            ],
+          )}
+        />
         <View style={{ minHeight: 58, paddingHorizontal: spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Text selectable style={{ color: colors.label, fontSize: 16 }}>深色外观</Text>
           <View style={{ height: 58, alignItems: 'center', justifyContent: 'center' }}>

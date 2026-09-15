@@ -9,6 +9,7 @@
 - 配置：管理默认启动项、自定义 ROS2/Python 命令，以及查找、编辑和编译 YAML 参数文件。
 - 监控：集中查看当前程序、多终端和图像可视化；像 rqt 一样发现 ROS 原始与压缩图像话题，可视化页面同时显示当前终端信息。
 - 历史：分别查看最近运行和启动预设，可一键清除已结束的历史记录；运行中任务不会被清除。
+- 测试：GPS、航向、IMU 和磁力计通过独立的 `ws://<Jetson IP>:9090` rosbridge 共用一个 WebSocket 发布标准 ROS 2 消息；页面以四个可切换终端展示当前会话历史，断线后自动退避重连。
 - 设置：管理网关连接、应用信息、可切换并记忆深浅外观，以及开发板电源入口。重启/关机每次都需再次输入 Ubuntu 密码并确认。
 
 前端使用 Expo Router 原生标签和 Stack 组织页面，业务连接与命令状态位于根级 Provider，因此切换页面不会停止 Jetson 程序或丢失终端状态。
@@ -32,6 +33,23 @@ npx eas-cli@latest build --platform android --profile preview
 ## Jetson 网关
 
 与 App 对应的网关位于 [`gateway/`](gateway/README.md)，需要把整个目录同步到 Jetson。它按手机选择动态订阅 ROS 图像话题，并通过校验后的临时白名单启停 ROS2/Python 进程组。
+
+Phone Gateway 的 `8080` 与 rosbridge 的 `9090` 是两条并行通道。“测试”页可单独修改 rosbridge 地址。连接后点击“启动全部传感器”并授予前台定位/运动传感器权限，可在 ROS 2 端验证：
+
+```bash
+ros2 topic echo /phone/gps
+ros2 topic echo /phone/heading
+ros2 topic echo /phone/imu
+ros2 topic echo /phone/magnetic_field
+ros2 topic hz /phone/gps
+ros2 topic hz /phone/heading
+ros2 topic hz /phone/imu
+ros2 topic hz /phone/magnetic_field
+```
+
+GPS 发布上限为 2 Hz，航向为 5 Hz，IMU 为 25 Hz，磁力计为 10 Hz。`/phone/heading` 使用 `std_msgs/msg/Float64`，单位为度，约定真北 0°、顺时针增加；真北不可用时回退为磁北。手机顶部默认与车头同向，固定安装存在偏角时修改 `PHONE_HEADING_MOUNT_OFFSET_DEGREES`。加速度从 `g` 转为 `m/s²`，磁场从 `μT` 转为 `T`，陀螺仪保持 `rad/s`。尚未校验的姿态按 `sensor_msgs/msg/Imu` 约定标记为未知；原始设备轴使用 `phone_imu_link`，安装方向标定后再转换到 `base_link`。时间戳使用手机采样/回调时间，用于融合前需先校验手机与 Jetson 时钟偏差。
+
+四个手机终端各保留最近 200 条已发布数据。终端顶部可单独清空，测试页和设置页也可一次性清除四者；清除只影响显示缓存，不停止 ROS Topic 发布。
 
 ## Jetson 网关协议
 
