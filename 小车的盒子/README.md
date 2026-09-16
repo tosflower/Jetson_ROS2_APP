@@ -9,7 +9,7 @@
 - 配置：管理默认启动项、自定义 ROS2/Python 命令，以及查找、编辑和编译 YAML 参数文件。
 - 监控：集中查看当前程序、多终端和图像可视化；像 rqt 一样发现 ROS 原始与压缩图像话题，可视化页面同时显示当前终端信息。
 - 历史：分别查看最近运行和启动预设，可一键清除已结束的历史记录；运行中任务不会被清除。
-- 测试：GPS、航向、IMU 和磁力计通过独立的 `ws://<Jetson IP>:9090` rosbridge 共用一个 WebSocket 发布标准 ROS 2 消息；页面以四个可切换终端展示当前会话历史，断线后自动退避重连。
+- 地图：进入页面后自动连接 `ws://<Jetson IP>:9090` 并启动 GPS、航向、IMU 和磁力计；页面只显示高德地图、当前位置、GPS 精度圈和朝向，四个 ROS Topic 仍在后台持续发布。
 - 设置：管理网关连接、应用信息、可切换并记忆深浅外观，以及开发板电源入口。重启/关机每次都需再次输入 Ubuntu 密码并确认。
 
 前端使用 Expo Router 原生标签和 Stack 组织页面，业务连接与命令状态位于根级 Provider，因此切换页面不会停止 Jetson 程序或丢失终端状态。
@@ -34,7 +34,7 @@ npx eas-cli@latest build --platform android --profile preview
 
 与 App 对应的网关位于 [`gateway/`](gateway/README.md)，需要把整个目录同步到 Jetson。它按手机选择动态订阅 ROS 图像话题，并通过校验后的临时白名单启停 ROS2/Python 进程组。
 
-Phone Gateway 的 `8080` 与 rosbridge 的 `9090` 是两条并行通道。“测试”页可单独修改 rosbridge 地址。连接后点击“启动全部传感器”并授予前台定位/运动传感器权限，可在 ROS 2 端验证：
+Phone Gateway 的 `8080` 与 rosbridge 的 `9090` 是两条并行通道。进入“地图”页后 App 会自动从 Phone Gateway 主机地址推导 `9090`、连接 rosbridge，并请求前台定位/运动传感器权限。即使 rosbridge 暂时离线，GPS 与航向仍供地图显示；连接恢复后自动继续发布，可在 ROS 2 端验证：
 
 ```bash
 ros2 topic echo /phone/gps
@@ -49,7 +49,16 @@ ros2 topic hz /phone/magnetic_field
 
 GPS 发布上限为 2 Hz，航向为 5 Hz，IMU 为 25 Hz，磁力计为 10 Hz。`/phone/heading` 使用 `std_msgs/msg/Float64`，单位为度，约定真北 0°、顺时针增加；真北不可用时回退为磁北。手机顶部默认与车头同向，固定安装存在偏角时修改 `PHONE_HEADING_MOUNT_OFFSET_DEGREES`。加速度从 `g` 转为 `m/s²`，磁场从 `μT` 转为 `T`，陀螺仪保持 `rad/s`。尚未校验的姿态按 `sensor_msgs/msg/Imu` 约定标记为未知；原始设备轴使用 `phone_imu_link`，安装方向标定后再转换到 `base_link`。时间戳使用手机采样/回调时间，用于融合前需先校验手机与 Jetson 时钟偏差。
 
-四个手机终端各保留最近 200 条已发布数据。终端顶部可单独清空，测试页和设置页也可一次性清除四者；清除只影响显示缓存，不停止 ROS Topic 发布。
+地图使用高德 Web JS API 2.0。Expo 获取的 WGS84 GPS 会由 `AMap.convertFrom(..., "gps")` 转为 GCJ-02，再更新车辆标记和精度圆；`/phone/heading` 直接驱动车辆标记旋转。高德底图和坐标转换需要手机能够访问互联网。
+
+复制环境变量模板并填写新生成的 Web JS API Key 与安全密钥，然后重启 Metro：
+
+```bash
+cp .env.example .env.local
+npm start
+```
+
+`.env.local` 已被 Git 忽略。当前方案通过客户端明文方式加载安全密钥，仅适合局域网原型验证；生产部署应按高德建议把安全密钥放到服务器代理中。
 
 ## Jetson 网关协议
 

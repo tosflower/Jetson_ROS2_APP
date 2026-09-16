@@ -18,8 +18,8 @@ export default function TabLayout(): React.JSX.Element {
         <NativeTabs.Trigger.Label>历史</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="test">
-        <NativeTabs.Trigger.Icon sf={{ default: 'antenna.radiowaves.left.and.right', selected: 'antenna.radiowaves.left.and.right' }} md="sensors" />
-        <NativeTabs.Trigger.Label>测试</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf={{ default: 'map', selected: 'map.fill' }} md="map" />
+        <NativeTabs.Trigger.Label>地图</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="settings">
         <NativeTabs.Trigger.Icon sf={{ default: 'gearshape', selected: 'gearshape.fill' }} md="settings" />

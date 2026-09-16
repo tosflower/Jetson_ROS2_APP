@@ -1,60 +1,49 @@
-import { router } from 'expo-router';
-import { useEffect, useRef } from 'react';
-import { View } from 'react-native';
+import { useEffect } from 'react';
+import { useColorScheme, View } from 'react-native';
+import AmapLocationMap from '@/ui/amap-location-map';
+import { usePhoneSensors } from '@/providers/phone-sensors-provider';
 import { useRosbridge } from '@/providers/rosbridge-provider';
-import { ActionButton, Field, Screen, Section, StatusBanner } from '@/ui/primitives';
-import { spacing } from '@/ui/tokens';
 
-export default function TestScreen(): React.JSX.Element {
-  const rosbridge = useRosbridge();
-  const openTerminalAfterConnectRef = useRef(false);
-  const active = ['connecting', 'connected', 'reconnecting'].includes(rosbridge.connectionState);
-  const tone = rosbridge.connectionState === 'connected'
-    ? 'success'
-    : rosbridge.connectionState === 'reconnecting'
-      ? 'warning'
-      : rosbridge.connectionState === 'error'
-        ? 'danger'
-        : 'neutral';
-
-  useEffect(() => {
-    if (rosbridge.connectionState !== 'connected' || !openTerminalAfterConnectRef.current) return;
-    openTerminalAfterConnectRef.current = false;
-    router.push('/test/output');
-  }, [rosbridge.connectionState]);
-
-  const connectAndOpenTerminal = (): void => {
-    if (rosbridge.connectionState === 'connected') {
-      router.push('/test/output');
-      return;
-    }
-    openTerminalAfterConnectRef.current = true;
-    rosbridge.connect();
+declare const process: {
+  env: {
+    EXPO_PUBLIC_AMAP_WEB_KEY?: string;
+    EXPO_PUBLIC_AMAP_SECURITY_JS_CODE?: string;
   };
+};
+
+export default function MapScreen(): React.JSX.Element {
+  const { connect } = useRosbridge();
+  const {
+    gpsStatus,
+    latestGps,
+    latestHeading,
+    startAll,
+  } = usePhoneSensors();
+  const dark = useColorScheme() !== 'light';
+  useEffect(() => {
+    // 地图页首次进入即启动全部传感器；方法均幂等，不会产生重复监听器。
+    startAll();
+    connect();
+  }, [connect, startAll]);
 
   return (
-    <Screen>
-      <Section
-        title="rosbridge 连接"
-        footer="Phone Gateway 继续使用 8080；此连接独立访问 9090，专用于 GPS、航向、IMU 和磁力计。"
-      >
-        <View style={{ padding: spacing.lg, gap: spacing.md }}>
-          <Field
-            value={rosbridge.address}
-            onChangeText={rosbridge.setAddress}
-            keyboardType="url"
-            autoCapitalize="none"
-            placeholder="ws://10.42.0.1:9090"
-          />
-          <ActionButton
-            label={rosbridge.connectionState === 'connected' ? '打开传感器终端' : '连接并打开终端'}
-            onPress={connectAndOpenTerminal}
-            disabled={rosbridge.connectionState === 'connecting'}
-          />
-          <ActionButton label="断开 rosbridge" secondary onPress={rosbridge.disconnect} disabled={!active} />
-          <StatusBanner message={rosbridge.statusMessage} tone={tone} />
-        </View>
-      </Section>
-    </Screen>
+    <View style={{ flex: 1 }}>
+      <AmapLocationMap
+        apiKey={process.env.EXPO_PUBLIC_AMAP_WEB_KEY?.trim() ?? ''}
+        securityJsCode={process.env.EXPO_PUBLIC_AMAP_SECURITY_JS_CODE?.trim() ?? ''}
+        latitude={latestGps?.latitude ?? null}
+        longitude={latestGps?.longitude ?? null}
+        accuracy={latestGps?.accuracy ?? null}
+        headingDegrees={latestHeading?.headingDegrees ?? null}
+        headingAccuracy={latestHeading?.accuracy ?? null}
+        locationStatus={gpsStatus}
+        dark={dark}
+        dom={{
+          contentInsetAdjustmentBehavior: 'never',
+          scrollEnabled: false,
+          style: { flex: 1 },
+        }}
+      />
+    </View>
   );
 }

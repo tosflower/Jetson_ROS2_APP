@@ -26,14 +26,22 @@ import {
   buildMagneticFieldMessage,
   buildNavSatFixMessage,
 } from '@/services/phone-sensors/messages';
-import {
-  appendBoundedHistory,
-  type PhoneSensorStream,
-  type SensorTerminalEntry,
-} from '@/services/phone-sensors/history';
-import type { Vector3 } from '@/services/phone-sensors/frame-transform';
 
 type StreamState = 'idle' | 'starting' | 'active' | 'paused' | 'error';
+
+export type PhoneGpsSnapshot = {
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  timestamp: number;
+};
+
+export type PhoneHeadingSnapshot = {
+  headingDegrees: number;
+  accuracy: number;
+  source: 'true' | 'magnetic';
+  timestamp: number;
+};
 
 type PhoneSensorsContextValue = {
   gpsEnabled: boolean;
@@ -45,15 +53,8 @@ type PhoneSensorsContextValue = {
   gpsStatus: string;
   headingStatus: string;
   imuStatus: string;
-  gpsSentCount: number;
-  headingSentCount: number;
-  imuSentCount: number;
-  magneticSentCount: number;
-  gpsMessages: SensorTerminalEntry[];
-  headingMessages: SensorTerminalEntry[];
-  imuMessages: SensorTerminalEntry[];
-  magneticMessages: SensorTerminalEntry[];
-  clearHistory: (stream?: PhoneSensorStream) => void;
+  latestGps: PhoneGpsSnapshot | null;
+  latestHeading: PhoneHeadingSnapshot | null;
   startGps: () => void;
   stopGps: () => void;
   startHeading: () => void;
@@ -79,38 +80,8 @@ const IMU_SAMPLE_INTERVAL_MS = 20;
 const IMU_PUBLISH_INTERVAL_MS = 40;
 const MAGNETIC_SAMPLE_INTERVAL_MS = 50;
 const MAGNETIC_PUBLISH_INTERVAL_MS = 100;
-const UI_REFRESH_INTERVAL_MS = 250;
-const MAX_TERMINAL_HISTORY = 200;
-
-type PublishedSnapshot = {
-  gps: number;
-  heading: number;
-  imu: number;
-  magnetic: number;
-  gpsMessages: SensorTerminalEntry[];
-  headingMessages: SensorTerminalEntry[];
-  imuMessages: SensorTerminalEntry[];
-  magneticMessages: SensorTerminalEntry[];
-};
-
-function createEmptyPublishedSnapshot(): PublishedSnapshot {
-  return {
-    gps: 0,
-    heading: 0,
-    imu: 0,
-    magnetic: 0,
-    gpsMessages: [],
-    headingMessages: [],
-    imuMessages: [],
-    magneticMessages: [],
-  };
-}
 
 const PhoneSensorsContext = React.createContext<PhoneSensorsContextValue | null>(null);
-
-function formatVector(value: { x: number; y: number; z: number }, unit: string): string {
-  return `x=${value.x.toFixed(3)}, y=${value.y.toFixed(3)}, z=${value.z.toFixed(3)} ${unit}`;
-}
 
 export function PhoneSensorsProvider({ children }: React.PropsWithChildren): React.JSX.Element {
   const {
@@ -128,7 +99,8 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
   const [gpsStatus, setGpsStatus] = useState('GPS 尚未启动');
   const [headingStatus, setHeadingStatus] = useState('航向尚未启动');
   const [imuStatus, setImuStatus] = useState('IMU 与磁力计尚未启动');
-  const [publishedSnapshot, setPublishedSnapshot] = useState<PublishedSnapshot>(createEmptyPublishedSnapshot);
+  const [latestGps, setLatestGps] = useState<PhoneGpsSnapshot | null>(null);
+  const [latestHeading, setLatestHeading] = useState<PhoneHeadingSnapshot | null>(null);
 
   const connectionStateRef = useRef(connectionState);
   const foregroundRef = useRef(AppState.currentState === 'active');
@@ -152,68 +124,14 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
   const imuTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const magneticTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const latestLocationRef = useRef<Location.LocationObject | null>(null);
+  const lastGpsDisplayedAtRef = useRef(0);
   const latestHeadingRef = useRef<TimedHeadingSample | null>(null);
-  const lastHeadingPublishedAtRef = useRef(0);
+  const lastHeadingDisplayedAtRef = useRef(0);
   const latestAccelerationRef = useRef<TimedSample<AccelerometerMeasurement> | null>(null);
   const latestGyroscopeRef = useRef<TimedSample<GyroscopeMeasurement> | null>(null);
   const latestMagneticRef = useRef<TimedSample<MagnetometerMeasurement> | null>(null);
-  const publishedRef = useRef<PublishedSnapshot>(createEmptyPublishedSnapshot());
-  const messageSequenceRef = useRef(0);
-  const lastUiRefreshRef = useRef(0);
 
   connectionStateRef.current = connectionState;
-
-  const refreshPublishedSnapshot = useCallback((force = false): void => {
-    const now = Date.now();
-    if (!force && now - lastUiRefreshRef.current < UI_REFRESH_INTERVAL_MS) return;
-    lastUiRefreshRef.current = now;
-    setPublishedSnapshot({
-      ...publishedRef.current,
-      gpsMessages: [...publishedRef.current.gpsMessages],
-      headingMessages: [...publishedRef.current.headingMessages],
-      imuMessages: [...publishedRef.current.imuMessages],
-      magneticMessages: [...publishedRef.current.magneticMessages],
-    });
-  }, []);
-
-  const recordPublishedMessage = useCallback((
-    stream: PhoneSensorStream,
-    publishedAt: number,
-    data: string,
-  ): void => {
-    const entry = { id: ++messageSequenceRef.current, publishedAt, data };
-    const historyKey = stream === 'gps'
-      ? 'gpsMessages'
-      : stream === 'heading'
-        ? 'headingMessages'
-      : stream === 'imu'
-        ? 'imuMessages'
-        : 'magneticMessages';
-    publishedRef.current[stream] += 1;
-    publishedRef.current[historyKey] = appendBoundedHistory(
-      publishedRef.current[historyKey],
-      entry,
-      MAX_TERMINAL_HISTORY,
-    );
-  }, []);
-
-  const clearHistory = useCallback((stream?: PhoneSensorStream): void => {
-    if (!stream) {
-      publishedRef.current = createEmptyPublishedSnapshot();
-    } else {
-      const historyKey = stream === 'gps'
-        ? 'gpsMessages'
-        : stream === 'heading'
-          ? 'headingMessages'
-        : stream === 'imu'
-          ? 'imuMessages'
-          : 'magneticMessages';
-      publishedRef.current[historyKey] = [];
-      publishedRef.current[stream] = 0;
-    }
-    lastUiRefreshRef.current = 0;
-    refreshPublishedSnapshot(true);
-  }, [refreshPublishedSnapshot]);
 
   const pauseGpsRuntime = useCallback((status?: string): void => {
     gpsGenerationRef.current += 1;
@@ -223,6 +141,7 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
     if (gpsTimerRef.current) clearInterval(gpsTimerRef.current);
     gpsTimerRef.current = null;
     latestLocationRef.current = null;
+    lastGpsDisplayedAtRef.current = 0;
     if (gpsDesiredRef.current) {
       setGpsState('paused');
       setGpsStatus(status ?? '等待 App 回到前台并恢复 rosbridge 连接');
@@ -237,7 +156,7 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
     if (headingTimerRef.current) clearInterval(headingTimerRef.current);
     headingTimerRef.current = null;
     latestHeadingRef.current = null;
-    lastHeadingPublishedAtRef.current = 0;
+    lastHeadingDisplayedAtRef.current = 0;
     if (headingDesiredRef.current) {
       setHeadingState('paused');
       setHeadingStatus(status ?? '等待 App 回到前台并恢复 rosbridge 连接');
@@ -292,7 +211,6 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
       || gpsSubscriptionRef.current
       || !gpsDesiredRef.current
       || !foregroundRef.current
-      || connectionStateRef.current !== 'connected'
     ) return;
 
     gpsStartingRef.current = true;
@@ -305,7 +223,6 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
         generation !== gpsGenerationRef.current
         || !gpsDesiredRef.current
         || !foregroundRef.current
-        || connectionStateRef.current !== 'connected'
       ) return;
 
       const subscription = await Location.watchPositionAsync({
@@ -320,7 +237,6 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
         generation !== gpsGenerationRef.current
         || !gpsDesiredRef.current
         || !foregroundRef.current
-        || connectionStateRef.current !== 'connected'
       ) {
         subscription.remove();
         return;
@@ -328,7 +244,20 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
       gpsSubscriptionRef.current = subscription;
       gpsTimerRef.current = setInterval(() => {
         const location = latestLocationRef.current;
-        if (!location || connectionStateRef.current !== 'connected') return;
+        if (!location) return;
+        if (location.timestamp !== lastGpsDisplayedAtRef.current) {
+          lastGpsDisplayedAtRef.current = location.timestamp;
+          setLatestGps({
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+            accuracy: location.coords.accuracy,
+            timestamp: location.timestamp,
+          });
+        }
+        if (connectionStateRef.current !== 'connected') {
+          setGpsStatus('GPS 正在采集；等待 rosbridge 连接后发布');
+          return;
+        }
         const message = buildNavSatFixMessage(location);
         if (!message) {
           setGpsStatus('已获得定位，但海拔不可用；为避免伪造 0 m 暂停发布');
@@ -336,19 +265,15 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
         }
         try {
           publishTopic(PHONE_GPS_TOPIC, message);
-          recordPublishedMessage(
-            'gps',
-            location.timestamp,
-            `latitude=${location.coords.latitude.toFixed(7)}°  longitude=${location.coords.longitude.toFixed(7)}°  altitude=${location.coords.altitude?.toFixed(2)} m  horizontal_accuracy=${location.coords.accuracy?.toFixed(2) ?? 'unknown'} m`,
-          );
-          refreshPublishedSnapshot();
           setGpsStatus(`正在以最高 ${1000 / GPS_PUBLISH_INTERVAL_MS} Hz 发布 ${PHONE_GPS_TOPIC}`);
         } catch {
-          // 连接状态 effect 会对称停止订阅和定时器。
+          // 断线时继续采集供地图显示，rosbridge 重连后再恢复发布。
         }
       }, GPS_PUBLISH_INTERVAL_MS);
       setGpsState('active');
-      setGpsStatus(`正在以最高 ${1000 / GPS_PUBLISH_INTERVAL_MS} Hz 发布 ${PHONE_GPS_TOPIC}`);
+      setGpsStatus(connectionStateRef.current === 'connected'
+        ? `正在以最高 ${1000 / GPS_PUBLISH_INTERVAL_MS} Hz 发布 ${PHONE_GPS_TOPIC}`
+        : 'GPS 正在采集；等待 rosbridge 连接后发布');
     } catch (error) {
       if (generation !== gpsGenerationRef.current) return;
       gpsDesiredRef.current = false;
@@ -359,7 +284,7 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
     } finally {
       if (generation === gpsGenerationRef.current) gpsStartingRef.current = false;
     }
-  }, [ensureForegroundLocationPermission, publishTopic, recordPublishedMessage, refreshPublishedSnapshot, unadvertiseTopic]);
+  }, [ensureForegroundLocationPermission, publishTopic, unadvertiseTopic]);
 
   const activateHeading = useCallback(async (): Promise<void> => {
     if (
@@ -367,7 +292,6 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
       || headingSubscriptionRef.current
       || !headingDesiredRef.current
       || !foregroundRef.current
-      || connectionStateRef.current !== 'connected'
     ) return;
 
     headingStartingRef.current = true;
@@ -380,7 +304,6 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
         generation !== headingGenerationRef.current
         || !headingDesiredRef.current
         || !foregroundRef.current
-        || connectionStateRef.current !== 'connected'
       ) return;
 
       const subscription = await Location.watchHeadingAsync((sample) => {
@@ -403,7 +326,6 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
         generation !== headingGenerationRef.current
         || !headingDesiredRef.current
         || !foregroundRef.current
-        || connectionStateRef.current !== 'connected'
       ) {
         subscription.remove();
         return;
@@ -413,27 +335,32 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
         const sample = latestHeadingRef.current;
         if (
           !sample
-          || sample.receivedAt === lastHeadingPublishedAtRef.current
-          || connectionStateRef.current !== 'connected'
+          || sample.receivedAt === lastHeadingDisplayedAtRef.current
         ) return;
+        lastHeadingDisplayedAtRef.current = sample.receivedAt;
+        setLatestHeading({
+          headingDegrees: sample.headingDegrees,
+          accuracy: sample.accuracy,
+          source: sample.source,
+          timestamp: sample.receivedAt,
+        });
+        if (connectionStateRef.current !== 'connected') {
+          setHeadingStatus('航向正在采集；等待 rosbridge 连接后发布');
+          return;
+        }
         try {
           publishTopic(PHONE_HEADING_TOPIC, { data: sample.headingDegrees });
-          lastHeadingPublishedAtRef.current = sample.receivedAt;
-          recordPublishedMessage(
-            'heading',
-            sample.receivedAt,
-            `heading=${sample.headingDegrees.toFixed(2)}°  north=${sample.source === 'true' ? 'true' : 'magnetic'}  accuracy=${sample.accuracy}/3`,
-          );
-          refreshPublishedSnapshot();
           setHeadingStatus(sample.accuracy > 0
             ? `正在以最高 ${1000 / HEADING_PUBLISH_INTERVAL_MS} Hz 发布 ${PHONE_HEADING_TOPIC}`
             : '指南针精度未知，数据仅供测试；请远离磁场干扰并校准手机指南针');
         } catch {
-          // 连接变化由统一生命周期处理。
+          // 断线时继续采集供地图显示，rosbridge 重连后再恢复发布。
         }
       }, HEADING_PUBLISH_INTERVAL_MS);
       setHeadingState('active');
-      setHeadingStatus(`正在等待指南针更新，发布上限 ${1000 / HEADING_PUBLISH_INTERVAL_MS} Hz`);
+      setHeadingStatus(connectionStateRef.current === 'connected'
+        ? `正在等待指南针更新，发布上限 ${1000 / HEADING_PUBLISH_INTERVAL_MS} Hz`
+        : '正在等待指南针更新；rosbridge 连接后自动发布');
     } catch (error) {
       if (generation !== headingGenerationRef.current) return;
       headingDesiredRef.current = false;
@@ -444,7 +371,7 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
     } finally {
       if (generation === headingGenerationRef.current) headingStartingRef.current = false;
     }
-  }, [ensureForegroundLocationPermission, publishTopic, recordPublishedMessage, refreshPublishedSnapshot, unadvertiseTopic]);
+  }, [ensureForegroundLocationPermission, publishTopic, unadvertiseTopic]);
 
   const activateImu = useCallback(async (): Promise<void> => {
     if (
@@ -452,7 +379,6 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
       || accelerometerSubscriptionRef.current
       || !imuDesiredRef.current
       || !foregroundRef.current
-      || connectionStateRef.current !== 'connected'
     ) return;
 
     imuStartingRef.current = true;
@@ -480,7 +406,6 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
         generation !== imuGenerationRef.current
         || !imuDesiredRef.current
         || !foregroundRef.current
-        || connectionStateRef.current !== 'connected'
       ) return;
 
       Accelerometer.setUpdateInterval(IMU_SAMPLE_INTERVAL_MS);
@@ -503,12 +428,6 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
             sampleTimestamp,
           );
           publishTopic(PHONE_IMU_TOPIC, message);
-          recordPublishedMessage(
-            'imu',
-            sampleTimestamp,
-            `linear_acceleration: ${formatVector(message.linear_acceleration as Vector3, 'm/s²')}  |  angular_velocity: ${formatVector(message.angular_velocity as Vector3, 'rad/s')}  |  orientation: unknown`,
-          );
-          refreshPublishedSnapshot();
         } catch {
           // 连接变化由统一生命周期处理。
         }
@@ -527,12 +446,6 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
           try {
             const message = buildMagneticFieldMessage(magnetic.value, magnetic.receivedAt);
             publishTopic(PHONE_MAGNETIC_FIELD_TOPIC, message);
-            recordPublishedMessage(
-              'magnetic',
-              magnetic.receivedAt,
-              `magnetic_field: ${formatVector(message.magnetic_field as Vector3, 'T')}`,
-            );
-            refreshPublishedSnapshot();
           } catch {
             // 连接变化由统一生命周期处理。
           }
@@ -557,7 +470,7 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
     } finally {
       if (generation === imuGenerationRef.current) imuStartingRef.current = false;
     }
-  }, [advertiseTopic, pauseImuRuntime, publishTopic, recordPublishedMessage, refreshPublishedSnapshot, unadvertiseTopic]);
+  }, [advertiseTopic, pauseImuRuntime, publishTopic, unadvertiseTopic]);
 
   const startGps = useCallback((): void => {
     if (gpsDesiredRef.current) return;
@@ -574,8 +487,7 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
     unadvertiseTopic(PHONE_GPS_TOPIC);
     setGpsState('idle');
     setGpsStatus('GPS 已停止');
-    refreshPublishedSnapshot(true);
-  }, [pauseGpsRuntime, refreshPublishedSnapshot, unadvertiseTopic]);
+  }, [pauseGpsRuntime, unadvertiseTopic]);
 
   const startHeading = useCallback((): void => {
     if (headingDesiredRef.current) return;
@@ -592,8 +504,7 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
     unadvertiseTopic(PHONE_HEADING_TOPIC);
     setHeadingState('idle');
     setHeadingStatus('航向已停止');
-    refreshPublishedSnapshot(true);
-  }, [pauseHeadingRuntime, refreshPublishedSnapshot, unadvertiseTopic]);
+  }, [pauseHeadingRuntime, unadvertiseTopic]);
 
   const startImu = useCallback((): void => {
     if (imuDesiredRef.current) return;
@@ -612,8 +523,7 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
     unadvertiseTopic(PHONE_MAGNETIC_FIELD_TOPIC);
     setImuState('idle');
     setImuStatus('IMU 与磁力计已停止');
-    refreshPublishedSnapshot(true);
-  }, [pauseImuRuntime, refreshPublishedSnapshot, unadvertiseTopic]);
+  }, [pauseImuRuntime, unadvertiseTopic]);
 
   const startAll = useCallback((): void => {
     startGps();
@@ -644,16 +554,16 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
   }, [activateGps, activateHeading, activateImu, pauseGpsRuntime, pauseHeadingRuntime, pauseImuRuntime]);
 
   useEffect(() => {
-    if (connectionState === 'connected' && foregroundRef.current) {
+    if (foregroundRef.current) {
       void activateGps();
       void activateHeading();
       void activateImu();
-      return;
     }
-    pauseGpsRuntime('rosbridge 未连接，GPS 发布已暂停');
-    pauseHeadingRuntime('rosbridge 未连接，航向发布已暂停');
-    pauseImuRuntime('rosbridge 未连接，IMU 发布已暂停');
-  }, [activateGps, activateHeading, activateImu, connectionState, pauseGpsRuntime, pauseHeadingRuntime, pauseImuRuntime]);
+    if (connectionState === 'connected') {
+      // 重连后让当前航向在下一次节流周期立即发布，而不创建新的传感器监听器。
+      lastHeadingDisplayedAtRef.current = 0;
+    }
+  }, [activateGps, activateHeading, activateImu, connectionState]);
 
   useEffect(() => () => {
     gpsDesiredRef.current = false;
@@ -678,15 +588,8 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
     gpsStatus,
     headingStatus,
     imuStatus,
-    gpsSentCount: publishedSnapshot.gps,
-    headingSentCount: publishedSnapshot.heading,
-    imuSentCount: publishedSnapshot.imu,
-    magneticSentCount: publishedSnapshot.magnetic,
-    gpsMessages: publishedSnapshot.gpsMessages,
-    headingMessages: publishedSnapshot.headingMessages,
-    imuMessages: publishedSnapshot.imuMessages,
-    magneticMessages: publishedSnapshot.magneticMessages,
-    clearHistory,
+    latestGps,
+    latestHeading,
     startGps,
     stopGps,
     startHeading,

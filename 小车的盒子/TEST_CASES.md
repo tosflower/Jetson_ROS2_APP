@@ -1,18 +1,17 @@
 # App 真机测试用例
 
-## TC-007：rosbridge 与四传感器终端
+## TC-007：高德地图定位与后台传感器发布
 
 1. 启动 `rosbridge_websocket`，确认 Jetson 的 `9090` 正在监听；Phone Gateway 可同时保持在 `8080`。
-2. 在 App 的“测试”页确认 `ws://<Jetson IP>:9090`，点击“连接并打开终端”，连接成功后应自动进入传感器终端页。
-3. 点击“启动全部传感器”，允许前台定位和运动传感器权限。
-4. 页面应分别显示 GPS、航向与 IMU/磁力计状态，四个计数持续增长；权限拒绝、定位关闭或硬件缺失时应显示可读错误。
-5. 切换 GPS、航向、IMU 和磁力计四个终端标签，每个终端应持续输出对应话题已发布值，可暂停自动滚动和长按复制。
-6. 分别清空单个终端，只有目标标签的数据与计数归零，传感器继续发布。再从测试页或设置页执行“清除传感器监控历史”，四个终端应同时归零。
-7. 在 ROS 2 端分别执行 `ros2 topic echo /phone/gps`、`ros2 topic echo /phone/heading`、`ros2 topic echo /phone/imu`、`ros2 topic echo /phone/magnetic_field`，核对类型为 `NavSatFix`、`Float64`、`Imu`、`MagneticField`。
-8. 用 `ros2 topic hz` 核对 GPS 不超过 2 Hz、航向不超过 5 Hz、IMU 约 25 Hz、磁力计约 10 Hz；用 `ros2 topic info --verbose` 确认每个 Topic 只有一个 App 发布者。
-9. 手机静止平放时，加速度模长应接近 `9.81 m/s²`，角速度接近 0，orientation covariance 首项应为 -1；磁场数值单位应为 T。
-10. 将 App 切到后台，计数应停止增长；回到前台后恢复且频率不加倍。重启 rosbridge 后同样自动恢复，不得出现多个传感器监听器。
-11. 点击“停止全部”后四个计数均停止增长；Phone Gateway 的 `8080` 功能保持正常。
+2. 将 `.env.example` 复制为 `.env.local`，填写有效的高德 Web JS API Key 和安全密钥，重启 Metro，并确保手机能访问互联网。
+3. 进入 App 的“地图”页，不进行额外点击；App 应自动请求前台定位和运动传感器权限，并自动连接 rosbridge。
+4. 地图应显示高德底图，首次 GPS 到达后定位到当前位置，显示车辆方向标记和 GPS 精度圆；页面不显示传感器终端、消息列表或启停按钮。
+5. 原地转动手机，车辆标记应随 `/phone/heading` 顺时针旋转；手机顶部朝北、东、南、西时应分别接近 0°、90°、180°、270°。
+6. 在 ROS 2 端分别执行 `ros2 topic echo /phone/gps`、`ros2 topic echo /phone/heading`、`ros2 topic echo /phone/imu`、`ros2 topic echo /phone/magnetic_field`，核对类型为 `NavSatFix`、`Float64`、`Imu`、`MagneticField`。
+7. 用 `ros2 topic hz` 核对 GPS 不超过 2 Hz、航向不超过 5 Hz、IMU 约 25 Hz、磁力计约 10 Hz；用 `ros2 topic info --verbose` 确认每个 Topic 只有一个 App 发布者。
+8. 关闭 rosbridge 后地图定位与朝向仍应更新；重启 rosbridge 后四个 Topic 自动恢复发布，不得增加重复传感器监听器。
+9. 将 App 切到后台后传感器暂停；回到前台后地图与 Topic 自动恢复，频率不得加倍。Phone Gateway 的 `8080` 功能保持正常。
+10. 关闭手机互联网但保留与 Jetson 的局域网连接时，ROS Topic 应继续发布；高德底图无法加载或更新时应显示可读提示。
 
 自动检查：`npx tsc --noEmit`、`npm run lint`、`node --test services/rosbridge/*.test.cjs services/phone-sensors/*.test.cjs`。
 
