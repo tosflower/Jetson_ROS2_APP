@@ -1,0 +1,16 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["ExpoHeadModule", "LinkPreviewNativeModule", "RouterToolbarModule"],
+    "appDelegateSubscribers": ["ExpoHeadAppDelegateSubscriber"]
+  },
+  "android": {
+    "modules": ["expo.modules.router.ExpoRouterModule"],
+    "publication": {
+      "groupId": "expo.modules.router",
+      "artifactId": "expo.modules.router",
+      "version": "57.0.21",
+      "repository": "local-maven-repo"
+    }
+  }
+}

@@ -1,0 +1,1 @@
+{"version":3,"names":["IS_JEST","process","env","JEST_WORKER_ID"],"sourceRoot":"../../src","sources":["platformChecker.ts"],"mappings":"AAAA,YAAY;;AAEZ,OAAO,MAAMA,OAAgB,GAAG,CAAC,CAACC,OAAO,CAACC,GAAG,CAACC,cAAc","ignoreList":[]}

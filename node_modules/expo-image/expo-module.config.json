@@ -1,0 +1,15 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["ImageModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.image.ExpoImageModule"],
+    "publication": {
+      "groupId": "expo.modules.image",
+      "artifactId": "expo.modules.image",
+      "version": "57.0.5",
+      "repository": "local-maven-repo"
+    }
+  }
+}

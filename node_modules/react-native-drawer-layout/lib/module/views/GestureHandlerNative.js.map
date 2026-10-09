@@ -1,0 +1,1 @@
+{"version":3,"names":["Gesture","GestureDetector","GestureHandlerRootView","State","GestureState"],"sourceRoot":"../../../src","sources":["views/GestureHandlerNative.tsx"],"mappings":";;AACA,SACEA,OAAO,EACPC,eAAe,EACfC,sBAAsB,EACtBC,KAAK,IAAIC,YAAY,QAChB,8BAA8B","ignoreList":[]}

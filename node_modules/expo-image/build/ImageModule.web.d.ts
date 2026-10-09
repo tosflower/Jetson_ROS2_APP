@@ -1,0 +1,21 @@
+import { NativeModule } from 'expo-modules-core';
+import type { ImageCacheConfig, ImageRef, ImageSource, ImageNativeModule, ImageModuleEvents } from './Image.types';
+declare class ImageModule extends NativeModule<ImageModuleEvents> implements ImageNativeModule {
+    Image: typeof ImageRef;
+    prefetch(urls: string | string[], _: unknown, __: unknown): Promise<boolean>;
+    clearMemoryCache(): Promise<boolean>;
+    clearDiskCache(): Promise<boolean>;
+    configureCache(_: ImageCacheConfig): void;
+    loadAsync(source: ImageSource): Promise<ImageRef>;
+    getCachePathAsync(_: string): Promise<string | null>;
+    writeToCacheAsync(_: string | ImageRef, __: string): Promise<void>;
+    readFromCacheAsync(_: string): Promise<ImageRef | null>;
+    generateBlurhashAsync(_: string | ImageRef, __: [number, number] | {
+        width: number;
+        height: number;
+    }): Promise<string | null>;
+    generateThumbhashAsync(_: string | ImageRef): Promise<string>;
+}
+declare const _default: typeof ImageModule;
+export default _default;
+//# sourceMappingURL=ImageModule.web.d.ts.map

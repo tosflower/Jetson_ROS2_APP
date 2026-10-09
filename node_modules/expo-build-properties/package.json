@@ -1,0 +1,52 @@
+{
+  "name": "expo-build-properties",
+  "version": "57.0.20",
+  "description": "Config plugin to customize native build properties on prebuild",
+  "main": "build/withBuildProperties.js",
+  "types": "build/withBuildProperties.d.ts",
+  "exports": {
+    ".": "./build/withBuildProperties.js",
+    "./plugin": "./build/index.js",
+    "./app.plugin.js": "./app.plugin.js",
+    "./package.json": "./package.json"
+  },
+  "keywords": [
+    "react-native",
+    "expo",
+    "build",
+    "build-properties"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/expo/expo.git",
+    "directory": "packages/expo-build-properties"
+  },
+  "bugs": {
+    "url": "https://github.com/expo/expo/issues"
+  },
+  "author": "650 Industries, Inc.",
+  "license": "MIT",
+  "homepage": "https://docs.expo.dev/versions/latest/sdk/build-properties",
+  "dependencies": {
+    "@expo/schema-utils": "^57.0.2",
+    "resolve-from": "^5.0.0",
+    "semver": "^7.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@types/semver": "^7.0.0",
+    "expo": "57.0.23",
+    "expo-module-scripts": "56.0.3"
+  },
+  "peerDependencies": {
+    "expo": "*"
+  },
+  "gitHead": "a56c66f30c2d89a5833e077559a0ec1130097ed3",
+  "scripts": {
+    "build": "expo-module build",
+    "clean": "expo-module clean",
+    "lint": "expo-module lint",
+    "test": "expo-module test",
+    "expo-module": "expo-module"
+  }
+}

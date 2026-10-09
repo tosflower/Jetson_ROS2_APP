@@ -1,0 +1,67 @@
+{
+  "name": "sandbox-cli-detector",
+  "version": "0.2.0",
+  "description": "Detect whether a CLI is running inside a sandboxed environment",
+  "keywords": [
+    "sandbox",
+    "detect",
+    "e2b",
+    "vercel-sandbox",
+    "replit",
+    "daytona",
+    "modal",
+    "codespaces",
+    "gitpod",
+    "cli",
+    "environment"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidmokos/sandbox-cli-detector.git"
+  },
+  "license": "MIT",
+  "author": "David Mokos",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "sandbox-cli-detector": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup && node -e \"require('node:fs').chmodSync('dist/cli.js', 0o755)\"",
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "dev": "tsup --watch",
+    "lint": "tsc --noEmit",
+    "test": "npm run build && vitest run",
+    "test:watch": "vitest",
+    "prepack": "npm run clean && npm run lint && npm test"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18.18"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "name": "expo-location",
+  "version": "57.0.18",
+  "description": "Allows reading geolocation information from the device. Your app can poll for the current location or subscribe to location update events.",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "sideEffects": false,
+  "keywords": [
+    "react-native",
+    "expo",
+    "location",
+    "geolocation",
+    "coords",
+    "geocoding",
+    "compass",
+    "heading"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/expo/expo.git",
+    "directory": "packages/expo-location"
+  },
+  "bugs": {
+    "url": "https://github.com/expo/expo/issues"
+  },
+  "author": "650 Industries, Inc.",
+  "license": "MIT",
+  "homepage": "https://docs.expo.dev/versions/latest/sdk/location/",
+  "jest": {
+    "preset": "expo-module-scripts"
+  },
+  "dependencies": {
+    "@expo/image-utils": "^0.11.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "expo": "57.0.23",
+    "expo-module-scripts": "56.0.3"
+  },
+  "peerDependencies": {
+    "expo": "*"
+  },
+  "gitHead": "f6f5af06b95cb7d511b52641885b2fb5adad525d",
+  "scripts": {
+    "build": "expo-module build",
+    "clean": "expo-module clean",
+    "lint": "expo-module lint",
+    "test": "expo-module test",
+    "expo-module": "expo-module"
+  }
+}

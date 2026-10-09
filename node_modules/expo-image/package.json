@@ -1,0 +1,55 @@
+{
+  "name": "expo-image",
+  "title": "Expo Image",
+  "version": "57.0.5",
+  "description": "A cross-platform, performant image component for React Native and Expo with Web support",
+  "main": "src/index.ts",
+  "types": "build/index.d.ts",
+  "sideEffects": false,
+  "homepage": "https://docs.expo.dev/versions/latest/sdk/image/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/expo/expo.git",
+    "directory": "packages/expo-image"
+  },
+  "keywords": [
+    "react-native"
+  ],
+  "author": "650 Industries, Inc.",
+  "license": "MIT",
+  "dependencies": {
+    "sf-symbols-typescript": "^2.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@types/react": "~19.2.0",
+    "expo": "57.0.22",
+    "expo-observe": "57.0.21",
+    "expo-module-scripts": "56.0.3",
+    "expo-app-metrics": "57.0.18"
+  },
+  "peerDependencies": {
+    "expo": "*",
+    "react": "*",
+    "react-native": "*",
+    "react-native-web": "*"
+  },
+  "peerDependenciesMeta": {
+    "react-native-web": {
+      "optional": true
+    }
+  },
+  "jest": {
+    "preset": "expo-module-scripts"
+  },
+  "gitHead": "9e5319c0f821a27b7924841903abae50e2b41790",
+  "scripts": {
+    "build": "expo-module build",
+    "build:plugin": "expo-module build plugin",
+    "clean": "expo-module clean",
+    "lint": "expo-module lint",
+    "test": "expo-module test",
+    "test:rsc": "jest --config jest-rsc.config.js",
+    "expo-module": "expo-module"
+  }
+}

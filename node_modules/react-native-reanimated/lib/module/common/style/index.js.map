@@ -1,0 +1,1 @@
+{"version":3,"names":["default","createPropsBuilder","stylePropsBuilder"],"sourceRoot":"../../../../src","sources":["common/style/index.ts"],"mappings":"AAAA,YAAY;;AACZ,cAAc,aAAU;AACxB,SAASA,OAAO,IAAIC,kBAAkB,QAAQ,yBAAsB;AACpE,cAAc,uBAAc;AAC5B,SAAkCC,iBAAiB,QAAQ,mBAAgB;AAC3E,cAAc,eAAY;AAC1B;AACA","ignoreList":[]}

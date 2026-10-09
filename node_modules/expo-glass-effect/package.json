@@ -1,0 +1,52 @@
+{
+  "name": "expo-glass-effect",
+  "version": "57.0.3",
+  "description": "A component that renders a native glass effect view on iOS.",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "sideEffects": false,
+  "jest": {
+    "preset": "expo-module-scripts"
+  },
+  "keywords": [
+    "react-native",
+    "apple",
+    "liquid-glass",
+    "expo",
+    "expo-glass-effect"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/expo/expo.git",
+    "directory": "packages/expo-glass-effect"
+  },
+  "bugs": {
+    "url": "https://github.com/expo/expo/issues"
+  },
+  "author": "650 Industries, Inc.",
+  "license": "MIT",
+  "homepage": "https://docs.expo.dev/versions/latest/sdk/glass-effect/",
+  "dependencies": {},
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/react-native": "^13.3.0",
+    "@types/react": "~19.2.0",
+    "expo": "57.0.22",
+    "expo-module-scripts": "56.0.3"
+  },
+  "peerDependencies": {
+    "expo": "*",
+    "react": "*",
+    "react-native": "*"
+  },
+  "gitHead": "9e5319c0f821a27b7924841903abae50e2b41790",
+  "scripts": {
+    "build": "expo-module build",
+    "clean": "expo-module clean",
+    "lint": "expo-module lint",
+    "test": "expo-module test",
+    "expo-module": "expo-module"
+  }
+}

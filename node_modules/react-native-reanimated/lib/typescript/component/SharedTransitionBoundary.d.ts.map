@@ -1,0 +1,1 @@
+{"version":3,"file":"SharedTransitionBoundary.d.ts","sourceRoot":"","sources":["../../../src/component/SharedTransitionBoundary.tsx"],"names":[],"mappings":"AAKA,MAAM,WAAW,6BAA6B;IAC5C,QAAQ,EAAE,OAAO,CAAC;IAClB,QAAQ,CAAC,EAAE,KAAK,CAAC,SAAS,CAAC;CAC5B;AAED,wBAAgB,wBAAwB,CAAC,EACvC,QAAQ,EACR,QAAQ,GACT,EAAE,6BAA6B,+BAM/B"}

@@ -1,0 +1,4 @@
+import * as React from 'react';
+import type { DrawerProps } from '../types.js';
+export declare function Drawer({ layout: customLayout, direction, drawerPosition, drawerStyle, drawerType, configureGestureHandler, hideStatusBarOnOpen, keyboardDismissMode, onClose, onOpen, onGestureStart, onGestureCancel, onGestureEnd, onTransitionStart, onTransitionEnd, open, overlayStyle, overlayAccessibilityLabel, statusBarAnimation, swipeEnabled, swipeEdgeWidth, swipeMinDistance, swipeMinVelocity, renderDrawerContent, children, style, }: DrawerProps): React.JSX.Element;
+//# sourceMappingURL=Drawer.native.d.ts.map

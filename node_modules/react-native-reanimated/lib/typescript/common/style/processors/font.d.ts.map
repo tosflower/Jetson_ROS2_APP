@@ -1,0 +1,1 @@
+{"version":3,"file":"font.d.ts","sourceRoot":"","sources":["../../../../../src/common/style/processors/font.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EAAE,cAAc,EAAE,MAAM,aAAa,CAAC;AAElD,eAAO,MAAM,cAAc;8BACC,MAAM,GAAG,MAAM;CAI1C,CAAC;AAIF,eAAO,MAAM,iBAAiB,EAAE,cAAc,CAAC,MAAM,GAAG,MAAM,EAAE,MAAM,CAiBrE,CAAC"}

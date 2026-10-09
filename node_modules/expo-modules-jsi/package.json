@@ -1,0 +1,53 @@
+{
+  "name": "expo-modules-jsi",
+  "version": "57.1.0",
+  "description": "The JavaScript Interface for Expo Modules",
+  "main": "index.js",
+  "sideEffects": [],
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "default": "./index.js"
+    }
+  },
+  "keywords": [
+    "expo",
+    "modules",
+    "jsi",
+    "expo-modules",
+    "react-native"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/expo/expo.git",
+    "directory": "packages/expo-modules-jsi"
+  },
+  "bugs": {
+    "url": "https://github.com/expo/expo/issues"
+  },
+  "author": "650 Industries, Inc.",
+  "license": "MIT",
+  "homepage": "https://github.com/expo/expo/tree/main/packages/expo-modules-jsi",
+  "dependencies": {},
+  "devDependencies": {},
+  "peerDependencies": {
+    "react-native": "*"
+  },
+  "publishConfig": {
+    "executableFiles": [
+      "./apple/scripts/build-xcframework.sh",
+      "./apple/scripts/create-stub-xcframework.sh",
+      "./apple/scripts/generate-modulemap.sh",
+      "./apple/scripts/test.sh"
+    ]
+  },
+  "gitHead": "ee89f7c31877f111cb1705c8e5c2c8078fa80a03",
+  "scripts": {
+    "benchmark": "TEST_RUNNER_EXPO_BENCHMARK=1 DESTINATION=\"${DESTINATION:-platform=macOS,variant=Mac Catalyst}\" apple/scripts/test.sh -configuration Release -only-testing Benchmarks -enableCodeCoverage NO",
+    "build": "apple/scripts/build-xcframework.sh",
+    "clean": "apple/scripts/clear-caches.sh",
+    "swift:format": "../../scripts/swift-format.sh",
+    "swift:lint": "../../scripts/swift-format.sh --lint",
+    "test": "apple/scripts/test.sh"
+  }
+}

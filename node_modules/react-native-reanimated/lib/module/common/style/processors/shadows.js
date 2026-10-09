@@ -1,0 +1,60 @@
+'use strict';
+
+import { IS_ANDROID } from "../../constants/index.js";
+import { parseBoxShadowString } from "../../utils/index.js";
+import { processColor } from "./colors.js";
+const ERROR_MESSAGES = {
+  notArrayObject(value) {
+    'worklet';
+
+    return `Box shadow value must be a string or an array of shadow objects (e.g. [{ offsetX, offsetY, color }]). Received: ${JSON.stringify(value)}.`;
+  },
+  invalidColor(color, boxShadow) {
+    'worklet';
+
+    return `Invalid color "${color}" in box shadow "${boxShadow}".`;
+  }
+};
+const parseBlurRadius = value => {
+  'worklet';
+
+  if (IS_ANDROID) {
+    // Android crashes when blurRadius is smaller than 1
+    return Math.max(parseFloat(value), 1);
+  }
+  return parseFloat(value);
+};
+export const processBoxShadow = (value, context) => {
+  'worklet';
+
+  if (value === 'none') {
+    return;
+  }
+  const parsedShadow = typeof value === 'string' ? parseBoxShadowString(value) : value;
+  if (!Array.isArray(parsedShadow)) {
+    throw new Error(`[Reanimated] ${ERROR_MESSAGES.notArrayObject(parsedShadow)}`);
+  }
+  return parsedShadow.map(shadow => {
+    const {
+      color = '#000',
+      offsetX = 0,
+      offsetY = 0,
+      spreadDistance = 0,
+      blurRadius = 0,
+      ...rest
+    } = shadow;
+    const processedColor = processColor(color, context);
+    if (processedColor === undefined) {
+      throw new Error(`[Reanimated] ${ERROR_MESSAGES.invalidColor(color, JSON.stringify(shadow))}`);
+    }
+    return {
+      ...rest,
+      blurRadius: parseBlurRadius(blurRadius),
+      color: processedColor,
+      offsetX: parseFloat(offsetX),
+      offsetY: parseFloat(offsetY),
+      spreadDistance: parseFloat(spreadDistance)
+    };
+  });
+};
+//# sourceMappingURL=shadows.js.map

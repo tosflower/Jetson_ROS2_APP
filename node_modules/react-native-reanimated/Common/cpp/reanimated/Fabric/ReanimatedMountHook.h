@@ -1,0 +1,33 @@
+#pragma once
+
+#include <reanimated/CSS/misc/ViewStylesRepository.h>
+#include <reanimated/Fabric/ShadowTreeCloner.h>
+#include <reanimated/Fabric/updates/UpdatesRegistryManager.h>
+
+#include <react/renderer/uimanager/UIManagerMountHook.h>
+
+#include <memory>
+
+namespace reanimated {
+
+using namespace facebook::react;
+
+class ReanimatedMountHook : public UIManagerMountHook {
+ public:
+  ReanimatedMountHook(
+      const std::shared_ptr<UIManager> &uiManager,
+      const std::shared_ptr<UpdatesRegistryManager> &updatesRegistryManager,
+      const std::shared_ptr<css::ViewStylesRepository> &viewStylesRepository,
+      const std::function<void()> &requestFlush);
+  ~ReanimatedMountHook() noexcept override;
+
+  void shadowTreeDidMount(RootShadowNode::Shared const &rootShadowNode, HighResTimeStamp mountTime) noexcept override;
+
+ private:
+  const std::shared_ptr<UIManager> uiManager_;
+  const std::shared_ptr<UpdatesRegistryManager> updatesRegistryManager_;
+  const std::shared_ptr<css::ViewStylesRepository> viewStylesRepository_;
+  const std::function<void()> requestFlush_;
+};
+
+} // namespace reanimated

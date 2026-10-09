@@ -1,0 +1,54 @@
+{
+  "expo": {
+    "name": "小车的盒子",
+    "slug": "jetson-ros2-mobile-test",
+    "version": "0.1.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "用于连接同一热点下的 Jetson ROS2 网关并显示实时图像。",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "27339a98-e760-4a82-b273-251add682069"
+      }
+    },
+    "android": {
+      "package": "com.leezhuowen.jetsonros2mobiletest",
+      "icon": "./assets/icon.png",
+      "softwareKeyboardLayoutMode": "resize"
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      "expo-router",
+      "expo-image",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "用于将手机 GPS 定位与航向数据发布到 ROS 2。"
+        }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "用于将手机加速度计、陀螺仪和磁力计数据发布到 ROS 2。"
+        }
+      ]
+    ]
+  }
+}
