@@ -4,14 +4,14 @@ import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BufferedImage from '@/BufferedImage';
 import TerminalWindow from '@/TerminalWindow';
-import { useCommands } from '@/providers/command-provider';
+import { ROSOUT_TERMINAL_ID, useMonitor } from '@/providers/monitor-provider';
 import { useGateway } from '@/providers/gateway-provider';
 import { EmptyState, Field, Row, Screen, Section, StatusBanner } from '@/ui/primitives';
 import { spacing, useThemeColors } from '@/ui/tokens';
 
 export default function ImagesScreen(): React.JSX.Element {
   const gateway = useGateway();
-  const commands = useCommands();
+  const monitor = useMonitor();
   const colors = useThemeColors();
   const focused = useIsFocused();
   const { width, fontScale } = useWindowDimensions();
@@ -38,10 +38,11 @@ export default function ImagesScreen(): React.JSX.Element {
       ? imageTopics.filter((topic) => topic.name.toLowerCase().includes(keyword))
       : imageTopics;
   }, [imageTopics, gateway.topicName]);
-  const runs = commands.snapshot?.history ?? [];
-  const terminalRun = runs.find((run) => run.id === commands.selectedRunId)
-    ?? commands.snapshot?.active_runs.at(-1)
+  const runs = monitor.snapshot?.history ?? [];
+  const terminalRun = runs.find((run) => run.id === monitor.selectedRunId)
+    ?? monitor.snapshot?.active_runs.at(-1)
     ?? runs[0];
+  const showingRosout = monitor.selectedRunId === ROSOUT_TERMINAL_ID || !monitor.selectedRunId;
 
   const preview = <View style={{ flex: columns ? 1 : undefined, minWidth: 0, gap: spacing.xxl }}>
     <Section title="图像预览" footer={gateway.selectedTopic ? '轻点画面全屏查看，双指缩放查看细节。' : undefined}>
@@ -71,7 +72,10 @@ export default function ImagesScreen(): React.JSX.Element {
     </Section>
     <Section title="终端信息">
       <View style={{ padding: spacing.lg }}>
-        <TerminalWindow run={terminalRun} logs={terminalRun ? commands.terminalLogs[terminalRun.id] ?? '' : ''} message={commands.message} />
+        <TerminalWindow key={monitor.selectedRunId ?? 'none'} run={showingRosout ? undefined : terminalRun}
+          logs={showingRosout ? monitor.rosoutLogs : terminalRun ? monitor.terminalLogs[terminalRun.id] ?? '' : ''}
+          message={showingRosout ? monitor.rosConnected ? '正在接收 Jetson ROS 日志' : '等待 rosbridge 连接' : monitor.message}
+          sourceLabel={showingRosout ? 'Jetson ROS 日志' : undefined} />
       </View>
     </Section>
   </View>;

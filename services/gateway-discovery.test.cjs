@@ -33,7 +33,7 @@ test('热点地址只作为候选；验证确为 Jetson 网关后才选中', asy
   globalThis.fetch = async (url) => ({
     ok: true,
     json: async () => ({ status: 'ok', capabilities: url.includes('10.42.0.1')
-      ? ['password_auth', 'system_power'] : [] }),
+      ? ['password_auth', 'image_topics'] : [] }),
   });
   try {
     assert.equal(await discoverGateway(), '10.42.0.1:8080');
@@ -50,7 +50,7 @@ test('同一路由器下忽略路由器，使用 Jetson 发布的 mDNS 地址', 
   globalThis.fetch = async (url) => ({
     ok: true,
     json: async () => ({ status: 'ok', capabilities: url.includes('192.168.1.120')
-      ? ['password_auth', 'system_power'] : [] }),
+      ? ['password_auth', 'image_topics'] : [] }),
   });
   try {
     assert.equal(await discoverGateway(), '192.168.1.120:8080');

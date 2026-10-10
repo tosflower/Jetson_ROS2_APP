@@ -364,7 +364,8 @@ export default function AmapLocationMap({
     void loadAmap(apiKey, securityJsCode).then((amap) => {
       if (!active) return;
       const map = new amap.Map('amap-container', {
-        viewMode: '2D', zoom: 17, pitchEnable: false, rotateEnable: false,
+        // GPS 尚未返回时先显示可见底图，定位到达后再跟随手机位置。
+        viewMode: '2D', zoom: 17, center: [116.397428, 39.90923], pitchEnable: false, rotateEnable: false,
       });
       instance = map;
       const marker = new amap.Marker({

@@ -46,7 +46,7 @@ export async function probeGateway(candidate: string): Promise<string | null> {
     return result.status === 'ok'
       && Array.isArray(result.capabilities)
       && result.capabilities.includes('password_auth')
-      && result.capabilities.includes('system_power')
+      && result.capabilities.includes('image_topics')
       ? address : null;
   } catch {
     return null;

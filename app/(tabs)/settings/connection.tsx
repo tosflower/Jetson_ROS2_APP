@@ -12,8 +12,8 @@ export default function GatewaySettingsScreen(): React.JSX.Element {
   const [showManualAddress, setShowManualAddress] = useState(false);
   const connected = gateway.gatewayState === '已连接' && gateway.sessionReady;
   useEffect(() => {
-    // 从设置页重新认证成功时也遵循相同流程，返回启动选项。
-    if (connected) router.replace('/launch');
+    // 从设置页重新认证成功后返回监控页。
+    if (connected) router.replace('/monitor');
   }, [connected]);
   return <Screen>
     <Section title="网关地址" footer="手机和 Jetson 必须位于可互相访问的局域网。">
@@ -35,6 +35,6 @@ export default function GatewaySettingsScreen(): React.JSX.Element {
         <StatusBanner message={gateway.lastMessage} tone={connected ? 'success' : gateway.gatewayState === '错误' ? 'danger' : 'neutral'} />
       </View>
     </Section>
-    {!connected ? <View style={{ gap: spacing.sm }}><Text selectable style={{ color: colors.secondaryLabel, fontSize: 13 }}>连接中断不会停止 Jetson 上已经启动的程序。</Text><ActionButton label="返回独立连接页" secondary onPress={() => router.push('/connection')} /></View> : null}
+    {!connected ? <View style={{ gap: spacing.sm }}><ActionButton label="返回独立连接页" secondary onPress={() => router.push('/connection')} /></View> : null}
   </Screen>;
 }

@@ -70,6 +70,21 @@ export function buildNavSatFixMessage(sample: PhoneLocationSample): Record<strin
   };
 }
 
+/** 经纬度始终独立发送；海拔缺失时以 null 表示，避免伪造高度。 */
+export function buildGpsDataMessage(sample: PhoneLocationSample): { data: string } {
+  const { latitude, longitude, altitude, accuracy } = sample.coords;
+  if (![latitude, longitude].every((value) => Number.isFinite(value))) {
+    throw new Error('GPS 经纬度无效');
+  }
+  return { data: JSON.stringify({
+    latitude,
+    longitude,
+    altitude: typeof altitude === 'number' && Number.isFinite(altitude) ? altitude : null,
+    accuracy_m: typeof accuracy === 'number' && Number.isFinite(accuracy) ? accuracy : null,
+    timestamp_ms: sample.timestamp,
+  }) };
+}
+
 /** 将手机指南针角度修正为车头角度，并规范到 [0, 360) 度。 */
 export function buildHeadingMessage(
   headingDegrees: number,

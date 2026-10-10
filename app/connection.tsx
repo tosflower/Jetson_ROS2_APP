@@ -12,8 +12,8 @@ export default function ConnectionScreen(): React.JSX.Element {
   const [showManualAddress, setShowManualAddress] = useState(false);
   const connected = gateway.gatewayState === '已连接' && gateway.sessionReady;
   useEffect(() => {
-    // 密码认证和 WebSocket 首帧认证都成功后，直接进入启动选项。
-    if (connected) router.replace('/launch');
+    // 网关认证完成后进入只读监控界面。
+    if (connected) router.replace('/monitor');
   }, [connected]);
   return (
     <Screen>
@@ -35,7 +35,7 @@ export default function ConnectionScreen(): React.JSX.Element {
             disabled={gateway.discoveryState === 'searching'} onPress={() => { setShowManualAddress(false); void gateway.rediscoverGateway(); }} />
           {gateway.discoveryState === 'found' && !showManualAddress
             ? <NativeButton label="手动修改地址" variant="text" onPress={() => setShowManualAddress(true)} /> : null}
-          <Field value={password} onChangeText={setPassword} secureTextEntry placeholder="Ubuntu 用户密码（需有 sudo 权限）" returnKeyType="go" onSubmitEditing={() => { if (password.trim() && gateway.discoveryState !== 'searching') { void gateway.checkGateway(password).finally(() => setPassword('')); } }} />
+          <Field value={password} onChangeText={setPassword} secureTextEntry placeholder="Ubuntu 用户密码" returnKeyType="go" onSubmitEditing={() => { if (password.trim() && gateway.discoveryState !== 'searching') { void gateway.checkGateway(password).finally(() => setPassword('')); } }} />
           <Text selectable style={{ color: colors.tertiaryLabel, fontSize: 12, lineHeight: 17 }}>密码只用于验证，不保存在手机或网关。请仅在可信局域网使用，不要将网关暴露到公网。</Text>
           <NativeButton label={gateway.gatewayState === '连接中' ? '正在验证并连接…' : '验证密码并连接'} onPress={() => { void gateway.checkGateway(password).finally(() => setPassword('')); }} disabled={gateway.discoveryState === 'searching' || gateway.gatewayState === '连接中' || !gateway.gatewayAddress.trim() || !password.trim()} />
           <StatusBanner message={gateway.lastMessage} tone={connected ? 'success' : gateway.gatewayState === '错误' ? 'danger' : 'neutral'} />

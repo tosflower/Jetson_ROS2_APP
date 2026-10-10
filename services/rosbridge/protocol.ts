@@ -1,5 +1,7 @@
 export const PHONE_GPS_TOPIC = '/phone/gps';
 export const PHONE_GPS_TYPE = 'sensor_msgs/msg/NavSatFix';
+export const PHONE_GPS_DATA_TOPIC = '/phone/gps_data';
+export const PHONE_GPS_DATA_TYPE = 'std_msgs/msg/String';
 export const PHONE_IMU_TOPIC = '/phone/imu';
 export const PHONE_IMU_TYPE = 'sensor_msgs/msg/Imu';
 export const PHONE_MAGNETIC_FIELD_TOPIC = '/phone/magnetic_field';

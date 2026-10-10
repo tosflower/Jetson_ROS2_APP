@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { useGateway } from './gateway-provider';
 import { RosbridgeClient, type RosbridgeConnectionState } from '@/services/rosbridge/rosbridge-client';
-import { normalizeRosbridgeUrl, rosbridgeUrlFromGateway } from '@/services/rosbridge/protocol';
+import { normalizeRosbridgeUrl, rosbridgeUrlFromGateway, type RosbridgeSubscribeOptions } from '@/services/rosbridge/protocol';
 
 type RosbridgeContextValue = {
   address: string;
@@ -12,6 +12,8 @@ type RosbridgeContextValue = {
   advertiseTopic: (topic: string, type: string) => void;
   unadvertiseTopic: (topic: string) => void;
   publishTopic: <TMessage extends object>(topic: string, message: TMessage) => void;
+  subscribeTopic: (topic: string, type: string, callback: (message: Record<string, unknown>) => void,
+    options?: RosbridgeSubscribeOptions) => () => void;
   callService: <TArgs extends object, TResult>(
     service: string,
     args: TArgs,
@@ -104,6 +106,9 @@ export function RosbridgeProvider({ children }: React.PropsWithChildren): React.
   const publishTopic = useCallback(<TMessage extends object,>(topic: string, message: TMessage): void => {
     client.publish(topic, message);
   }, [client]);
+  const subscribeTopic = useCallback((topic: string, type: string,
+    callback: (message: Record<string, unknown>) => void,
+    options?: RosbridgeSubscribeOptions): (() => void) => client.subscribe(topic, type, callback, options), [client]);
   const callService = useCallback(<TArgs extends object, TResult,>(
     service: string,
     args: TArgs,
@@ -130,6 +135,7 @@ export function RosbridgeProvider({ children }: React.PropsWithChildren): React.
     advertiseTopic,
     unadvertiseTopic,
     publishTopic,
+    subscribeTopic,
     callService,
     connect,
     disconnect,

@@ -36,7 +36,6 @@ export type GatewayContextValue = {
   capabilities: string[];
   authToken?: string;
   checkGateway: (password: string) => Promise<void>;
-  requestPower: (password: string, action: 'reboot' | 'poweroff') => Promise<void>;
   disconnect: () => void;
   selectedTopic?: ImageTopic;
   topics: ImageTopic[];
@@ -167,7 +166,7 @@ export function GatewayProvider({ children }: React.PropsWithChildren): React.JS
         if (socketRef.current !== socket) return;
         connectionError = true;
         if (surface === 'image') {
-          setTopicMessage('图像流连接超时，终端与控制功能仍可使用');
+          setTopicMessage('图像流连接超时，终端日志仍可查看');
         } else {
           setGatewayState('错误');
           setLastMessage('连接超时，请检查网关地址和服务版本');
@@ -269,7 +268,7 @@ export function GatewayProvider({ children }: React.PropsWithChildren): React.JS
         if (socketRef.current !== socket) return;
         connectionError = true;
         if (surface === 'image') {
-          setTopicMessage('图像流连接失败，终端与控制功能仍可使用');
+          setTopicMessage('图像流连接失败，终端日志仍可查看');
         } else {
           setGatewayState('错误');
           setLastMessage('无法连接网关，请检查热点、IP 地址和端口');
@@ -283,7 +282,7 @@ export function GatewayProvider({ children }: React.PropsWithChildren): React.JS
           socketRef.current = null;
           if (!connectionError) {
             if (closeStatusTarget(surface) === 'image') {
-              setTopicMessage('图像流连接已断开，终端与控制功能仍可使用');
+              setTopicMessage('图像流连接已断开，终端日志仍可查看');
             } else {
               setGatewayState('未连接');
               setLastMessage('网关连接已断开');
@@ -399,9 +398,10 @@ export function GatewayProvider({ children }: React.PropsWithChildren): React.JS
       const response = await fetch(`${base}/health`, { signal: controller.signal });
       const result = await response.json();
       if (!response.ok || result.status !== 'ok') throw new Error('网关健康检查失败');
-      const required = ['commands', 'defaults', 'dynamic_defaults', 'history_clear', 'image_topics', 'latency', 'multi_terminal', 'yaml_editor', 'build', 'password_auth', 'system_power'];
+      // 手机监控端只依赖认证、图像话题与终端日志接口。
+      const required = ['commands', 'image_topics', 'password_auth'];
       if (!required.every((name) => result.capabilities?.includes(name))) {
-        throw new Error('请更新并重启 Jetson 网关：当前服务不支持动态启动配置或历史清理');
+        throw new Error('当前 Jetson 网关缺少监控所需接口，请更新网关');
       }
       setCapabilities(Array.isArray(result.capabilities) ? result.capabilities : []);
       if (epoch === connectionEpoch.current) {
@@ -418,21 +418,6 @@ export function GatewayProvider({ children }: React.PropsWithChildren): React.JS
       clearTimeout(timer);
     }
   }, [connectToGateway, disconnect, gatewayAddress]);
-
-  const requestPower = useCallback(async (password: string, action: 'reboot' | 'poweroff'): Promise<void> => {
-    if (!authToken) throw new Error('请先连接并验证 Ubuntu 密码');
-    const response = await fetch(`${connectedBase}/api/system/power`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
-      body: JSON.stringify({ password, action }),
-    });
-    const result = await response.json();
-    if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : '开发板电源操作失败');
-    setLastMessage(action === 'reboot' ? '已接受重启请求，开发板即将离线' : '已接受关机请求，开发板即将离线');
-    setGatewayState('连接中');
-    setSessionReady(false);
-    disconnect();
-  }, [authToken, connectedBase, disconnect]);
 
   const refreshTopics = useCallback(async (): Promise<void> => {
     const controller = new AbortController();
@@ -497,7 +482,7 @@ export function GatewayProvider({ children }: React.PropsWithChildren): React.JS
   const value: GatewayContextValue = {
     gatewayAddress, setGatewayAddress, discoveryState, rediscoverGateway,
     connectedBase, gatewayState, sessionReady, lastMessage, capabilities, authToken,
-    checkGateway, requestPower, disconnect, selectedTopic, topics, topicName, setTopicName, topicType, setTopicType,
+    checkGateway, disconnect, selectedTopic, topics, topicName, setTopicName, topicType, setTopicType,
     topicMessage, refreshTopics, selectTopic, imageFrame, fps, latency, lastLatencyAt, debugNow,
     onFrameLoaded, resetRunLatency,
   };

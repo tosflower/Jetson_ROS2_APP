@@ -13,6 +13,8 @@ import { useRosbridge } from './rosbridge-provider';
 import {
   PHONE_GPS_TOPIC,
   PHONE_GPS_TYPE,
+  PHONE_GPS_DATA_TOPIC,
+  PHONE_GPS_DATA_TYPE,
   PHONE_HEADING_TOPIC,
   PHONE_HEADING_TYPE,
   PHONE_IMU_TOPIC,
@@ -25,6 +27,7 @@ import {
   buildImuMessage,
   buildMagneticFieldMessage,
   buildNavSatFixMessage,
+  buildGpsDataMessage,
 } from '@/services/phone-sensors/messages';
 
 type StreamState = 'idle' | 'starting' | 'active' | 'paused' | 'error';
@@ -261,27 +264,29 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
           setGpsStatus('GPS 正在采集；等待 rosbridge 连接后发布');
           return;
         }
-        const message = buildNavSatFixMessage(location);
-        if (!message) {
-          setGpsStatus('已获得定位，但海拔不可用；为避免伪造 0 m 暂停发布');
-          return;
-        }
         try {
-          publishTopic(PHONE_GPS_TOPIC, message);
-          setGpsStatus(`正在以最高 ${1000 / GPS_PUBLISH_INTERVAL_MS} Hz 发布 ${PHONE_GPS_TOPIC}`);
-        } catch {
+          // 经纬度即使没有海拔仍发布；NavSatFix 只在高度有效时发送。
+          publishTopic(PHONE_GPS_DATA_TOPIC, buildGpsDataMessage(location));
+          const message = buildNavSatFixMessage(location);
+          if (message) publishTopic(PHONE_GPS_TOPIC, message);
+          setGpsStatus(message
+            ? `正在以最高 ${1000 / GPS_PUBLISH_INTERVAL_MS} Hz 发布 ${PHONE_GPS_TOPIC} 与 ${PHONE_GPS_DATA_TOPIC}`
+            : `已发布 ${PHONE_GPS_DATA_TOPIC}；海拔缺失，${PHONE_GPS_TOPIC} 暂停`);
+        } catch (error) {
           // 断线时继续采集供地图显示，rosbridge 重连后再恢复发布。
+          setGpsStatus(error instanceof Error ? `GPS 已采集，发送失败：${error.message}` : 'GPS 已采集，等待重新发送');
         }
       }, GPS_PUBLISH_INTERVAL_MS);
       setGpsState('active');
       setGpsStatus(connectionStateRef.current === 'connected'
-        ? `正在以最高 ${1000 / GPS_PUBLISH_INTERVAL_MS} Hz 发布 ${PHONE_GPS_TOPIC}`
+        ? 'GPS 已启动，正在等待首个定位采样'
         : 'GPS 正在采集；等待 rosbridge 连接后发布');
     } catch (error) {
       if (generation !== gpsGenerationRef.current) return;
       gpsDesiredRef.current = false;
       setGpsEnabled(false);
       unadvertiseTopic(PHONE_GPS_TOPIC);
+      unadvertiseTopic(PHONE_GPS_DATA_TOPIC);
       setGpsState('error');
       setGpsStatus(error instanceof Error ? error.message : 'GPS 启动失败');
     } finally {
@@ -480,6 +485,7 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
     gpsDesiredRef.current = true;
     setGpsEnabled(true);
     advertiseTopic(PHONE_GPS_TOPIC, PHONE_GPS_TYPE);
+    advertiseTopic(PHONE_GPS_DATA_TOPIC, PHONE_GPS_DATA_TYPE);
     void activateGps();
   }, [activateGps, advertiseTopic]);
 
@@ -488,6 +494,7 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
     setGpsEnabled(false);
     pauseGpsRuntime();
     unadvertiseTopic(PHONE_GPS_TOPIC);
+    unadvertiseTopic(PHONE_GPS_DATA_TOPIC);
     setGpsState('idle');
     setGpsStatus('GPS 已停止');
   }, [pauseGpsRuntime, unadvertiseTopic]);
@@ -576,6 +583,7 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
     pauseHeadingRuntime();
     pauseImuRuntime();
     unadvertiseTopic(PHONE_GPS_TOPIC);
+    unadvertiseTopic(PHONE_GPS_DATA_TOPIC);
     unadvertiseTopic(PHONE_HEADING_TOPIC);
     unadvertiseTopic(PHONE_IMU_TOPIC);
     unadvertiseTopic(PHONE_MAGNETIC_FIELD_TOPIC);

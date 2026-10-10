@@ -53,6 +53,17 @@ test('GPS 精度转为对角协方差，海拔缺失时拒绝伪造 0', () => {
   assert.equal(messages.buildNavSatFixMessage({ ...sample, coords: { ...sample.coords, altitude: null } }), null);
 });
 
+test('海拔缺失时仍可生成包含经纬度的 GPS 数据消息', () => {
+  const sample = {
+    timestamp: 2000,
+    coords: { latitude: 31.2, longitude: 121.5, altitude: null, accuracy: 3, altitudeAccuracy: null },
+  };
+  const message = messages.buildGpsDataMessage(sample);
+  assert.deepEqual(JSON.parse(message.data), {
+    latitude: 31.2, longitude: 121.5, altitude: null, accuracy_m: 3, timestamp_ms: 2000,
+  });
+});
+
 test('航向角叠加安装偏角后规范到 0 至 360 度', () => {
   assert.deepEqual(messages.buildHeadingMessage(350, 20), { data: 10 });
   assert.deepEqual(messages.buildHeadingMessage(10, -30), { data: 340 });

@@ -3,11 +3,24 @@ import * as SecureStore from 'expo-secure-store';
 import { useEffect } from 'react';
 import { Appearance, StatusBar, useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { CommandProvider } from '@/providers/command-provider';
-import { GatewayProvider } from '@/providers/gateway-provider';
-import { PhoneSensorsProvider } from '@/providers/phone-sensors-provider';
-import { RosbridgeProvider } from '@/providers/rosbridge-provider';
+import { MonitorProvider } from '@/providers/monitor-provider';
+import { GatewayProvider, useGateway } from '@/providers/gateway-provider';
+import { PhoneSensorsProvider, usePhoneSensors } from '@/providers/phone-sensors-provider';
+import { RosbridgeProvider, useRosbridge } from '@/providers/rosbridge-provider';
 import { useThemeColors } from '@/ui/tokens';
+
+function PhoneTelemetryStartup(): null {
+  const { sessionReady } = useGateway();
+  const { connect } = useRosbridge();
+  const { startAll } = usePhoneSensors();
+  useEffect(() => {
+    if (!sessionReady) return;
+    // 网关连接后即开始向 Jetson 发布手机传感器数据，地图页也可离线单独启动。
+    connect();
+    startAll();
+  }, [connect, sessionReady, startAll]);
+  return null;
+}
 
 export default function RootLayout(): React.JSX.Element {
   const colorScheme = useColorScheme();
@@ -29,7 +42,8 @@ export default function RootLayout(): React.JSX.Element {
         <GatewayProvider>
           <RosbridgeProvider>
             <PhoneSensorsProvider>
-              <CommandProvider>
+              <PhoneTelemetryStartup />
+              <MonitorProvider>
                 <StatusBar barStyle={light ? 'dark-content' : 'light-content'} />
                 <Stack screenOptions={{ contentStyle: { backgroundColor: colors.background }, animation: 'slide_from_right', ...nativeStatusBar }}>
                   <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -38,7 +52,7 @@ export default function RootLayout(): React.JSX.Element {
                   <Stack.Screen name="image-viewer" options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: false, contentStyle: { backgroundColor: '#000000' } }} />
                   <Stack.Screen name="+not-found" options={{ title: '页面不存在' }} />
                 </Stack>
-              </CommandProvider>
+              </MonitorProvider>
             </PhoneSensorsProvider>
           </RosbridgeProvider>
         </GatewayProvider>
