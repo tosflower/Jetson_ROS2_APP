@@ -15,6 +15,7 @@ import time
 from pathlib import Path
 from auth import AuthError, AuthManager
 from commands import CommandManager
+from discovery import GatewayAdvertiser
 from images import ImageBridgeNode, COMPRESSED
 from streaming import StreamTiming
 from typing import Dict, List, Optional, Set, Tuple
@@ -154,11 +155,25 @@ app = FastAPI(title="Jetson ROS2 Mobile Gateway", version="0.1.0")
 async def startup() -> None:
     """在 uvicorn 事件循环启动后初始化 ROS2。"""
     app.state.runtime = GatewayRuntime()
+    app.state.discovery = GatewayAdvertiser(GATEWAY_PORT)
+    app.state.discovery.refresh()
+    app.state.discovery_task = asyncio.create_task(refresh_discovery())
+
+
+async def refresh_discovery() -> None:
+    """热点或路由器地址改变时刷新 mDNS 记录。"""
+    while True:
+        await asyncio.sleep(15)
+        app.state.discovery.refresh()
 
 
 @app.on_event("shutdown")
 async def shutdown() -> None:
     """停止 ROS2 执行器与可能正在运行的 launch。"""
+    app.state.discovery_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await app.state.discovery_task
+    app.state.discovery.close()
     await app.state.runtime.close()
 
 
@@ -186,9 +201,11 @@ class PowerRequest(LoginRequest):
 
 def require_auth(authorization: Optional[str] = Header(default=None)) -> str:
     """校验 App 登录后获得的内存令牌，不接受 URL 中的 HTTP API token。"""
-    if not authorization or not authorization.startswith("Bearer "):
+    bearer_prefix = "Bearer "
+    if not authorization or not authorization.startswith(bearer_prefix):
         raise HTTPException(status_code=401, detail="请先使用 Ubuntu 密码连接开发板")
-    token = authorization.removeprefix("Bearer ").strip()
+    # str.removeprefix() 需要 Python 3.9；ROS2 Foxy 的 Python 3.8 使用切片兼容。
+    token = authorization[len(bearer_prefix):].strip()
     if not app.state.runtime.auth.authorize(token):
         raise HTTPException(status_code=401, detail="登录已失效，请重新输入 Ubuntu 密码")
     return token

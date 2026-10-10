@@ -1,0 +1,568 @@
+'use strict';
+import type {
+  AnimationConfigFunction,
+  EntryExitAnimationFunction,
+  ExitAnimationsValues,
+  IEntryExitAnimationBuilder,
+} from '../../commonTypes';
+import type { BaseAnimationBuilder } from '../animationBuilder';
+import { ComplexAnimationBuilder } from '../animationBuilder';
+import type { TransformsConfig, TranslateX, TranslateY } from './types';
+import { animateTransformToValues, pickTransformValues } from './utils';
+
+/**
+ * Fade in animation. You can modify the behavior by chaining methods like
+ * `.springify()` or `.duration(500)`.
+ *
+ * You pass it to the `entering` prop on [an Animated
+ * component](https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/glossary#animated-component).
+ *
+ * @see https://docs.swmansion.com/react-native-reanimated/docs/layout-animations/entering-exiting-animations#fade
+ */
+export class FadeIn
+  extends ComplexAnimationBuilder<{ opacity: number }>
+  implements IEntryExitAnimationBuilder
+{
+  static presetName = 'FadeIn';
+
+  static createInstance<T extends typeof BaseAnimationBuilder>(
+    this: T
+  ): InstanceType<T> {
+    return new FadeIn() as InstanceType<T>;
+  }
+
+  build = (): EntryExitAnimationFunction => {
+    const delayFunction = this.getDelayFunction();
+    const [animation, config] = this.getAnimationAndConfig();
+    const callback = this.callbackV;
+    const initialValues = this.initialValues;
+    const targetValues = this.targetValues;
+    const delay = this.getDelay();
+
+    return () => {
+      'worklet';
+      return {
+        animations: {
+          opacity: delayFunction(
+            delay,
+            animation(targetValues?.opacity ?? 1, config)
+          ),
+        },
+        initialValues: {
+          opacity: initialValues?.opacity ?? 0,
+        },
+        callback,
+      };
+    };
+  };
+}
+
+/**
+ * Fade from right animation. You can modify the behavior by chaining methods
+ * like `.springify()` or `.duration(500)`.
+ *
+ * You pass it to the `entering` prop on [an Animated
+ * component](https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/glossary#animated-component).
+ *
+ * @see https://docs.swmansion.com/react-native-reanimated/docs/layout-animations/entering-exiting-animations#fade
+ */
+export class FadeInRight
+  extends ComplexAnimationBuilder<
+    { opacity: number } & TransformsConfig<[TranslateX]>
+  >
+  implements IEntryExitAnimationBuilder
+{
+  static presetName = 'FadeInRight';
+
+  static createInstance<T extends typeof BaseAnimationBuilder>(
+    this: T
+  ): InstanceType<T> {
+    return new FadeInRight() as InstanceType<T>;
+  }
+
+  build = (): EntryExitAnimationFunction => {
+    const delayFunction = this.getDelayFunction();
+    const animationAndConfig = this.getAnimationAndConfig();
+    const [animation, config] = animationAndConfig;
+    const callback = this.callbackV;
+    const initialValues = this.initialValues;
+    const targetValues = this.targetValues;
+    const delay = this.getDelay();
+
+    return () => {
+      'worklet';
+      return {
+        animations: {
+          opacity: delayFunction(
+            delay,
+            animation(targetValues?.opacity ?? 1, config)
+          ),
+          transform: animateTransformToValues(
+            [{ translateX: 0 }],
+            targetValues,
+            animationAndConfig,
+            delayFunction,
+            delay
+          ),
+        },
+        initialValues: {
+          opacity: initialValues?.opacity ?? 0,
+          transform: pickTransformValues([{ translateX: 25 }], initialValues),
+        },
+        callback,
+      };
+    };
+  };
+}
+
+/**
+ * Fade from left animation. You can modify the behavior by chaining methods
+ * like `.springify()` or `.duration(500)`.
+ *
+ * You pass it to the `entering` prop on [an Animated
+ * component](https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/glossary#animated-component).
+ *
+ * @see https://docs.swmansion.com/react-native-reanimated/docs/layout-animations/entering-exiting-animations#fade
+ */
+export class FadeInLeft
+  extends ComplexAnimationBuilder<
+    { opacity: number } & TransformsConfig<[TranslateX]>
+  >
+  implements IEntryExitAnimationBuilder
+{
+  static presetName = 'FadeInLeft';
+
+  static createInstance<T extends typeof BaseAnimationBuilder>(
+    this: T
+  ): InstanceType<T> {
+    return new FadeInLeft() as InstanceType<T>;
+  }
+
+  build = (): EntryExitAnimationFunction => {
+    const delayFunction = this.getDelayFunction();
+    const animationAndConfig = this.getAnimationAndConfig();
+    const [animation, config] = animationAndConfig;
+    const callback = this.callbackV;
+    const initialValues = this.initialValues;
+    const targetValues = this.targetValues;
+    const delay = this.getDelay();
+
+    return () => {
+      'worklet';
+      return {
+        animations: {
+          opacity: delayFunction(
+            delay,
+            animation(targetValues?.opacity ?? 1, config)
+          ),
+          transform: animateTransformToValues(
+            [{ translateX: 0 }],
+            targetValues,
+            animationAndConfig,
+            delayFunction,
+            delay
+          ),
+        },
+        initialValues: {
+          opacity: initialValues?.opacity ?? 0,
+          transform: pickTransformValues([{ translateX: -25 }], initialValues),
+        },
+        callback,
+      };
+    };
+  };
+}
+
+/**
+ * Fade from top animation. You can modify the behavior by chaining methods like
+ * `.springify()` or `.duration(500)`.
+ *
+ * You pass it to the `entering` prop on [an Animated
+ * component](https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/glossary#animated-component).
+ *
+ * @see https://docs.swmansion.com/react-native-reanimated/docs/layout-animations/entering-exiting-animations#fade
+ */
+export class FadeInUp
+  extends ComplexAnimationBuilder<
+    { opacity: number } & TransformsConfig<[TranslateY]>
+  >
+  implements IEntryExitAnimationBuilder
+{
+  static presetName = 'FadeInUp';
+
+  static createInstance<T extends typeof BaseAnimationBuilder>(
+    this: T
+  ): InstanceType<T> {
+    return new FadeInUp() as InstanceType<T>;
+  }
+
+  build = (): EntryExitAnimationFunction => {
+    const delayFunction = this.getDelayFunction();
+    const animationAndConfig = this.getAnimationAndConfig();
+    const [animation, config] = animationAndConfig;
+    const callback = this.callbackV;
+    const initialValues = this.initialValues;
+    const targetValues = this.targetValues;
+    const delay = this.getDelay();
+
+    return () => {
+      'worklet';
+      return {
+        animations: {
+          opacity: delayFunction(
+            delay,
+            animation(targetValues?.opacity ?? 1, config)
+          ),
+          transform: animateTransformToValues(
+            [{ translateY: 0 }],
+            targetValues,
+            animationAndConfig,
+            delayFunction,
+            delay
+          ),
+        },
+        initialValues: {
+          opacity: initialValues?.opacity ?? 0,
+          transform: pickTransformValues([{ translateY: -25 }], initialValues),
+        },
+        callback,
+      };
+    };
+  };
+}
+
+/**
+ * Fade from bottom animation. You can modify the behavior by chaining methods
+ * like `.springify()` or `.duration(500)`.
+ *
+ * You pass it to the `entering` prop on [an Animated
+ * component](https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/glossary#animated-component).
+ *
+ * @see https://docs.swmansion.com/react-native-reanimated/docs/layout-animations/entering-exiting-animations#fade
+ */
+export class FadeInDown
+  extends ComplexAnimationBuilder<
+    { opacity: number } & TransformsConfig<[TranslateY]>
+  >
+  implements IEntryExitAnimationBuilder
+{
+  static presetName = 'FadeInDown';
+
+  static createInstance<T extends typeof BaseAnimationBuilder>(
+    this: T
+  ): InstanceType<T> {
+    return new FadeInDown() as InstanceType<T>;
+  }
+
+  build = (): EntryExitAnimationFunction => {
+    const delayFunction = this.getDelayFunction();
+    const animationAndConfig = this.getAnimationAndConfig();
+    const [animation, config] = animationAndConfig;
+    const callback = this.callbackV;
+    const initialValues = this.initialValues;
+    const targetValues = this.targetValues;
+    const delay = this.getDelay();
+
+    return () => {
+      'worklet';
+      return {
+        animations: {
+          opacity: delayFunction(
+            delay,
+            animation(targetValues?.opacity ?? 1, config)
+          ),
+          transform: animateTransformToValues(
+            [{ translateY: 0 }],
+            targetValues,
+            animationAndConfig,
+            delayFunction,
+            delay
+          ),
+        },
+        initialValues: {
+          opacity: initialValues?.opacity ?? 0,
+          transform: pickTransformValues([{ translateY: 25 }], initialValues),
+        },
+        callback,
+      };
+    };
+  };
+}
+
+/**
+ * Fade out animation. You can modify the behavior by chaining methods like
+ * `.springify()` or `.duration(500)`.
+ *
+ * You pass it to the `exiting` prop on [an Animated
+ * component](https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/glossary#animated-component).
+ *
+ * @see https://docs.swmansion.com/react-native-reanimated/docs/layout-animations/entering-exiting-animations#fade
+ */
+export class FadeOut
+  extends ComplexAnimationBuilder<{ opacity: number }>
+  implements IEntryExitAnimationBuilder
+{
+  static presetName = 'FadeOut';
+
+  static createInstance<T extends typeof BaseAnimationBuilder>(
+    this: T
+  ): InstanceType<T> {
+    return new FadeOut() as InstanceType<T>;
+  }
+
+  build = (): EntryExitAnimationFunction => {
+    const delayFunction = this.getDelayFunction();
+    const [animation, config] = this.getAnimationAndConfig();
+    const callback = this.callbackV;
+    const initialValues = this.initialValues;
+    const targetValues = this.targetValues;
+    const delay = this.getDelay();
+
+    return () => {
+      'worklet';
+      return {
+        animations: {
+          opacity: delayFunction(
+            delay,
+            animation(targetValues?.opacity ?? 0, config)
+          ),
+        },
+        initialValues: {
+          opacity: initialValues?.opacity ?? 1,
+        },
+        callback,
+      };
+    };
+  };
+}
+
+/**
+ * Fade to right animation. You can modify the behavior by chaining methods like
+ * `.springify()` or `.duration(500)`.
+ *
+ * You pass it to the `exiting` prop on [an Animated
+ * component](https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/glossary#animated-component).
+ *
+ * @see https://docs.swmansion.com/react-native-reanimated/docs/layout-animations/entering-exiting-animations#fade
+ */
+export class FadeOutRight
+  extends ComplexAnimationBuilder<
+    { opacity: number } & TransformsConfig<[TranslateX]>
+  >
+  implements IEntryExitAnimationBuilder
+{
+  static presetName = 'FadeOutRight';
+
+  static createInstance<T extends typeof BaseAnimationBuilder>(
+    this: T
+  ): InstanceType<T> {
+    return new FadeOutRight() as InstanceType<T>;
+  }
+
+  build = (): EntryExitAnimationFunction => {
+    const delayFunction = this.getDelayFunction();
+    const animationAndConfig = this.getAnimationAndConfig();
+    const [animation, config] = animationAndConfig;
+    const callback = this.callbackV;
+    const initialValues = this.initialValues;
+    const targetValues = this.targetValues;
+    const delay = this.getDelay();
+
+    return () => {
+      'worklet';
+      return {
+        animations: {
+          opacity: delayFunction(
+            delay,
+            animation(targetValues?.opacity ?? 0, config)
+          ),
+          transform: animateTransformToValues(
+            [{ translateX: 25 }],
+            targetValues,
+            animationAndConfig,
+            delayFunction,
+            delay
+          ),
+        },
+        initialValues: {
+          opacity: initialValues?.opacity ?? 1,
+          transform: pickTransformValues([{ translateX: 0 }], initialValues),
+        },
+        callback,
+      };
+    };
+  };
+}
+
+/**
+ * Fade to left animation. You can modify the behavior by chaining methods like
+ * `.springify()` or `.duration(500)`.
+ *
+ * You pass it to the `exiting` prop on [an Animated
+ * component](https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/glossary#animated-component).
+ *
+ * @see https://docs.swmansion.com/react-native-reanimated/docs/layout-animations/entering-exiting-animations#fade
+ */
+export class FadeOutLeft
+  extends ComplexAnimationBuilder<
+    { opacity: number } & TransformsConfig<[TranslateX]>
+  >
+  implements IEntryExitAnimationBuilder
+{
+  static presetName = 'FadeOutLeft';
+
+  static createInstance<T extends typeof BaseAnimationBuilder>(
+    this: T
+  ): InstanceType<T> {
+    return new FadeOutLeft() as InstanceType<T>;
+  }
+
+  build = (): EntryExitAnimationFunction => {
+    const delayFunction = this.getDelayFunction();
+    const animationAndConfig = this.getAnimationAndConfig();
+    const [animation, config] = animationAndConfig;
+    const callback = this.callbackV;
+    const initialValues = this.initialValues;
+    const targetValues = this.targetValues;
+    const delay = this.getDelay();
+
+    return () => {
+      'worklet';
+      return {
+        animations: {
+          opacity: delayFunction(
+            delay,
+            animation(targetValues?.opacity ?? 0, config)
+          ),
+          transform: animateTransformToValues(
+            [{ translateX: -25 }],
+            targetValues,
+            animationAndConfig,
+            delayFunction,
+            delay
+          ),
+        },
+        initialValues: {
+          opacity: initialValues?.opacity ?? 1,
+          transform: pickTransformValues([{ translateX: 0 }], initialValues),
+        },
+        callback,
+      };
+    };
+  };
+}
+/**
+ * Fade to top animation. You can modify the behavior by chaining methods like
+ * `.springify()` or `.duration(500)`.
+ *
+ * You pass it to the `exiting` prop on [an Animated
+ * component](https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/glossary#animated-component).
+ *
+ * @see https://docs.swmansion.com/react-native-reanimated/docs/layout-animations/entering-exiting-animations#fade
+ */
+export class FadeOutUp
+  extends ComplexAnimationBuilder<
+    { opacity: number } & TransformsConfig<[TranslateY]>
+  >
+  implements IEntryExitAnimationBuilder
+{
+  static presetName = 'FadeOutUp';
+
+  static createInstance<T extends typeof BaseAnimationBuilder>(
+    this: T
+  ): InstanceType<T> {
+    return new FadeOutUp() as InstanceType<T>;
+  }
+
+  build = (): EntryExitAnimationFunction => {
+    const delayFunction = this.getDelayFunction();
+    const animationAndConfig = this.getAnimationAndConfig();
+    const [animation, config] = animationAndConfig;
+    const callback = this.callbackV;
+    const initialValues = this.initialValues;
+    const targetValues = this.targetValues;
+    const delay = this.getDelay();
+
+    return () => {
+      'worklet';
+      return {
+        animations: {
+          opacity: delayFunction(
+            delay,
+            animation(targetValues?.opacity ?? 0, config)
+          ),
+          transform: animateTransformToValues(
+            [{ translateY: -25 }],
+            targetValues,
+            animationAndConfig,
+            delayFunction,
+            delay
+          ),
+        },
+        initialValues: {
+          opacity: initialValues?.opacity ?? 1,
+          transform: pickTransformValues([{ translateY: 0 }], initialValues),
+        },
+        callback,
+      };
+    };
+  };
+}
+
+/**
+ * Fade to bottom animation. You can modify the behavior by chaining methods
+ * like `.springify()` or `.duration(500)`.
+ *
+ * You pass it to the `exiting` prop on [an Animated
+ * component](https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/glossary#animated-component).
+ *
+ * @see https://docs.swmansion.com/react-native-reanimated/docs/layout-animations/entering-exiting-animations#fade
+ */
+export class FadeOutDown
+  extends ComplexAnimationBuilder<
+    { opacity: number } & TransformsConfig<[TranslateY]>
+  >
+  implements IEntryExitAnimationBuilder
+{
+  static presetName = 'FadeOutDown';
+
+  static createInstance<T extends typeof BaseAnimationBuilder>(
+    this: T
+  ): InstanceType<T> {
+    return new FadeOutDown() as InstanceType<T>;
+  }
+
+  build = (): AnimationConfigFunction<ExitAnimationsValues> => {
+    const delayFunction = this.getDelayFunction();
+    const animationAndConfig = this.getAnimationAndConfig();
+    const [animation, config] = animationAndConfig;
+    const callback = this.callbackV;
+    const initialValues = this.initialValues;
+    const targetValues = this.targetValues;
+    const delay = this.getDelay();
+
+    return () => {
+      'worklet';
+      return {
+        animations: {
+          opacity: delayFunction(
+            delay,
+            animation(targetValues?.opacity ?? 0, config)
+          ),
+          transform: animateTransformToValues(
+            [{ translateY: 25 }],
+            targetValues,
+            animationAndConfig,
+            delayFunction,
+            delay
+          ),
+        },
+        initialValues: {
+          opacity: initialValues?.opacity ?? 1,
+          transform: pickTransformValues([{ translateY: 0 }], initialValues),
+        },
+        callback,
+      };
+    };
+  };
+}

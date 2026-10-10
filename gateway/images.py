@@ -1,7 +1,6 @@
 """图像订阅与转换：每个话题独立缓存，ROS 实体操作交给执行器线程。"""
 import concurrent.futures
 from dataclasses import dataclass
-import importlib.util
 import queue
 import threading
 import time
@@ -13,7 +12,18 @@ from sensor_msgs.msg import CompressedImage, Image
 
 COMPRESSED = "sensor_msgs/msg/CompressedImage"
 RAW = "sensor_msgs/msg/Image"
-RAW_AVAILABLE = importlib.util.find_spec("cv_bridge") is not None and importlib.util.find_spec("cv2") is not None
+
+# Foxy 的 cv_bridge 使用 Boost.Python；首次从 ROS executor 后台线程加载扩展时，
+# 某些 Python 环境会报 "initialization of cv_bridge_boost raised unreported exception"。
+# 在启动 executor 前的主线程完成真实导入，同时比 find_spec 更准确地判断可用性。
+try:
+    from cv_bridge import CvBridge as RawCvBridge
+    import cv2 as raw_cv2
+except (ImportError, SystemError):
+    RawCvBridge = None
+    raw_cv2 = None
+
+RAW_AVAILABLE = RawCvBridge is not None and raw_cv2 is not None
 
 
 @dataclass(frozen=True)
@@ -39,8 +49,9 @@ class ImageChannel:
         self.users = 1
         self.bridge: Any = None
         if message_type == RAW:
-            from cv_bridge import CvBridge
-            self.bridge = CvBridge()
+            if RawCvBridge is None:
+                raise ValueError("原始图像订阅需要 Jetson 安装 cv_bridge 和 OpenCV")
+            self.bridge = RawCvBridge()
         qos = QoSProfile(reliability=ReliabilityPolicy.BEST_EFFORT,
                          history=HistoryPolicy.KEEP_LAST, depth=1)
         self.subscription = node.create_subscription(
@@ -52,11 +63,11 @@ class ImageChannel:
         metrics: Dict[str, float] = {}
         try:
             if self.bridge is not None:
-                import cv2
                 bgr = self.bridge.imgmsg_to_cv2(message, desired_encoding="bgr8")
                 converted = time.monotonic() * 1000
                 metrics["image_convert_ms"] = converted - start
-                ok, encoded = cv2.imencode(".jpg", bgr, [cv2.IMWRITE_JPEG_QUALITY, 80])
+                ok, encoded = raw_cv2.imencode(
+                    ".jpg", bgr, [raw_cv2.IMWRITE_JPEG_QUALITY, 80])
                 if not ok:
                     raise ValueError("JPEG 编码失败")
                 jpeg = encoded.tobytes()

@@ -1,0 +1,17 @@
+{
+  "name": "expo-ui",
+  "platforms": ["apple", "android"],
+  "coreFeatures": ["swiftui", "compose"],
+  "apple": {
+    "modules": ["ExpoUIModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.ui.ExpoUIModule"],
+    "publication": {
+      "groupId": "expo.modules.ui",
+      "artifactId": "expo.modules.ui",
+      "version": "57.0.18",
+      "repository": "local-maven-repo"
+    }
+  }
+}

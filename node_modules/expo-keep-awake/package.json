@@ -1,0 +1,54 @@
+{
+  "name": "expo-keep-awake",
+  "version": "57.0.2",
+  "description": "Provides a React component that prevents the screen sleeping when rendered. It also exposes static methods to control the behavior imperatively.",
+  "main": "src/index.ts",
+  "types": "build/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./build/index.d.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "sideEffects": false,
+  "keywords": [
+    "react-native",
+    "expo",
+    "awake",
+    "keep-awake"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/expo/expo.git",
+    "directory": "packages/expo-keep-awake"
+  },
+  "bugs": {
+    "url": "https://github.com/expo/expo/issues"
+  },
+  "author": "650 Industries, Inc.",
+  "license": "MIT",
+  "homepage": "https://docs.expo.dev/versions/latest/sdk/keep-awake/",
+  "dependencies": {},
+  "devDependencies": {
+    "@testing-library/react-native": "^13.3.0",
+    "@types/react": "~19.2.0",
+    "expo-module-scripts": "56.0.3",
+    "expo": "57.0.22"
+  },
+  "peerDependencies": {
+    "expo": "*",
+    "react": "*"
+  },
+  "jest": {
+    "preset": "expo-module-scripts"
+  },
+  "gitHead": "9e5319c0f821a27b7924841903abae50e2b41790",
+  "scripts": {
+    "build": "expo-module build",
+    "clean": "expo-module clean",
+    "lint": "expo-module lint",
+    "test": "expo-module test",
+    "expo-module": "expo-module"
+  }
+}

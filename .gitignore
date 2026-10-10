@@ -1,8 +1,7 @@
-node_modules/
-.expo/
-.cache/
-dist/
+# 本地 Expo 配置包含高德地图凭据，不提交到仓库。
+.env.local
 
-# Jetson 本地命令历史与预设，不提交到仓库。
-gateway/command_store.json
-gateway/command_store.tmp
+# Expo 生成文件和本机安装的依赖。
+.expo/
+node_modules/
+__pycache__/

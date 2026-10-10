@@ -1,0 +1,1 @@
+{"version":3,"names":["normalizeIterationCount","iterationCount","Infinity","String"],"sourceRoot":"../../../../../src","sources":["css/web/normalization/settings.ts"],"mappings":"AAAA,YAAY;;AAGZ,OAAO,SAASA,uBAAuBA,CACrCC,cAA0C,EAClC;EACR,IAAIA,cAAc,KAAKC,QAAQ,IAAID,cAAc,KAAK,UAAU,EAAE;IAChE,OAAO,UAAU;EACnB;EACA,OAAOE,MAAM,CAACF,cAAc,CAAC;AAC/B","ignoreList":[]}

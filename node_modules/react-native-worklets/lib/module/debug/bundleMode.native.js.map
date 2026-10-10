@@ -1,0 +1,1 @@
+{"version":3,"names":["isBundleModeEnabled","globalThis","_WORKLETS_BUNDLE_MODE_ENABLED","__initData","undefined"],"sourceRoot":"../../../src","sources":["debug/bundleMode.native.ts"],"mappings":"AAAA,YAAY;;AAIZ,OAAO,SAASA,mBAAmBA,CAAA,EAAY;EAC7C,OACEC,UAAU,CAACC,6BAA6B,KAAK,IAAI,IACjD,CACG,MAAM;IACL,SAAS;EACX,CAAC,EACDC,UAAU,KAAKC,SAAS;AAE9B","ignoreList":[]}

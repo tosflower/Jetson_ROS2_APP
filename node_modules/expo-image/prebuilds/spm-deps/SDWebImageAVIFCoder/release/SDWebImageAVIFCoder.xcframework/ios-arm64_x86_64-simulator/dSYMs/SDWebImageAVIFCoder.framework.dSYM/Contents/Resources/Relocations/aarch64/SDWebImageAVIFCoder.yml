@@ -1,0 +1,114 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/alanhughes/Work/expo/packages/precompile/.build/.spm-deps/SDWebImageAVIFCoder/_build/DerivedData/Build/Products/Release-iphonesimulator/PackageFrameworks/SDWebImageAVIFCoder.framework/SDWebImageAVIFCoder'
+relocations:
+  - { offset: 0x67E4F, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceMono, symObjAddr: 0x2BC, symBinAddr: 0x10BC, symSize: 0x2B8 }
+  - { offset: 0x67E71, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceMono.defaultColorSpace, symObjAddr: 0x9378, symBinAddr: 0xCB68, symSize: 0x0 }
+  - { offset: 0x67E87, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceMono.onceToken, symObjAddr: 0x9380, symBinAddr: 0xCB70, symSize: 0x0 }
+  - { offset: 0x67E9D, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceMono.sRGB, symObjAddr: 0x9388, symBinAddr: 0xCB78, symSize: 0x0 }
+  - { offset: 0x67EB3, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceMono.onceToken.2, symObjAddr: 0x9390, symBinAddr: 0xCB80, symSize: 0x0 }
+  - { offset: 0x67EC9, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceMono.bt709, symObjAddr: 0x9398, symBinAddr: 0xCB88, symSize: 0x0 }
+  - { offset: 0x67EDF, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceMono.onceToken.3, symObjAddr: 0x93A0, symBinAddr: 0xCB90, symSize: 0x0 }
+  - { offset: 0x67EF6, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceMono.bt2020, symObjAddr: 0x93A8, symBinAddr: 0xCB98, symSize: 0x0 }
+  - { offset: 0x67F0D, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceMono.onceToken.4, symObjAddr: 0x93B0, symBinAddr: 0xCBA0, symSize: 0x0 }
+  - { offset: 0x67F24, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceMono.p3, symObjAddr: 0x93B8, symBinAddr: 0xCBA8, symSize: 0x0 }
+  - { offset: 0x67F3B, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceMono.onceToken.5, symObjAddr: 0x93C0, symBinAddr: 0xCBB0, symSize: 0x0 }
+  - { offset: 0x680D3, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB, symObjAddr: 0x670, symBinAddr: 0x1470, symSize: 0x32C }
+  - { offset: 0x680F7, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.defaultColorSpace, symObjAddr: 0x93C8, symBinAddr: 0xCBB8, symSize: 0x0 }
+  - { offset: 0x6810E, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.onceToken, symObjAddr: 0x93D0, symBinAddr: 0xCBC0, symSize: 0x0 }
+  - { offset: 0x68125, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.bt709, symObjAddr: 0x93D8, symBinAddr: 0xCBC8, symSize: 0x0 }
+  - { offset: 0x6813C, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.onceToken.7, symObjAddr: 0x93E0, symBinAddr: 0xCBD0, symSize: 0x0 }
+  - { offset: 0x68153, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.sRGB, symObjAddr: 0x93E8, symBinAddr: 0xCBD8, symSize: 0x0 }
+  - { offset: 0x6816A, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.onceToken.9, symObjAddr: 0x93F0, symBinAddr: 0xCBE0, symSize: 0x0 }
+  - { offset: 0x68181, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.sRGBlinear, symObjAddr: 0x93F8, symBinAddr: 0xCBE8, symSize: 0x0 }
+  - { offset: 0x68198, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.onceToken.11, symObjAddr: 0x9400, symBinAddr: 0xCBF0, symSize: 0x0 }
+  - { offset: 0x681AF, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.bt2020, symObjAddr: 0x9408, symBinAddr: 0xCBF8, symSize: 0x0 }
+  - { offset: 0x681C6, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.onceToken.13, symObjAddr: 0x9410, symBinAddr: 0xCC00, symSize: 0x0 }
+  - { offset: 0x681DD, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.bt2020pq, symObjAddr: 0x9418, symBinAddr: 0xCC08, symSize: 0x0 }
+  - { offset: 0x681F4, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.onceToken.15, symObjAddr: 0x9420, symBinAddr: 0xCC10, symSize: 0x0 }
+  - { offset: 0x6820B, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.bt2020hlg, symObjAddr: 0x9428, symBinAddr: 0xCC18, symSize: 0x0 }
+  - { offset: 0x68222, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.onceToken.17, symObjAddr: 0x9430, symBinAddr: 0xCC20, symSize: 0x0 }
+  - { offset: 0x68239, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.bt2020linear, symObjAddr: 0x9438, symBinAddr: 0xCC28, symSize: 0x0 }
+  - { offset: 0x68250, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.onceToken.19, symObjAddr: 0x9440, symBinAddr: 0xCC30, symSize: 0x0 }
+  - { offset: 0x68267, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.p3, symObjAddr: 0x9448, symBinAddr: 0xCC38, symSize: 0x0 }
+  - { offset: 0x6827E, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.onceToken.21, symObjAddr: 0x9450, symBinAddr: 0xCC40, symSize: 0x0 }
+  - { offset: 0x68295, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.p3pq, symObjAddr: 0x9458, symBinAddr: 0xCC48, symSize: 0x0 }
+  - { offset: 0x682AC, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.onceToken.23, symObjAddr: 0x9460, symBinAddr: 0xCC50, symSize: 0x0 }
+  - { offset: 0x682C3, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.p3hlg, symObjAddr: 0x9468, symBinAddr: 0xCC58, symSize: 0x0 }
+  - { offset: 0x682DA, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.onceToken.25, symObjAddr: 0x9470, symBinAddr: 0xCC60, symSize: 0x0 }
+  - { offset: 0x682F1, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.p3linear, symObjAddr: 0x9478, symBinAddr: 0xCC68, symSize: 0x0 }
+  - { offset: 0x68308, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.onceToken.27, symObjAddr: 0x9480, symBinAddr: 0xCC70, symSize: 0x0 }
+  - { offset: 0x68518, size: 0x8, addend: 0x0, symName: _CalcTransferFunction, symObjAddr: 0xB4, symBinAddr: 0xEB4, symSize: 0x124 }
+  - { offset: 0x68639, size: 0x8, addend: 0x0, symName: _SDAVIFCreateColorSpaceMono, symObjAddr: 0x0, symBinAddr: 0xE00, symSize: 0xB4 }
+  - { offset: 0x68837, size: 0x8, addend: 0x0, symName: _SDAVIFCreateColorSpaceRGB, symObjAddr: 0x1D8, symBinAddr: 0xFD8, symSize: 0xE4 }
+  - { offset: 0x68A2F, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceMono.cold.1, symObjAddr: 0xCF4, symBinAddr: 0x3E88, symSize: 0x14 }
+  - { offset: 0x68A4B, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceMono.cold.1, symObjAddr: 0xCF4, symBinAddr: 0x3E88, symSize: 0x14 }
+  - { offset: 0x68A70, size: 0x8, addend: 0x0, symName: ___SDAVIFCalcColorSpaceMono_block_invoke, symObjAddr: 0x574, symBinAddr: 0x1374, symSize: 0x1C }
+  - { offset: 0x68AB1, size: 0x8, addend: 0x0, symName: ___SDAVIFCalcColorSpaceMono_block_invoke_2, symObjAddr: 0x590, symBinAddr: 0x1390, symSize: 0x38 }
+  - { offset: 0x68B0A, size: 0x8, addend: 0x0, symName: ___SDAVIFCalcColorSpaceMono_block_invoke_3, symObjAddr: 0x5C8, symBinAddr: 0x13C8, symSize: 0x38 }
+  - { offset: 0x68B63, size: 0x8, addend: 0x0, symName: ___SDAVIFCalcColorSpaceMono_block_invoke_4, symObjAddr: 0x600, symBinAddr: 0x1400, symSize: 0x38 }
+  - { offset: 0x68BBE, size: 0x8, addend: 0x0, symName: ___SDAVIFCalcColorSpaceMono_block_invoke_5, symObjAddr: 0x638, symBinAddr: 0x1438, symSize: 0x38 }
+  - { offset: 0x68C19, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.cold.1, symObjAddr: 0xD08, symBinAddr: 0x3E9C, symSize: 0x14 }
+  - { offset: 0x68C35, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.cold.1, symObjAddr: 0xD08, symBinAddr: 0x3E9C, symSize: 0x14 }
+  - { offset: 0x68C48, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.cold.12, symObjAddr: 0xDE4, symBinAddr: 0x3F78, symSize: 0x14 }
+  - { offset: 0x68C64, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.cold.12, symObjAddr: 0xDE4, symBinAddr: 0x3F78, symSize: 0x14 }
+  - { offset: 0x68C77, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.cold.11, symObjAddr: 0xDD0, symBinAddr: 0x3F64, symSize: 0x14 }
+  - { offset: 0x68C93, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.cold.11, symObjAddr: 0xDD0, symBinAddr: 0x3F64, symSize: 0x14 }
+  - { offset: 0x68CA6, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.cold.10, symObjAddr: 0xDBC, symBinAddr: 0x3F50, symSize: 0x14 }
+  - { offset: 0x68CC2, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.cold.10, symObjAddr: 0xDBC, symBinAddr: 0x3F50, symSize: 0x14 }
+  - { offset: 0x68CD5, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.cold.9, symObjAddr: 0xDA8, symBinAddr: 0x3F3C, symSize: 0x14 }
+  - { offset: 0x68CF1, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.cold.9, symObjAddr: 0xDA8, symBinAddr: 0x3F3C, symSize: 0x14 }
+  - { offset: 0x68D04, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.cold.8, symObjAddr: 0xD94, symBinAddr: 0x3F28, symSize: 0x14 }
+  - { offset: 0x68D20, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.cold.8, symObjAddr: 0xD94, symBinAddr: 0x3F28, symSize: 0x14 }
+  - { offset: 0x68D33, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.cold.7, symObjAddr: 0xD80, symBinAddr: 0x3F14, symSize: 0x14 }
+  - { offset: 0x68D4F, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.cold.7, symObjAddr: 0xD80, symBinAddr: 0x3F14, symSize: 0x14 }
+  - { offset: 0x68D62, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.cold.6, symObjAddr: 0xD6C, symBinAddr: 0x3F00, symSize: 0x14 }
+  - { offset: 0x68D7E, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.cold.6, symObjAddr: 0xD6C, symBinAddr: 0x3F00, symSize: 0x14 }
+  - { offset: 0x68D91, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.cold.5, symObjAddr: 0xD58, symBinAddr: 0x3EEC, symSize: 0x14 }
+  - { offset: 0x68DAD, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.cold.5, symObjAddr: 0xD58, symBinAddr: 0x3EEC, symSize: 0x14 }
+  - { offset: 0x68DC0, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.cold.4, symObjAddr: 0xD44, symBinAddr: 0x3ED8, symSize: 0x14 }
+  - { offset: 0x68DDC, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.cold.4, symObjAddr: 0xD44, symBinAddr: 0x3ED8, symSize: 0x14 }
+  - { offset: 0x68DEF, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.cold.3, symObjAddr: 0xD30, symBinAddr: 0x3EC4, symSize: 0x14 }
+  - { offset: 0x68E0B, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.cold.3, symObjAddr: 0xD30, symBinAddr: 0x3EC4, symSize: 0x14 }
+  - { offset: 0x68E1E, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.cold.2, symObjAddr: 0xD1C, symBinAddr: 0x3EB0, symSize: 0x14 }
+  - { offset: 0x68E3A, size: 0x8, addend: 0x0, symName: _SDAVIFCalcColorSpaceRGB.cold.2, symObjAddr: 0xD1C, symBinAddr: 0x3EB0, symSize: 0x14 }
+  - { offset: 0x68E4D, size: 0x8, addend: 0x0, symName: ___SDAVIFCalcColorSpaceRGB_block_invoke, symObjAddr: 0x99C, symBinAddr: 0x179C, symSize: 0x1C }
+  - { offset: 0x68E90, size: 0x8, addend: 0x0, symName: ___SDAVIFCalcColorSpaceRGB_block_invoke_2, symObjAddr: 0x9B8, symBinAddr: 0x17B8, symSize: 0x28 }
+  - { offset: 0x68EDA, size: 0x8, addend: 0x0, symName: ___SDAVIFCalcColorSpaceRGB_block_invoke_3, symObjAddr: 0x9E0, symBinAddr: 0x17E0, symSize: 0x28 }
+  - { offset: 0x68F11, size: 0x8, addend: 0x0, symName: ___SDAVIFCalcColorSpaceRGB_block_invoke_4, symObjAddr: 0xA08, symBinAddr: 0x1808, symSize: 0x28 }
+  - { offset: 0x68F48, size: 0x8, addend: 0x0, symName: ___SDAVIFCalcColorSpaceRGB_block_invoke_5, symObjAddr: 0xA30, symBinAddr: 0x1830, symSize: 0x28 }
+  - { offset: 0x68F7F, size: 0x8, addend: 0x0, symName: ___SDAVIFCalcColorSpaceRGB_block_invoke_6, symObjAddr: 0xA58, symBinAddr: 0x1858, symSize: 0x98 }
+  - { offset: 0x68FD6, size: 0x8, addend: 0x0, symName: ___SDAVIFCalcColorSpaceRGB_block_invoke_7, symObjAddr: 0xAF0, symBinAddr: 0x18F0, symSize: 0x74 }
+  - { offset: 0x6902D, size: 0x8, addend: 0x0, symName: ___SDAVIFCalcColorSpaceRGB_block_invoke_8, symObjAddr: 0xB64, symBinAddr: 0x1964, symSize: 0x4C }
+  - { offset: 0x69064, size: 0x8, addend: 0x0, symName: ___SDAVIFCalcColorSpaceRGB_block_invoke_9, symObjAddr: 0xBB0, symBinAddr: 0x19B0, symSize: 0x28 }
+  - { offset: 0x6909B, size: 0x8, addend: 0x0, symName: ___SDAVIFCalcColorSpaceRGB_block_invoke_10, symObjAddr: 0xBD8, symBinAddr: 0x19D8, symSize: 0x74 }
+  - { offset: 0x690F2, size: 0x8, addend: 0x0, symName: ___SDAVIFCalcColorSpaceRGB_block_invoke_11, symObjAddr: 0xC4C, symBinAddr: 0x1A4C, symSize: 0x4C }
+  - { offset: 0x69129, size: 0x8, addend: 0x0, symName: ___SDAVIFCalcColorSpaceRGB_block_invoke_12, symObjAddr: 0xC98, symBinAddr: 0x1A98, symSize: 0x4C }
+  - { offset: 0x69B85, size: 0x8, addend: 0x0, symName: _SDCreateCGImageFromAVIF, symObjAddr: 0x0, symBinAddr: 0x1AE4, symSize: 0x1224 }
+  - { offset: 0x6A6F3, size: 0x8, addend: 0x0, symName: _SDCreateCGImageFromAVIF, symObjAddr: 0x0, symBinAddr: 0x1AE4, symSize: 0x1224 }
+  - { offset: 0x6BB74, size: 0x8, addend: 0x0, symName: _SetupConversionInfo, symObjAddr: 0x1224, symBinAddr: 0x2D08, symSize: 0x180 }
+  - { offset: 0x6BED9, size: 0x8, addend: 0x0, symName: _CreateImageFromBuffer, symObjAddr: 0x13A4, symBinAddr: 0x2E88, symSize: 0x148 }
+  - { offset: 0x6C289, size: 0x8, addend: 0x0, symName: _FreeImageData, symObjAddr: 0x14EC, symBinAddr: 0x2FD0, symSize: 0x8 }
+  - { offset: 0x6C362, size: 0x8, addend: 0x0, symName: '-[SDImageAVIFCoder dealloc]', symObjAddr: 0x0, symBinAddr: 0x2FD8, symSize: 0x4C }
+  - { offset: 0x6C37C, size: 0x8, addend: 0x0, symName: _SDImageCoderAVIFDecodeCodecChoice, symObjAddr: 0xFC8, symBinAddr: 0x82C0, symSize: 0x0 }
+  - { offset: 0x6C39C, size: 0x8, addend: 0x0, symName: _SDImageCoderAVIFEncodeCodecChoice, symObjAddr: 0xFD0, symBinAddr: 0x82C8, symSize: 0x0 }
+  - { offset: 0x6C3A6, size: 0x8, addend: 0x0, symName: '+[SDImageAVIFCoder sharedCoder]', symObjAddr: 0x4C, symBinAddr: 0x3024, symSize: 0x44 }
+  - { offset: 0x6C3D0, size: 0x8, addend: 0x0, symName: _sharedCoder.coder, symObjAddr: 0xC2B8, symBinAddr: 0xCC78, symSize: 0x0 }
+  - { offset: 0x6C3E6, size: 0x8, addend: 0x0, symName: _sharedCoder.onceToken, symObjAddr: 0xC2C0, symBinAddr: 0xCC80, symSize: 0x0 }
+  - { offset: 0x6CE0A, size: 0x8, addend: 0x0, symName: '-[SDImageAVIFCoder dealloc]', symObjAddr: 0x0, symBinAddr: 0x2FD8, symSize: 0x4C }
+  - { offset: 0x6CE87, size: 0x8, addend: 0x0, symName: '+[SDImageAVIFCoder sharedCoder].cold.1', symObjAddr: 0xEB0, symBinAddr: 0x3F8C, symSize: 0x14 }
+  - { offset: 0x6CEA3, size: 0x8, addend: 0x0, symName: '+[SDImageAVIFCoder sharedCoder].cold.1', symObjAddr: 0xEB0, symBinAddr: 0x3F8C, symSize: 0x14 }
+  - { offset: 0x6CEB5, size: 0x8, addend: 0x0, symName: '___31+[SDImageAVIFCoder sharedCoder]_block_invoke', symObjAddr: 0x90, symBinAddr: 0x3068, symSize: 0x30 }
+  - { offset: 0x6CEDC, size: 0x8, addend: 0x0, symName: '-[SDImageAVIFCoder canDecodeFromData:]', symObjAddr: 0xC0, symBinAddr: 0x3098, symSize: 0x48 }
+  - { offset: 0x6CF23, size: 0x8, addend: 0x0, symName: '-[SDImageAVIFCoder decodedImageWithData:options:]', symObjAddr: 0x108, symBinAddr: 0x30E0, symSize: 0x418 }
+  - { offset: 0x6D314, size: 0x8, addend: 0x0, symName: '-[SDImageAVIFCoder canEncodeToFormat:]', symObjAddr: 0x520, symBinAddr: 0x34F8, symSize: 0xC }
+  - { offset: 0x6D355, size: 0x8, addend: 0x0, symName: '-[SDImageAVIFCoder encodedDataWithImage:format:options:]', symObjAddr: 0x52C, symBinAddr: 0x3504, symSize: 0x4AC }
+  - { offset: 0x6DED4, size: 0x8, addend: 0x0, symName: '-[SDImageAVIFCoder initWithAnimatedImageData:options:]', symObjAddr: 0x9D8, symBinAddr: 0x39B0, symSize: 0x268 }
+  - { offset: 0x6E06B, size: 0x8, addend: 0x0, symName: '-[SDImageAVIFCoder animatedImageData]', symObjAddr: 0xC40, symBinAddr: 0x3C18, symSize: 0x28 }
+  - { offset: 0x6E0A3, size: 0x8, addend: 0x0, symName: '-[SDImageAVIFCoder animatedImageLoopCount]', symObjAddr: 0xC68, symBinAddr: 0x3C40, symSize: 0x8 }
+  - { offset: 0x6E0DB, size: 0x8, addend: 0x0, symName: '-[SDImageAVIFCoder animatedImageFrameCount]', symObjAddr: 0xC70, symBinAddr: 0x3C48, symSize: 0x8 }
+  - { offset: 0x6E113, size: 0x8, addend: 0x0, symName: '-[SDImageAVIFCoder animatedImageDurationAtIndex:]', symObjAddr: 0xC78, symBinAddr: 0x3C50, symSize: 0x70 }
+  - { offset: 0x6E206, size: 0x8, addend: 0x0, symName: '-[SDImageAVIFCoder animatedImageFrameAtIndex:]', symObjAddr: 0xCE8, symBinAddr: 0x3CC0, symSize: 0xE4 }
+  - { offset: 0x6E368, size: 0x8, addend: 0x0, symName: '+[SDImageAVIFCoder isAVIFFormatForData:]', symObjAddr: 0xDCC, symBinAddr: 0x3DA4, symSize: 0xD8 }
+  - { offset: 0x6E3CD, size: 0x8, addend: 0x0, symName: '-[SDImageAVIFCoder .cxx_destruct]', symObjAddr: 0xEA4, symBinAddr: 0x3E7C, symSize: 0xC }
+...

@@ -1,0 +1,38 @@
+---
+triple:          'x86_64-apple-darwin'
+binary-path:     '/Users/alanhughes/Work/expo/packages/precompile/.build/.spm-deps/SDWebImageSVGCoder/_build/DerivedData/Build/Products/Release-iphonesimulator/PackageFrameworks/SDWebImageSVGCoder.framework/SDWebImageSVGCoder'
+relocations:
+  - { offset: 0x5F466, size: 0x8, addend: 0x0, symName: '+[SDImageSVGCoder sharedCoder]', symObjAddr: 0x0, symBinAddr: 0xC20, symSize: 0x35 }
+  - { offset: 0x5F474, size: 0x8, addend: 0x0, symName: '+[SDImageSVGCoder sharedCoder]', symObjAddr: 0x0, symBinAddr: 0xC20, symSize: 0x35 }
+  - { offset: 0x5F49E, size: 0x8, addend: 0x0, symName: _sharedCoder.onceToken, symObjAddr: 0x87C0, symBinAddr: 0x4838, symSize: 0x0 }
+  - { offset: 0x5F4B4, size: 0x8, addend: 0x0, symName: _sharedCoder.coder, symObjAddr: 0x87C8, symBinAddr: 0x4840, symSize: 0x0 }
+  - { offset: 0x5F54C, size: 0x8, addend: 0x0, symName: '+[SDImageSVGCoder supportsVectorSVGImage]', symObjAddr: 0xE69, symBinAddr: 0x1A89, symSize: 0x1D }
+  - { offset: 0x5F578, size: 0x8, addend: 0x0, symName: _supportsVectorSVGImage.onceToken, symObjAddr: 0x8810, symBinAddr: 0x4888, symSize: 0x0 }
+  - { offset: 0x5F58F, size: 0x8, addend: 0x0, symName: _supportsVectorSVGImage.supports, symObjAddr: 0x8818, symBinAddr: 0x4890, symSize: 0x0 }
+  - { offset: 0x5F613, size: 0x8, addend: 0x0, symName: _SDCGSVGDocumentRetain, symObjAddr: 0x87D0, symBinAddr: 0x4848, symSize: 0x0 }
+  - { offset: 0x5F64E, size: 0x8, addend: 0x0, symName: _SDCGSVGDocumentRelease, symObjAddr: 0x87D8, symBinAddr: 0x4850, symSize: 0x0 }
+  - { offset: 0x5F670, size: 0x8, addend: 0x0, symName: _SDCGSVGDocumentCreateFromData, symObjAddr: 0x87E0, symBinAddr: 0x4858, symSize: 0x0 }
+  - { offset: 0x5F69B, size: 0x8, addend: 0x0, symName: _SDCGSVGDocumentWriteToData, symObjAddr: 0x87E8, symBinAddr: 0x4860, symSize: 0x0 }
+  - { offset: 0x5F6C7, size: 0x8, addend: 0x0, symName: _SDCGContextDrawSVGDocument, symObjAddr: 0x87F0, symBinAddr: 0x4868, symSize: 0x0 }
+  - { offset: 0x5F6EE, size: 0x8, addend: 0x0, symName: _SDCGSVGDocumentGetCanvasSize, symObjAddr: 0x87F8, symBinAddr: 0x4870, symSize: 0x0 }
+  - { offset: 0x5F714, size: 0x8, addend: 0x0, symName: _SDImageWithCGSVGDocumentSEL, symObjAddr: 0x8800, symBinAddr: 0x4878, symSize: 0x0 }
+  - { offset: 0x5F73D, size: 0x8, addend: 0x0, symName: _SDCGSVGDocumentSEL, symObjAddr: 0x8808, symBinAddr: 0x4880, symSize: 0x0 }
+  - { offset: 0x5F792, size: 0x8, addend: 0x0, symName: '+[SDImageSVGCoder sharedCoder].cold.1', symObjAddr: 0xF91, symBinAddr: 0x1BB1, symSize: 0x18 }
+  - { offset: 0x5F7C0, size: 0x8, addend: 0x0, symName: '___30+[SDImageSVGCoder sharedCoder]_block_invoke', symObjAddr: 0x35, symBinAddr: 0xC55, symSize: 0x25 }
+  - { offset: 0x5F823, size: 0x8, addend: 0x0, symName: '+[SDImageSVGCoder initialize]', symObjAddr: 0x5A, symBinAddr: 0xC7A, symSize: 0x480 }
+  - { offset: 0x5FE05, size: 0x8, addend: 0x0, symName: '-[SDImageSVGCoder canDecodeFromData:]', symObjAddr: 0x4DA, symBinAddr: 0x10FA, symSize: 0x45 }
+  - { offset: 0x5FE89, size: 0x8, addend: 0x0, symName: '-[SDImageSVGCoder decodedImageWithData:options:]', symObjAddr: 0x51F, symBinAddr: 0x113F, symSize: 0x346 }
+  - { offset: 0x600F9, size: 0x8, addend: 0x0, symName: '-[SDImageSVGCoder canEncodeToFormat:]', symObjAddr: 0x865, symBinAddr: 0x1485, symSize: 0xD }
+  - { offset: 0x6013A, size: 0x8, addend: 0x0, symName: '-[SDImageSVGCoder encodedDataWithImage:format:options:]', symObjAddr: 0x872, symBinAddr: 0x1492, symSize: 0xF8 }
+  - { offset: 0x60290, size: 0x8, addend: 0x0, symName: '-[SDImageSVGCoder createVectorSVGWithData:]', symObjAddr: 0x96A, symBinAddr: 0x158A, symSize: 0x173 }
+  - { offset: 0x60464, size: 0x8, addend: 0x0, symName: '___43-[SDImageSVGCoder createVectorSVGWithData:]_block_invoke', symObjAddr: 0xADD, symBinAddr: 0x16FD, symSize: 0x42 }
+  - { offset: 0x60502, size: 0x8, addend: 0x0, symName: ___copy_helper_block_e8_32s, symObjAddr: 0xB1F, symBinAddr: 0x173F, symSize: 0xF }
+  - { offset: 0x60535, size: 0x8, addend: 0x0, symName: ___destroy_helper_block_e8_32s, symObjAddr: 0xB2E, symBinAddr: 0x174E, symSize: 0xF }
+  - { offset: 0x60560, size: 0x8, addend: 0x0, symName: '-[SDImageSVGCoder createBitmapSVGWithData:targetSize:preserveAspectRatio:]', symObjAddr: 0xB3D, symBinAddr: 0x175D, symSize: 0x32C }
+  - { offset: 0x608AE, size: 0x8, addend: 0x0, symName: '+[SDImageSVGCoder supportsVectorSVGImage].cold.1', symObjAddr: 0xFA9, symBinAddr: 0x1BC9, symSize: 0x18 }
+  - { offset: 0x608DD, size: 0x8, addend: 0x0, symName: '___41+[SDImageSVGCoder supportsVectorSVGImage]_block_invoke', symObjAddr: 0xE86, symBinAddr: 0x1AA6, symSize: 0x21 }
+  - { offset: 0x60906, size: 0x8, addend: 0x0, symName: '+[SDImageSVGCoder isSVGFormatForData:]', symObjAddr: 0xEA7, symBinAddr: 0x1AC7, symSize: 0xEA }
+  - { offset: 0x60C55, size: 0x8, addend: 0x0, symName: _SDWebImageContextSVGPrefersBitmap, symObjAddr: 0xA0, symBinAddr: 0x30E8, symSize: 0x0 }
+  - { offset: 0x60C70, size: 0x8, addend: 0x0, symName: _SDWebImageContextSVGImageSize, symObjAddr: 0xA8, symBinAddr: 0x30F0, symSize: 0x0 }
+  - { offset: 0x60C86, size: 0x8, addend: 0x0, symName: _SDWebImageContextSVGImagePreserveAspectRatio, symObjAddr: 0xB0, symBinAddr: 0x30F8, symSize: 0x0 }
+...

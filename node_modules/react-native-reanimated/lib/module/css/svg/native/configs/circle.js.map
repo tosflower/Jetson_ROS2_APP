@@ -1,0 +1,1 @@
+{"version":3,"names":["SVG_COMMON_PROPERTIES_CONFIG","SVG_CIRCLE_PROPERTIES_CONFIG","cx","cy","r"],"sourceRoot":"../../../../../../src","sources":["css/svg/native/configs/circle.ts"],"mappings":"AAAA,YAAY;;AAEZ;AACA;AAIA,SAASA,4BAA4B,QAAQ,aAAU;AAEvD,OAAO,MAAMC,4BAAgE,GAC3E;EACE,GAAGD,4BAA4B;EAC/BE,EAAE,EAAE,IAAI;EACRC,EAAE,EAAE,IAAI;EACRC,CAAC,EAAE;AACL,CAAC","ignoreList":[]}

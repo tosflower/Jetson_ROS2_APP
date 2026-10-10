@@ -1,0 +1,1 @@
+{"version":3,"names":["NATIVE_PSEUDO_SELECTORS_PRIORITY","NATIVE_PSEUDO_SELECTORS","Set"],"sourceRoot":"../../../../src","sources":["css/constants/pseudoSelectors.ts"],"mappings":"AAAA,YAAY;;AAGZ;AACA,OAAO,MAAMA,gCAAoE,GAC/E,CAAC,eAAe,EAAE,QAAQ,EAAE,QAAQ,EAAE,SAAS,EAAE,iBAAiB,CAAC;AAErE,OAAO,MAAMC,uBAA6D,GACxE,IAAIC,GAAG,CAACF,gCAAgC,CAAC","ignoreList":[]}

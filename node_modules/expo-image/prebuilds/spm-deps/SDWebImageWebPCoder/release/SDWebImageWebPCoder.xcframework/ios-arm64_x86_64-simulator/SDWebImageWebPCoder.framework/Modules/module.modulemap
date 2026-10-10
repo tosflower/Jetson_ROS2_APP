@@ -1,0 +1,4 @@
+framework module SDWebImageWebPCoder {
+umbrella "Headers"
+export *
+}

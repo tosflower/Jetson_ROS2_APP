@@ -1,0 +1,1 @@
+{"version":3,"names":["processSVGPath","processSVGGradientStops","processStrokeDashArray"],"sourceRoot":"../../../../../../src","sources":["css/svg/native/processors/index.ts"],"mappings":"AAAA,YAAY;;AACZ,cAAc,aAAU;AACxB,cAAc,aAAU;AACxB,SAASA,cAAc,QAAQ,WAAQ;AACvC,cAAc,iBAAc;AAC5B,cAAc,iBAAc;AAC5B,SAASC,uBAAuB,QAAQ,YAAS;AACjD,SAASC,sBAAsB,QAAQ,aAAU","ignoreList":[]}

@@ -1,0 +1,1 @@
+{"version":3,"file":"colors.d.ts","sourceRoot":"","sources":["../../../../../../src/css/svg/native/processors/colors.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EAAE,UAAU,EAAE,MAAM,cAAc,CAAC;AAE/C,OAAO,EAAsB,KAAK,cAAc,EAAE,MAAM,oBAAoB,CAAC;AAE7E,eAAO,MAAM,cAAc;0BACH,OAAO;CAE9B,CAAC;AAEF,eAAO,MAAM,eAAe,EAAE,cAAc,CAC1C,UAAU,GAAG,MAAM,EACnB,MAAM,GAAG,KAAK,GAAG,MAAM,CAsBxB,CAAC"}

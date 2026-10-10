@@ -102,7 +102,7 @@ class GatewayApiTests(unittest.TestCase):
         self.token = self.runtime.auth.login('test-password')['token']
 
     def tearDown(self) -> None:
-        self.loop.run_until_complete(self.runtime.close())
+        self.loop.run_until_complete(self.gateway.shutdown())
         self.loop.close()
         self.password_verification.stop()
         self.env.stop()
@@ -140,6 +140,10 @@ class GatewayApiTests(unittest.TestCase):
         self.assertEqual(len(result['topics']), 2)
         self.assertEqual(result['topics'][0]['name'], '/camera/a')
         self.assertEqual(result['topics'][0]['publishers'], 1)
+
+    def test_raw_image_bridge_is_loaded_before_executor_thread(self) -> None:
+        # Foxy 的 Boost.Python 扩展首次从 executor 线程导入会初始化失败。
+        self.assertIn('cv_bridge.boost.cv_bridge_boost', sys.modules)
 
     def test_command_snapshot_is_available_after_auth_dependency(self) -> None:
         result = self.loop.run_until_complete(self.gateway.command_state(self.token))

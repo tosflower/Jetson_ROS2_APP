@@ -29,7 +29,7 @@ source <ros2_workspace>/install/setup.bash
 python3 gateway/gateway.py
 ```
 
-Ubuntu 22.04/Humble 或其他 ROS2 版本时，将 `foxy` 换成对应发行版。启动成功后，网关默认监听所有网卡的 `8080` 端口。App 连接前会验证当前 Ubuntu 用户密码；该用户需要有 sudo 权限。密码仅用于当次验证，不会写入 App 或网关存储。
+Ubuntu 22.04/Humble 或其他 ROS2 版本时，将 `foxy` 换成对应发行版。启动成功后，网关默认监听所有网卡的 `8080` 端口，并通过 `zeroconf` 在局域网发布 `_jetson-gateway._tcp` 服务。手机连接 Jetson 热点或与 Jetson 接入同一路由器后，独立 Android APP 会自动发现并显示 IP，用户只需输入 Ubuntu 密码；该用户需要有 sudo 权限。密码仅用于当次验证，不会写入 App 或网关存储。网关换 IP 后最多约 15 秒更新公告。
 
 ## 图像话题与可选配置
 
@@ -58,7 +58,7 @@ ROS_IMAGE_TOPIC=/your/camera/image/compressed python3 gateway/gateway.py
 curl http://127.0.0.1:8080/health
 ```
 
-再让安卓手机与 Jetson 网络互通，在 App 的连接页填写 `<Jetson IP>:8080` 并输入 Ubuntu 密码。认证成功后，网关发放仅驻留内存、8 小时过期的随机令牌；程序、参数文件、历史、图像话题和 WebSocket 均要求此令牌。关闭 App 或重启网关会使令牌失效。其余 API 不能匿名调用；关机/重启必须使用 App 设置页，每次重新输入密码并确认。
+再让安卓手机与 Jetson 网络互通，在 App 的连接页确认自动发现的 `<Jetson IP>:8080` 并输入 Ubuntu 密码；若局域网禁用了 mDNS 或自动发现失败，可手动填写地址。认证成功后，网关发放仅驻留内存、8 小时过期的随机令牌；程序、参数文件、历史、图像话题和 WebSocket 均要求此令牌。关闭 App 或重启网关会使令牌失效。其余 API 不能匿名调用；关机/重启必须使用 App 设置页，每次重新输入密码并确认。
 
 当前默认启动命令使用 HTTP，Ubuntu 密码会经过局域网传输。请仅在自己控制的可信热点/局域网使用，绝不能将 8080 端口暴露到公网或不可信网络。跨不可信网络访问前，应先配置 HTTPS 与手机信任的证书。
 
@@ -70,7 +70,7 @@ curl http://127.0.0.1:8080/health
 
 使用顺序：
 
-1. 连接页输入网关地址与 Ubuntu 用户密码。密码验证、HTTP 健康检查和首帧 WebSocket 认证均成功后进入控制台。
+1. 连接页等待 Jetson IP 自动显示，再输入 Ubuntu 用户密码；找不到时手动输入地址。密码验证、HTTP 健康检查和首帧 WebSocket 认证均成功后进入控制台。
 2. 两个默认任务首次使用时浏览选择真实目录，并校验命令和可选环境脚本；保存后即可一键运行。
 3. 终端页可直接输入 **Jetson 上的绝对工作目录**、环境脚本和命令。每个命令在独立标签显示 stdout/stderr、PID、停止信号和退出码，每 0.5 秒刷新；最多并行 8 个。
 4. 环境脚本相对路径以工作目录为准；留空则继承网关环境。需要多个 source 或 Conda 时，在 Jetson 建一个环境脚本并填写其路径。

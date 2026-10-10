@@ -36,7 +36,19 @@
       ],
       "expo-router",
       "expo-image",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "用于将手机 GPS 定位与航向数据发布到 ROS 2。"
+        }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "用于将手机加速度计、陀螺仪和磁力计数据发布到 ROS 2。"
+        }
+      ]
     ]
   }
 }

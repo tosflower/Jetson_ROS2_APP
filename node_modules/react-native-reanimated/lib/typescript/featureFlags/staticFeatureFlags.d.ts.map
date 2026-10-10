@@ -1,0 +1,1 @@
+{"version":3,"file":"staticFeatureFlags.d.ts","sourceRoot":"","sources":["../../../src/featureFlags/staticFeatureFlags.ts"],"names":[],"mappings":"AAGA;;;;;;;;GAQG;AACH,eAAO,MAAM,yBAAyB;;;;;;;;;;;;CAYY,CAAC;AAEnD,MAAM,MAAM,wBAAwB,GAAG;IACrC,CAAC,UAAU,CAAC,IAAI,MAAM,OAAO,yBAAyB,GAAG,OAAO;CACjE,CAAC"}
