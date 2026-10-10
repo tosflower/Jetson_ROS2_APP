@@ -1,4 +1,3 @@
-import * as SecureStore from 'expo-secure-store';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { useGateway } from './gateway-provider';
@@ -24,7 +23,6 @@ type RosbridgeContextValue = {
 
 declare const process: { env: { EXPO_PUBLIC_ROSBRIDGE_URL?: string } };
 
-const ADDRESS_STORAGE_KEY = 'rosbridge-address';
 const RosbridgeContext = React.createContext<RosbridgeContextValue | null>(null);
 
 export function RosbridgeProvider({ children }: React.PropsWithChildren): React.JSX.Element {
@@ -52,15 +50,6 @@ export function RosbridgeProvider({ children }: React.PropsWithChildren): React.
   const client = clientRef.current;
 
   useEffect(() => {
-    void SecureStore.getItemAsync(ADDRESS_STORAGE_KEY).then((savedAddress) => {
-      if (!addressTouchedRef.current && savedAddress) {
-        addressRef.current = savedAddress;
-        setAddressState(savedAddress);
-      }
-    });
-  }, []);
-
-  useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
       // 系统恢复到前台时复用同一客户端；connect() 会拒绝创建重复连接。
       if (state === 'active' && shouldConnectRef.current) {
@@ -83,21 +72,22 @@ export function RosbridgeProvider({ children }: React.PropsWithChildren): React.
 
   const connect = useCallback((): void => {
     try {
-      const normalized = normalizeRosbridgeUrl('ws://10.23.12.201:9090');
-      console.log('[rosbridge] connecting to:', normalized);
-      addressTouchedRef.current = true;
+      // 默认跟随当前网关主机；只有显式设置 rosbridge 地址时才使用手动地址。
+      const target = addressTouchedRef.current
+        ? addressRef.current
+        : configuredAddress || rosbridgeUrlFromGateway(gateway.gatewayAddress);
+      const normalized = normalizeRosbridgeUrl(target);
       addressRef.current = normalized;
       setAddressState(normalized);
       setLastError(undefined);
       shouldConnectRef.current = true;
-      void SecureStore.setItemAsync(ADDRESS_STORAGE_KEY, normalized);
       void client.connect(normalized).catch(() => undefined);
     } catch (error) {
       shouldConnectRef.current = false;
       setLastError(error instanceof Error ? error.message : 'rosbridge 地址无效');
       setConnectionState('error');
     }
-  }, [client]);
+  }, [client, configuredAddress, gateway.gatewayAddress]);
 
   const disconnect = useCallback((): void => {
     shouldConnectRef.current = false;

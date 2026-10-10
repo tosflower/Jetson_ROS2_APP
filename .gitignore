@@ -1,0 +1,7 @@
+# 本地 Expo 配置包含高德地图凭据，不提交到仓库。
+.env.local
+
+# Expo 生成文件和本机安装的依赖。
+.expo/
+node_modules/
+__pycache__/

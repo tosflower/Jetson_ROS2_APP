@@ -29,8 +29,10 @@ export default function MapScreen(): React.JSX.Element {
   } = usePhoneSensors();
   const dark = useColorScheme() !== 'light';
   useEffect(() => {
+    // 进入地图页时连接 rosbridge，连接恢复后会补发当前路线和导航状态。
+    connect();
     startAll();
-  }, [startAll]);
+  }, [connect, startAll]);
 
   return (
     <View style={{ flex: 1 }}>

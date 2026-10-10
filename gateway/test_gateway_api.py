@@ -102,7 +102,7 @@ class GatewayApiTests(unittest.TestCase):
         self.token = self.runtime.auth.login('test-password')['token']
 
     def tearDown(self) -> None:
-        self.loop.run_until_complete(self.runtime.close())
+        self.loop.run_until_complete(self.gateway.shutdown())
         self.loop.close()
         self.password_verification.stop()
         self.env.stop()

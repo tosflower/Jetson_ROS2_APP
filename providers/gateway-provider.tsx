@@ -1,9 +1,13 @@
-import Constants from 'expo-constants';
+import * as Network from 'expo-network';
+import * as SecureStore from 'expo-secure-store';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import { closeStatusTarget, ConnectionSurface } from '@/connectionStatus';
 import { FrameMetadata, LatencySummary, LatencyTracker } from '@/latency';
+import { discoverGateway } from '@/services/gateway-discovery';
 
 export type GatewayState = '未连接' | '连接中' | '已连接' | '错误';
+export type DiscoveryState = 'searching' | 'found' | 'manual';
 export type ImageTopic = { name: string; message_type: string; publishers?: number; supported?: boolean };
 
 type GatewayEvent = {
@@ -23,6 +27,8 @@ type GatewayEvent = {
 export type GatewayContextValue = {
   gatewayAddress: string;
   setGatewayAddress: (value: string) => void;
+  discoveryState: DiscoveryState;
+  rediscoverGateway: () => Promise<void>;
   connectedBase: string;
   gatewayState: GatewayState;
   sessionReady: boolean;
@@ -54,6 +60,7 @@ declare const process: { env: { EXPO_PUBLIC_GATEWAY_ADDRESS?: string } };
 
 const GATEWAY_PORT = 8080;
 const FALLBACK_GATEWAY_ADDRESS = `192.168.1.100:${GATEWAY_PORT}`;
+const LAST_GATEWAY_STORAGE_KEY = 'last-jetson-gateway-address';
 
 function normalizeHttpBase(value: string): string {
   const trimmed = value.trim().replace(/\/$/, '');
@@ -67,43 +74,18 @@ function websocketUrl(httpBase: string, topic?: ImageTopic): string {
   return `${httpBase.replace(/^http/, 'ws')}/ws/mobile?${query}`;
 }
 
-function isPrivateIpv4(hostname: string): boolean {
-  const octets = hostname.split('.').map(Number);
-  if (octets.length !== 4 || octets.some((value) => !Number.isInteger(value) || value < 0 || value > 255)) return false;
-  return octets[0] === 10
-    || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31)
-    || (octets[0] === 192 && octets[1] === 168);
-}
-
-/** Expo Go 中仅复用私有网段的 Metro 主机，避免把公网 tunnel 域名误当作 Jetson。 */
-function detectGatewayAddress(): string | undefined {
-  const hostUri = Constants.expoConfig?.hostUri ?? Constants.expoGoConfig?.debuggerHost;
-  if (!hostUri) return undefined;
-  try {
-    const url = new URL(hostUri.includes('://') ? hostUri : `http://${hostUri}`);
-    return isPrivateIpv4(url.hostname) ? `${url.hostname}:${GATEWAY_PORT}` : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-const detectedAddress = detectGatewayAddress();
 const configuredAddress = process.env.EXPO_PUBLIC_GATEWAY_ADDRESS?.trim();
-const initialAddress = detectedAddress ?? configuredAddress ?? FALLBACK_GATEWAY_ADDRESS;
-const initialMessage = detectedAddress
-  ? `已自动识别网关地址 ${detectedAddress}`
-  : configuredAddress
-    ? `已使用构建配置的网关地址 ${configuredAddress}`
-    : '未识别到局域网 IP，请手动填写网关地址';
+const initialAddress = configuredAddress || FALLBACK_GATEWAY_ADDRESS;
 
 const GatewayContext = React.createContext<GatewayContextValue | null>(null);
 
 export function GatewayProvider({ children }: React.PropsWithChildren): React.JSX.Element {
   const [gatewayAddress, setGatewayAddressState] = useState(initialAddress);
+  const [discoveryState, setDiscoveryState] = useState<DiscoveryState>('searching');
   const [connectedBase, setConnectedBase] = useState(normalizeHttpBase(initialAddress));
   const [gatewayState, setGatewayState] = useState<GatewayState>('未连接');
   const [sessionReady, setSessionReady] = useState(false);
-  const [lastMessage, setLastMessage] = useState(initialMessage);
+  const [lastMessage, setLastMessage] = useState('正在查找同一 Wi-Fi 中的 Jetson 网关…');
   const [capabilities, setCapabilities] = useState<string[]>([]);
   const [authToken, setAuthToken] = useState<string>();
   const [selectedTopic, setSelectedTopic] = useState<ImageTopic>();
@@ -117,6 +99,12 @@ export function GatewayProvider({ children }: React.PropsWithChildren): React.JS
   const [lastLatencyAt, setLastLatencyAt] = useState<number>();
   const [debugNow, setDebugNow] = useState(0);
   const connectionEpoch = useRef(0);
+  const discoveryEpoch = useRef(0);
+  const discoveryInFlight = useRef(false);
+  const manualAddressRef = useRef(false);
+  const gatewayAddressRef = useRef(gatewayAddress);
+  const sessionReadyRef = useRef(sessionReady);
+  sessionReadyRef.current = sessionReady;
   const socketCleanup = useRef<() => void>(() => {});
   const socketRef = useRef<WebSocket | null>(null);
   const trackerRef = useRef(new LatencyTracker());
@@ -316,12 +304,73 @@ export function GatewayProvider({ children }: React.PropsWithChildren): React.JS
   useEffect(() => disconnect, [disconnect]);
 
   const setGatewayAddress = useCallback((value: string): void => {
+    discoveryEpoch.current += 1;
+    manualAddressRef.current = true;
+    gatewayAddressRef.current = value;
+    setDiscoveryState('manual');
     disconnect();
     setAuthToken(undefined);
     setGatewayAddressState(value);
     setSessionReady(false);
     setGatewayState('未连接');
   }, [disconnect]);
+
+  const findGateway = useCallback(async (force = false): Promise<void> => {
+    if (manualAddressRef.current && !force) return;
+    if (discoveryInFlight.current) return;
+    const epoch = ++discoveryEpoch.current;
+    if (force) manualAddressRef.current = false;
+    discoveryInFlight.current = true;
+    setDiscoveryState('searching');
+    if (!sessionReadyRef.current) setLastMessage('正在查找同一 Wi-Fi 中的 Jetson 网关…');
+    try {
+      const saved = await SecureStore.getItemAsync(LAST_GATEWAY_STORAGE_KEY).catch(() => null);
+      const found = await discoverGateway(saved || configuredAddress);
+      if (epoch !== discoveryEpoch.current || manualAddressRef.current) return;
+      if (!found) {
+        if (sessionReadyRef.current) {
+          disconnect();
+          setAuthToken(undefined);
+          setSessionReady(false);
+          setGatewayState('未连接');
+        }
+        setDiscoveryState('manual');
+        setLastMessage('未自动找到 Jetson；请确认网关已启动，或手动填写地址');
+        return;
+      }
+      if (found !== gatewayAddressRef.current) {
+        disconnect();
+        setAuthToken(undefined);
+        setSessionReady(false);
+        setGatewayState('未连接');
+        gatewayAddressRef.current = found;
+        setGatewayAddressState(found);
+      }
+      setDiscoveryState('found');
+      if (!sessionReadyRef.current) setLastMessage(`已发现 Jetson 网关 ${found}，请输入 Ubuntu 密码`);
+    } catch {
+      if (epoch === discoveryEpoch.current && !manualAddressRef.current) {
+        setDiscoveryState('manual');
+        setLastMessage('自动查找失败；请确认 Wi-Fi 已连接，或手动填写网关地址');
+      }
+    } finally {
+      discoveryInFlight.current = false;
+    }
+  }, [disconnect]);
+
+  const rediscoverGateway = useCallback((): Promise<void> => findGateway(true), [findGateway]);
+
+  useEffect(() => {
+    void findGateway();
+    const networkSubscription = Network.addNetworkStateListener(() => { void findGateway(); });
+    const appSubscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void findGateway();
+    });
+    return () => {
+      networkSubscription.remove();
+      appSubscription.remove();
+    };
+  }, [findGateway]);
 
   const checkGateway = useCallback(async (password: string): Promise<void> => {
     disconnect();
@@ -356,6 +405,7 @@ export function GatewayProvider({ children }: React.PropsWithChildren): React.JS
       }
       setCapabilities(Array.isArray(result.capabilities) ? result.capabilities : []);
       if (epoch === connectionEpoch.current) {
+        void SecureStore.setItemAsync(LAST_GATEWAY_STORAGE_KEY, gatewayAddress);
         setAuthToken(loginResult.token);
         connectToGateway(base, loginResult.token);
       }
@@ -445,7 +495,8 @@ export function GatewayProvider({ children }: React.PropsWithChildren): React.JS
   }, []);
 
   const value: GatewayContextValue = {
-    gatewayAddress, setGatewayAddress, connectedBase, gatewayState, sessionReady, lastMessage, capabilities, authToken,
+    gatewayAddress, setGatewayAddress, discoveryState, rediscoverGateway,
+    connectedBase, gatewayState, sessionReady, lastMessage, capabilities, authToken,
     checkGateway, requestPower, disconnect, selectedTopic, topics, topicName, setTopicName, topicType, setTopicType,
     topicMessage, refreshTopics, selectTopic, imageFrame, fps, latency, lastLatencyAt, debugNow,
     onFrameLoaded, resetRunLatency,

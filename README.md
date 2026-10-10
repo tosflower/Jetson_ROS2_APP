@@ -4,7 +4,7 @@
 
 ## 页面流程
 
-- 连接页：确认 `Jetson IP:8080` 并输入 Ubuntu 用户密码（该用户需有 sudo 权限），通过验证后进入控制台。
+- 连接页：连接 Jetson 热点或与 Jetson 处于同一 Wi-Fi 后，自动发现并显示 `Jetson IP:8080`；输入 Ubuntu 用户密码（该用户需有 sudo 权限）即可进入控制台。找不到时仍可手动输入地址。
 - 启动：初始提供“小车系统”和“蓝牙节点”两个示例；连接成功后自动进入启动选项。启动配置可自由新增、重命名、修改或删除，工作目录、命令和环境脚本均可配置。
 - 配置：管理默认启动项、自定义 ROS2/Python 命令，以及查找、编辑和编译 YAML 参数文件。
 - 监控：集中查看当前程序、多终端和图像可视化；像 rqt 一样发现 ROS 原始与压缩图像话题，可视化页面同时显示当前终端信息。
@@ -34,7 +34,9 @@ npx eas-cli@latest build --platform android --profile preview
 
 与 App 对应的网关位于 [`gateway/`](gateway/README.md)，需要把整个目录同步到 Jetson。它按手机选择动态订阅 ROS 图像话题，并通过校验后的临时白名单启停 ROS2/Python 进程组。
 
-Phone Gateway 的 `8080` 与 rosbridge 的 `9090` 是两条并行通道。进入“地图”页后 App 会自动从 Phone Gateway 主机地址推导 `9090`、连接 rosbridge，并请求前台定位/运动传感器权限。即使 rosbridge 暂时离线，GPS 与航向仍供地图显示；连接恢复后自动继续发布，可在 ROS 2 端验证：
+网关启动后使用 mDNS 发布 `_jetson-gateway._tcp` 服务。独立 Android APK 会在同一路由器的 Wi-Fi 中发现服务；连接 Jetson 自建热点时，优先验证手机 Wi-Fi 的 DHCP 网关地址。只有 `/health` 返回本项目所需能力后才显示地址，自动发现失败可手动输入。手机切换 Wi-Fi 或 App 回到前台时会重新查找。Expo Go 无法加载本项目的 Android 原生发现模块，在 Jetson 热点中可用常见的 `.1` 网关候选完成验证；同路由器自动发现需重新构建并安装独立 APK。
+
+Phone Gateway 的 `8080` 与 rosbridge 的 `9090` 是两条并行通道。进入“地图”页后 App 会自动从已发现的 Phone Gateway 主机地址推导 `9090`、连接 rosbridge，并请求前台定位/运动传感器权限。即使 rosbridge 暂时离线，GPS 与航向仍供地图显示；连接恢复后自动继续发布，可在 ROS 2 端验证：
 
 ```bash
 ros2 topic echo /phone/gps
