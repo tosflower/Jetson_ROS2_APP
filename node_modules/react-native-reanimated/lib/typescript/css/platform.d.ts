@@ -1,2 +1,2 @@
-export { CSSKeyframesRuleImpl, CSSManager } from './native';
+export { CSSKeyframesRuleImpl, CSSManager } from './web';
 //# sourceMappingURL=platform.d.ts.map

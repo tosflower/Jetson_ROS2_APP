@@ -7,24 +7,14 @@
 
 #pragma once
 
+#include <react/cxxstableapi/UmbrellaGuard.h>
+
 #include <react/featureflags/ReactNativeFeatureFlagsDefaults.h>
 
 namespace facebook::react {
 
 class ReactNativeFeatureFlagsOverridesOSSStable : public ReactNativeFeatureFlagsDefaults {
  public:
-  bool enableBridgelessArchitecture() override
-  {
-    return true;
-  }
-  bool enableFabricRenderer() override
-  {
-    return true;
-  }
-  bool useTurboModules() override
-  {
-    return true;
-  }
   bool useNativeViewConfigsInBridgelessMode() override
   {
     return true;

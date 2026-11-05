@@ -8,6 +8,13 @@ import { insertCSSAnimation, removeCSSAnimation } from "../domUtils.js";
 import { CSSKeyframesRuleImpl } from "../keyframes/index.js";
 import { normalizeIterationCount } from "../normalization/index.js";
 import { maybeAddSuffixes, parseTimingFunction } from "../utils.js";
+import { CSSCallbackListeners } from "./CSSCallbackListeners.js";
+const ANIMATION_EVENT_NAME = {
+  onCSSAnimationStart: 'animationstart',
+  onCSSAnimationEnd: 'animationend',
+  onCSSAnimationIteration: 'animationiteration',
+  onCSSAnimationCancel: 'animationcancel'
+};
 const isCSSKeyframesRuleImpl = keyframes => typeof keyframes === 'object' && 'processedKeyframes' in keyframes;
 export default class CSSAnimationsManager {
   // Keys are processed keyframes
@@ -16,8 +23,18 @@ export default class CSSAnimationsManager {
   constructor(element, svgElementTag = '') {
     this.element = element;
     this.svgElementTag = svgElementTag;
+    this.callbackListeners = new CSSCallbackListeners(element, ANIMATION_EVENT_NAME, event => {
+      const animationEvent = event;
+      return {
+        animationName: animationEvent.animationName,
+        elapsedTime: animationEvent.elapsedTime
+      };
+    });
   }
-  update(animationProperties) {
+  update(animationProperties, callbacks = null) {
+    // Keep listeners tied to callback presence (not animation presence) so an
+    // `animationcancel` emitted while detaching still reaches the user.
+    this.callbackListeners.sync(callbacks ?? {});
     if (!animationProperties) {
       this.detach();
       return;
@@ -69,6 +86,7 @@ export default class CSSAnimationsManager {
     this.setElementAnimations(processedAnimations, animationSettings);
   }
   unmountCleanup() {
+    this.callbackListeners.detach();
     if (!this.unmountCleanupCalled) {
       this.unmountCleanupCalled = true;
       // We use setTimeout to ensure that the animation is removed after the
@@ -121,7 +139,8 @@ export default class CSSAnimationsManager {
     this.element.style.animationDelay = processedAnimations.map(({
       elapsedTime
     }, i) => {
-      const providedDelay = animationDelays[i] ?? 0;
+      // Repeat delays as CSS does before applying each animation's elapsed time.
+      const providedDelay = animationDelays[i % animationDelays.length] ?? 0;
       return maybeAddSuffix(elapsedTime ? (normalizeTimeUnit(providedDelay) ?? 0) - elapsedTime : providedDelay, 'ms');
     }).join(',');
     if (animationSettings.animationIterationCount) {

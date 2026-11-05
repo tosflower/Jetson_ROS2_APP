@@ -2,6 +2,13 @@ import React from 'react';
 import { type View } from 'react-native';
 import ExpoImage from './ExpoImage';
 import type { ImageCacheConfig, ImageLoadOptions, ImagePrefetchOptions, ImageProps, ImageRef, ImageSource } from './Image.types';
+/**
+ * Normalizes `svgVariables` values to strings. They are substituted into the SVG document as text,
+ * but numbers are accepted for convenience so that lengths and opacities don't have to be quoted.
+ *
+ * @hidden Exported for tests.
+ */
+export declare function resolveSvgVariables(svgVariables: Record<string, string | number> | null | undefined): Record<string, string> | null;
 export declare class Image extends React.PureComponent<ImageProps> {
     nativeViewRef: React.RefObject<ExpoImage | null>;
     containerViewRef: React.RefObject<View | null>;
@@ -152,11 +159,14 @@ export declare class Image extends React.PureComponent<ImageProps> {
     /**
      * Loads an image from the given source to memory and resolves to
      * an object that references the native image instance.
+     *
+     * On Android, when neither `maxWidth` nor `maxHeight` is provided, large images may be
+     * downsampled to fit the platform's bitmap size limit. The returned `ImageRef.width` and
+     * `ImageRef.height` reflect the decoded size and may differ from the original dimensions or iOS.
      * @platform android
      * @platform ios
      * @platform web
      */
     static loadAsync(source: ImageSource | string | number, options?: ImageLoadOptions): Promise<ImageRef>;
-    render(): import("react/jsx-runtime").JSX.Element;
+    render(): React.JSX.Element;
 }
-//# sourceMappingURL=Image.d.ts.map

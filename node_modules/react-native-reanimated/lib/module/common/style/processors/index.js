@@ -1,5 +1,6 @@
 'use strict';
 
+export { processBackgroundImage } from "./backgroundImage.js";
 export { DynamicColorIOS, PlatformColor, processColor, processColorNumber, processColorsInProps } from "./colors.js";
 export { processFilter } from "./filter.js";
 export { processFontWeight } from "./font.js";

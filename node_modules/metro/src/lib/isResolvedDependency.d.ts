@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<f1d42fcf747b4fa7641e50b8d4ddc424>>
+ * @generated SignedSource<<a22ed95553c83f28245c35a2ca188e65>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/lib/isResolvedDependency.js
@@ -17,6 +17,4 @@
 
 import type {Dependency, ResolvedDependency} from '../DeltaBundler/types';
 
-export declare function isResolvedDependency(
-  dep: Dependency,
-): dep is ResolvedDependency;
+export declare function isResolvedDependency(dep: Dependency): dep is ResolvedDependency;

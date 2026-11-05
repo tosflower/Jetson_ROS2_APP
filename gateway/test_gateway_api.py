@@ -2,6 +2,7 @@
 import asyncio
 import concurrent.futures
 import importlib
+import json
 import os
 from pathlib import Path
 import sys
@@ -9,13 +10,20 @@ import tempfile
 import threading
 import types
 import unittest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 
 class FakeNode:
     def __init__(self, name: str) -> None:
+        self.context = types.SimpleNamespace(get_domain_id=lambda: 97)
         self.timers: list = []
         self.subscriptions: list = []
+        # 与真实 rclpy.Node 保持一致，捕获子类覆盖父类发布者列表的问题。
+        self._publishers: list = []
+
+    @property
+    def publishers(self) -> list:
+        return self._publishers
 
     def create_timer(self, interval: float, callback: object) -> None:
         self.timers.append(callback)
@@ -29,6 +37,12 @@ class FakeNode:
 
     def destroy_subscription(self, subscription: object) -> None:
         self.subscriptions.remove(subscription)
+
+    def create_publisher(self, kind: object, topic: str, qos: object) -> object:
+        publisher = types.SimpleNamespace(topic=topic, messages=[])
+        publisher.publish = publisher.messages.append
+        self._publishers.append(publisher)
+        return publisher
 
     def get_topic_names_and_types(self) -> list:
         return [('/camera/a', ['sensor_msgs/msg/CompressedImage']),
@@ -59,9 +73,48 @@ class FakeExecutor:
         self.stopped.set()
 
 
+class FakeRosStruct:
+    """只模拟当前手机消息用到的 ROS 字段树。"""
+
+    def __init__(self, **fields: object) -> None:
+        self.__dict__.update(fields)
+
+    def get_fields_and_field_types(self) -> dict:
+        return {name: '' for name in self.__dict__}
+
+
+class FakeNavSatFix(FakeRosStruct):
+    def __init__(self) -> None:
+        super().__init__(header=FakeRosStruct(stamp=FakeRosStruct(sec=0, nanosec=0), frame_id=''),
+                         status=FakeRosStruct(status=0, service=0),
+                         latitude=0.0, longitude=0.0, altitude=0.0,
+                         position_covariance=[0.0] * 9, position_covariance_type=0)
+
+    def get_fields_and_field_types(self) -> dict:
+        fields = super().get_fields_and_field_types()
+        for name in ('latitude', 'longitude', 'altitude'):
+            fields[name] = 'double'
+        fields['position_covariance'] = 'double[9]'
+        return fields
+
+
+class FakeString(FakeRosStruct):
+    def __init__(self) -> None:
+        super().__init__(data='')
+
+
+class FakeFloat64(FakeRosStruct):
+    def __init__(self) -> None:
+        super().__init__(data=0.0)
+
+    def get_fields_and_field_types(self) -> dict:
+        return {'data': 'double'}
+
+
 def ros_modules() -> dict:
     result = {name: types.ModuleType(name) for name in
-              ('rclpy', 'rclpy.node', 'rclpy.executors', 'rclpy.qos', 'sensor_msgs', 'sensor_msgs.msg')}
+              ('rclpy', 'rclpy.node', 'rclpy.executors', 'rclpy.qos', 'sensor_msgs', 'sensor_msgs.msg',
+               'std_msgs', 'std_msgs.msg', 'rcl_interfaces', 'rcl_interfaces.msg')}
     result['rclpy'].init = lambda **kwargs: None
     result['rclpy'].shutdown = lambda: None
     result['rclpy'].ok = lambda: True
@@ -73,6 +126,12 @@ def ros_modules() -> dict:
     result['rclpy.qos'].QoSProfile = lambda **kwargs: types.SimpleNamespace(**kwargs)
     result['sensor_msgs.msg'].Image = type('Image', (), {})
     result['sensor_msgs.msg'].CompressedImage = type('CompressedImage', (), {})
+    result['sensor_msgs.msg'].NavSatFix = FakeNavSatFix
+    result['sensor_msgs.msg'].Imu = type('Imu', (), {})
+    result['sensor_msgs.msg'].MagneticField = type('MagneticField', (), {})
+    result['std_msgs.msg'].String = FakeString
+    result['std_msgs.msg'].Float64 = FakeFloat64
+    result['rcl_interfaces.msg'].Log = type('Log', (), {})
     return result
 
 
@@ -96,6 +155,14 @@ class GatewayApiTests(unittest.TestCase):
         self.env.start()
         self.password_verification = patch.object(self.gateway.AuthManager, '_verify_password', return_value=None)
         self.password_verification.start()
+        # 路由测试不绑定 9090；手机桥套接字在独立用例中检查。
+        self.phone_start = patch.object(self.gateway.PhoneBridgeServer, 'start', new_callable=AsyncMock)
+        self.phone_start.start()
+        # API 用例只检查网关逻辑，避免 mDNS 在测试环境中查询网卡并阻塞退出。
+        self.discovery_refresh = patch.object(self.gateway.GatewayAdvertiser, 'refresh', new_callable=AsyncMock)
+        self.discovery_close = patch.object(self.gateway.GatewayAdvertiser, 'close', new_callable=AsyncMock)
+        self.discovery_refresh.start()
+        self.discovery_close.start()
         self.loop = asyncio.new_event_loop()
         self.loop.run_until_complete(self.gateway.startup())
         self.runtime = self.gateway.app.state.runtime
@@ -105,6 +172,9 @@ class GatewayApiTests(unittest.TestCase):
         self.loop.run_until_complete(self.gateway.shutdown())
         self.loop.close()
         self.password_verification.stop()
+        self.phone_start.stop()
+        self.discovery_refresh.stop()
+        self.discovery_close.stop()
         self.env.stop()
         self.temp.cleanup()
 
@@ -115,6 +185,114 @@ class GatewayApiTests(unittest.TestCase):
         self.assertIn('system_power', health['capabilities'])
         self.assertIn('dynamic_defaults', health['capabilities'])
         self.assertIn('history_clear', health['capabilities'])
+        self.assertIn('phone_bridge', health['capabilities'])
+
+    def test_phone_bridge_authenticates_and_publishes_gps(self) -> None:
+        """检查手机 JSON、令牌、GPS 白名单和 /rosout 回传。"""
+        class Socket:
+            path = '/'
+
+            def __init__(self) -> None:
+                self.incoming = asyncio.Queue()
+                self.outgoing = asyncio.Queue()
+                self.close_code = None
+
+            async def recv(self) -> str:
+                return json.dumps(await self.incoming.get())
+
+            def __aiter__(self) -> object:
+                return self
+
+            async def __anext__(self) -> str:
+                value = await self.incoming.get()
+                if value is None:
+                    raise StopAsyncIteration
+                return json.dumps(value)
+
+            async def send(self, value: str) -> None:
+                await self.outgoing.put(json.loads(value))
+
+            async def close(self, code: int, reason: str) -> None:
+                self.close_code = code
+
+        async def scenario() -> None:
+            bridge = self.runtime.phone_server
+            rejected = Socket()
+            await rejected.incoming.put({'op': 'auth', 'token': 'invalid'})
+            await bridge._handle(rejected)
+            self.assertEqual(rejected.close_code, 1008)
+
+            socket = Socket()
+            await socket.incoming.put({'op': 'auth', 'token': self.token})
+            completed: concurrent.futures.Future = concurrent.futures.Future()
+            completed.set_result(None)
+            with patch.object(self.runtime.phone_node, 'publish_from_phone', return_value=completed) as publish:
+                task = asyncio.create_task(bridge._handle(socket))
+                try:
+                    self.assertEqual((await asyncio.wait_for(socket.outgoing.get(), 1))['op'], 'auth_response')
+                    await socket.incoming.put({'op': 'advertise', 'topic': '/phone/gps',
+                                               'type': 'sensor_msgs/msg/NavSatFix'})
+                    await asyncio.sleep(.03)
+                    self.assertIn('/phone/gps', [p.topic for p in self.runtime.phone_node.publishers],
+                                  '手机已 advertise，ROS 仍看不到发布者')
+                    await socket.incoming.put({'op': 'publish', 'topic': '/phone/gps',
+                                               'msg': {'latitude': 23.1, 'longitude': 113.3}})
+                    await socket.incoming.put({'op': 'advertise', 'topic': '/cmd_vel',
+                                               'type': 'geometry_msgs/msg/Twist'})
+                    error = await asyncio.wait_for(socket.outgoing.get(), 1)
+                    self.assertEqual(error['op'], 'status')
+                    self.assertIn('不支持', error['msg'])
+                    publish.assert_called_once_with('/phone/gps', {'latitude': 23.1, 'longitude': 113.3})
+                    await socket.incoming.put({'op': 'subscribe', 'id': 'sub:rosout',
+                                               'topic': '/rosout', 'type': 'rcl_interfaces/msg/Log'})
+                    await asyncio.sleep(.02)
+                    self.runtime.phone_node._on_log(types.SimpleNamespace(
+                        stamp=types.SimpleNamespace(sec=123, nanosec=456),
+                        level=20, name='camera', msg='ready'))
+                    log = await asyncio.wait_for(socket.outgoing.get(), 1)
+                    self.assertEqual(log['topic'], '/rosout')
+                    self.assertEqual(log['msg']['msg'], 'ready')
+                    await socket.incoming.put({'op': 'unsubscribe', 'id': 'sub:rosout', 'topic': '/rosout'})
+                finally:
+                    await socket.incoming.put(None)
+                    await asyncio.wait_for(task, 1)
+                self.assertFalse(self.runtime.phone_node._listeners)
+
+        self.loop.run_until_complete(scenario())
+
+    def test_phone_bridge_converts_gps_on_ros_executor(self) -> None:
+        """用模拟 ROS 消息检查嵌套字段与浮点协方差转换。"""
+        fields = {'header': {'stamp': {'sec': 123, 'nanosec': 456}, 'frame_id': 'phone_gps_link'},
+                  'status': {'status': 0, 'service': 0},
+                  'latitude': 23.1, 'longitude': 113.3, 'altitude': 10,
+                  'position_covariance': [0] * 9, 'position_covariance_type': 0}
+        future = self.runtime.phone_node.publish_from_phone('/phone/gps', fields)
+        self.runtime.phone_node._drain()
+        future.result(timeout=1)
+        publishers = self.runtime.phone_node.publishers
+        self.assertEqual([publisher.topic for publisher in publishers], ['/phone/gps'])
+        self.assertEqual(publishers[0].messages[0].header.stamp.sec, 123)
+        self.assertEqual(publishers[0].messages[0].latitude, 23.1)
+        self.assertIsInstance(publishers[0].messages[0].position_covariance[0], float)
+        # 后续采样应复用同一发布者，同时保留父类的实体列表供 ROS 正常清理。
+        next_future = self.runtime.phone_node.publish_from_phone('/phone/gps', fields)
+        self.runtime.phone_node._drain()
+        next_future.result(timeout=1)
+        self.assertEqual(len(publishers), 1)
+        self.assertEqual(len(publishers[0].messages), 2)
+
+    def test_phone_bridge_advertises_all_supported_topics_without_fake_samples(self) -> None:
+        from phone_bridge import PUBLISH_TYPES
+        for topic in PUBLISH_TYPES:
+            future = self.runtime.phone_node.advertise_from_phone(topic)
+            self.runtime.phone_node._drain()
+            future.result(timeout=1)
+        status = self.runtime.phone_server.status()
+        self.assertEqual(set(status['advertised_topics']), set(PUBLISH_TYPES))
+        self.assertEqual(status['published'], {})
+        self.assertEqual(status['ros_domain_id'], 97)
+        self.assertEqual(status['authenticated_clients'], 0)
+        self.assertTrue(all(not publisher.messages for publisher in self.runtime.phone_node.publishers))
 
     def test_private_api_requires_bearer_and_power_rechecks_password(self) -> None:
         from fastapi import HTTPException
@@ -140,6 +318,77 @@ class GatewayApiTests(unittest.TestCase):
         self.assertEqual(len(result['topics']), 2)
         self.assertEqual(result['topics'][0]['name'], '/camera/a')
         self.assertEqual(result['topics'][0]['publishers'], 1)
+
+    def test_stream_evidence_uses_real_send_ack_and_disconnect_paths(self) -> None:
+        gateway, token, runtime = self.gateway, self.token, self.runtime
+
+        class Socket:
+            """内存 WebSocket 对端，保留真实 mobile_stream 的协程及 ROS 队列。"""
+            query_params = {"topic": "/camera/a"}
+
+            def __init__(self) -> None:
+                self.messages = asyncio.Queue()
+                self.ready = asyncio.Event()
+                self.sent = asyncio.Queue()
+                self.meta = {}
+                self.statuses = []
+
+            async def accept(self) -> None:
+                pass
+
+            async def receive_json(self) -> dict:
+                return {"type": "auth", "token": token}
+
+            async def receive_text(self) -> str:
+                value = await self.messages.get()
+                if value is None:
+                    raise gateway.WebSocketDisconnect()
+                return json.dumps(value)
+
+            async def send_json(self, value: dict) -> None:
+                self.statuses.append(value)
+                if value.get("connection_ready"):
+                    self.ready.set()
+                if value["type"] == "frame":
+                    self.meta = value
+
+            async def send_bytes(self, value: bytes) -> None:
+                self.sent.put_nowait(dict(self.meta))
+
+        async def scenario() -> None:
+            sockets = [Socket(), Socket()]
+            tasks = [asyncio.create_task(gateway.mobile_stream(socket)) for socket in sockets]
+            try:
+                for socket in sockets:
+                    try:
+                        await asyncio.wait_for(socket.ready.wait(), 2)
+                    except asyncio.TimeoutError:
+                        self.fail("图像连接未就绪：%r" % socket.statuses)
+                channel = runtime.node.channels[("/camera/a", gateway.COMPRESSED)]
+                self.assertEqual(channel.users, 2)
+                channel.on_image(types.SimpleNamespace(data=b"\xff\xd8test"))
+                metas = [await asyncio.wait_for(socket.sent.get(), 2) for socket in sockets]
+                self.assertEqual(metas[0]["subscription_epoch"], metas[1]["subscription_epoch"])
+                self.assertNotEqual(metas[0]["stream_session"], metas[1]["stream_session"])
+                # 一个客户端加载完成，另一个没有回执；两份账本必须保持隔离。
+                ack = {**metas[0], "type": "frame_ack", "stage": "loaded"}
+                await sockets[0].messages.put(ack)
+                await asyncio.sleep(0)
+                result = await gateway.image_diagnostics(token)
+                streams = {row["stream_session"]: row for row in result["streams"]}
+                self.assertEqual(streams[metas[0]["stream_session"]]["frames"][0]["state"], "loaded")
+                self.assertEqual(streams[metas[1]["stream_session"]]["frames"][0]["state"], "receive_pending")
+                for socket in sockets:
+                    await socket.messages.put(None)
+                await asyncio.wait_for(asyncio.gather(*tasks), 2)
+                self.assertFalse(runtime.image_diagnostics)
+                self.assertFalse(runtime.node.channels)
+            finally:
+                for task in tasks:
+                    task.cancel()
+                await asyncio.gather(*tasks, return_exceptions=True)
+
+        self.loop.run_until_complete(scenario())
 
     def test_raw_image_bridge_is_loaded_before_executor_thread(self) -> None:
         # Foxy 的 Boost.Python 扩展首次从 executor 线程导入会初始化失败。

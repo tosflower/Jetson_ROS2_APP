@@ -1,7 +1,7 @@
 'use strict';
 
 import { Easing } from "../Easing.js";
-import { assertEasingIsWorklet, defineAnimation, getReduceMotionForAnimation } from "./util.js";
+import { assertEasingIsWorklet, defineAnimation, getReduceMotionForAnimation } from './util';
 
 /**
  * The timing animation configuration.
@@ -56,14 +56,27 @@ export const withTiming = function (toValue, userConfig, callback) {
         startTime,
         startValue
       } = animation;
-      const runtime = now - startTime;
+      let runtime = now - startTime;
+      if (runtime < 0) {
+        // `startTime` comes from `global.__frameTimestamp ||
+        // global._getAnimationTimestamp()` (see `valueSetter`). An animation
+        // started outside a frame flush - from a gesture callback, for
+        // instance - takes the second branch and reads the clock at that
+        // instant, while the frame that first progresses it passes its vsync
+        // timestamp, which is earlier. The first tick then sees a small
+        // negative runtime. This can potentially cause glitches during
+        // animations.
+        animation.startTime = now;
+        runtime = 0;
+      }
       if (runtime >= config.duration) {
         // reset startTime to avoid reusing finished animation config in `start` method
         animation.startTime = 0;
         animation.current = toValue;
         return true;
       }
-      const progress = animation.easing(runtime / config.duration);
+      const normalizedTime = Math.min(Math.max(runtime / config.duration, 0), 1);
+      const progress = animation.easing(normalizedTime);
       animation.current = startValue + (toValue - startValue) * progress;
       return false;
     }

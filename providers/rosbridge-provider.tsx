@@ -43,6 +43,7 @@ export function RosbridgeProvider({ children }: React.PropsWithChildren): React.
   const [connectionState, setConnectionState] = useState<RosbridgeConnectionState>('idle');
   const [lastError, setLastError] = useState<string>();
   const addressRef = useRef(address);
+  const authTokenRef = useRef<string | undefined>(undefined);
   const shouldConnectRef = useRef(false);
   const addressTouchedRef = useRef(false);
   const clientRef = useRef<RosbridgeClient | null>(null);
@@ -62,7 +63,7 @@ export function RosbridgeProvider({ children }: React.PropsWithChildren): React.
     const subscription = AppState.addEventListener('change', (state) => {
       // 系统恢复到前台时复用同一客户端；connect() 会拒绝创建重复连接。
       if (state === 'active' && shouldConnectRef.current) {
-        void client.connect(addressRef.current).catch(() => undefined);
+        void client.connect(addressRef.current, authTokenRef.current).catch(() => undefined);
       }
     });
     return () => subscription.remove();
@@ -75,6 +76,7 @@ export function RosbridgeProvider({ children }: React.PropsWithChildren): React.
     shouldConnectRef.current = false;
     client.disconnect();
     addressRef.current = value;
+    authTokenRef.current = undefined;
     setAddressState(value);
     setLastError(undefined);
   }, [client]);
@@ -86,17 +88,25 @@ export function RosbridgeProvider({ children }: React.PropsWithChildren): React.
         ? addressRef.current
         : configuredAddress || rosbridgeUrlFromGateway(gateway.gatewayAddress);
       const normalized = normalizeRosbridgeUrl(target);
+      const integrated = normalized === rosbridgeUrlFromGateway(gateway.gatewayAddress);
+      if (integrated && !gateway.authToken) {
+        shouldConnectRef.current = false;
+        setConnectionState('disconnected');
+        setLastError('请先连接并登录 Jetson 网关');
+        return;
+      }
       addressRef.current = normalized;
+      authTokenRef.current = integrated ? gateway.authToken : undefined;
       setAddressState(normalized);
       setLastError(undefined);
       shouldConnectRef.current = true;
-      void client.connect(normalized).catch(() => undefined);
+      void client.connect(normalized, integrated ? gateway.authToken : undefined).catch(() => undefined);
     } catch (error) {
       shouldConnectRef.current = false;
       setLastError(error instanceof Error ? error.message : 'rosbridge 地址无效');
       setConnectionState('error');
     }
-  }, [client, configuredAddress, gateway.gatewayAddress]);
+  }, [client, configuredAddress, gateway.authToken, gateway.gatewayAddress]);
 
   const disconnect = useCallback((): void => {
     shouldConnectRef.current = false;
@@ -123,7 +133,9 @@ export function RosbridgeProvider({ children }: React.PropsWithChildren): React.
   ): Promise<TResult> => client.callService<TArgs, TResult>(service, args, timeoutMs), [client]);
 
   const statusMessage = connectionState === 'connected'
-    ? `已连接 ${addressRef.current}；GPS、航向、IMU 和磁力计共用此 WebSocket`
+    ? lastError
+      ? `已连接 ${addressRef.current}；网关返回错误：${lastError}`
+      : `已连接 ${addressRef.current}；GPS、航向、IMU 和磁力计共用此 WebSocket`
     : connectionState === 'connecting'
       ? `正在连接 ${addressRef.current}`
       : connectionState === 'reconnecting'

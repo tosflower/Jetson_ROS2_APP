@@ -4,7 +4,7 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  *
- * @flow
+ * @flow strict-local
  * @format
  */
 
@@ -86,15 +86,15 @@ declare export const flatten: typeof flattenStyle;
  * internally to process color and transform values. You should not use this
  * unless you really know what you are doing and have exhausted other options.
  */
-declare export const setStyleAttributePreprocessor: (
+declare export const setStyleAttributePreprocessor: <T>(
   property: string,
-  process: (nextProp: any) => any,
+  process: (nextProp: T) => unknown,
 ) => void;
 
 /**
  * An identity function for creating style sheets.
  */
 // $FlowFixMe[unsupported-variance-annotation]
-declare export const create: <+S extends ____Styles_Internal>(
+declare export const create: <out S extends ____Styles_Internal>(
   obj: S & ____Styles_Internal,
 ) => Readonly<S>;

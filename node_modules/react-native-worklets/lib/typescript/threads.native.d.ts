@@ -1,6 +1,5 @@
 import type { RemoteFunction } from './memory/types';
 import type { WorkletFunction } from './types';
-export declare function setupMicrotasks(): void;
 /**
  * Lets you schedule a function to be executed on the [UI
  * Runtime](https://docs.swmansion.com/react-native-worklets/docs/fundamentals/runtimeKinds#ui-runtime).
@@ -122,4 +121,12 @@ export declare function runOnJS<Args extends unknown[], ReturnValue>(fun: ((...a
  * @see https://docs.swmansion.com/react-native-worklets/docs/threading/runOnUIAsync
  */
 export declare function runOnUIAsync<Args extends unknown[], ReturnValue>(worklet: (...args: Args) => ReturnValue, ...args: Args): Promise<ReturnValue>;
+/**
+ * Returns the id of the thread which currently executes JavaScript on the
+ * calling Runtime.
+ *
+ * @returns The id of the current thread.
+ * @see https://docs.swmansion.com/react-native-worklets/docs/utility/getCurrentThreadId
+ */
+export declare function getCurrentThreadId(): string;
 //# sourceMappingURL=threads.native.d.ts.map

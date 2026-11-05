@@ -1,5 +1,6 @@
 'use strict';
 
+import { isBundleModeEnabled } from './debug/bundleMode';
 import { getStaticFeatureFlag } from './featureFlags/featureFlags';
 import { addNoBundleModeGuardImplementation } from './guardImplementation';
 import { getMemorySafeCapturableConsole, setupConsole, setupConsoleForwarding, setupSerializer } from './initializers/initializers';
@@ -50,6 +51,8 @@ export function createWorkletRuntime(nameOrConfig, initializer) {
   let queue = 'default';
   let animationQueuePollingRate;
   let enableEventLoop = true;
+  let enableLocking = true;
+  let enableNetworking = true;
   if (typeof nameOrConfig === 'string') {
     name = nameOrConfig;
     initializerFn = initializer;
@@ -63,7 +66,17 @@ export function createWorkletRuntime(nameOrConfig, initializer) {
       queue = nameOrConfig.customQueue ?? null;
     }
     animationQueuePollingRate = Math.round(nameOrConfig?.animationQueuePollingRate ?? 16);
-    enableEventLoop = nameOrConfig?.enableEventLoop ?? true;
+    enableLocking = nameOrConfig?.enableLocking ?? true;
+    if (__DEV__ && !enableLocking && nameOrConfig?.enableEventLoop) {
+      throw new Error('[Worklets] The Event Loop cannot be enabled on a runtime with locking disabled.');
+    }
+    enableEventLoop = enableLocking ? nameOrConfig?.enableEventLoop ?? true : false;
+    /**
+     * The networking API depends on the Event Loop - `whatwg-fetch` resolves
+     * its responses through `setTimeout`. Without it, requests would hang
+     * instead of failing visibly.
+     */
+    enableNetworking = (nameOrConfig?.enableNetworking ?? true) && enableEventLoop;
   }
   const useDefaultQueue = queue === 'default';
   const customQueue = typeof queue === 'object' && queue !== null ? queue : undefined;
@@ -83,7 +96,7 @@ export function createWorkletRuntime(nameOrConfig, initializer) {
       setupRunLoop(animationQueuePollingRate);
     }
     initializerFn?.();
-  }), useDefaultQueue, customQueue, enableEventLoop);
+  }), useDefaultQueue, customQueue, enableEventLoop, enableLocking, enableNetworking);
 }
 
 /**
@@ -115,10 +128,9 @@ export function scheduleOnRuntime(workletRuntime, worklet, ...args) {
     'worklet';
 
     worklet(...args);
-    globalThis.__callMicrotasks?.();
   }), SHOULD_CAPTURE_SCHEDULE_STACK ? new Error().stack : undefined);
 }
-if (!globalThis._WORKLETS_BUNDLE_MODE_ENABLED) {
+if (!isBundleModeEnabled()) {
   function scheduleOnRuntimeWorklet(workletRuntime, worklet, ...args) {
     'worklet';
 
@@ -129,7 +141,6 @@ if (!globalThis._WORKLETS_BUNDLE_MODE_ENABLED) {
       'worklet';
 
       worklet(...args);
-      globalThis.__callMicrotasks?.();
     }));
   }
   serializableMappingCache.set(scheduleOnRuntime, createSerializable(scheduleOnRuntimeWorklet));
@@ -165,10 +176,9 @@ export function scheduleOnRuntimeWithId(runtimeId, worklet, ...args) {
     'worklet';
 
     worklet(...args);
-    globalThis.__callMicrotasks?.();
   }), SHOULD_CAPTURE_SCHEDULE_STACK ? new Error().stack : undefined);
 }
-if (!globalThis._WORKLETS_BUNDLE_MODE_ENABLED) {
+if (!isBundleModeEnabled()) {
   function scheduleOnRuntimeWithIdWorklet(runtimeId, worklet, ...args) {
     'worklet';
 
@@ -179,7 +189,6 @@ if (!globalThis._WORKLETS_BUNDLE_MODE_ENABLED) {
       'worklet';
 
       worklet(...args);
-      globalThis.__callMicrotasks?.();
     }));
   }
   serializableMappingCache.set(scheduleOnRuntimeWithId, createSerializable(scheduleOnRuntimeWithIdWorklet));
@@ -307,7 +316,6 @@ export function runOnRuntimeAsync(workletRuntime, worklet, ...args) {
         const serializedError = globalThis.__serializer(error);
         globalThis.__workletsModuleProxy.handlePromise(reject, serializedError);
       }
-      globalThis.__callMicrotasks?.();
     }), scheduleStack);
   });
 }
@@ -355,11 +363,10 @@ export function runOnRuntimeAsyncWithId(runtimeId, worklet, ...args) {
         const serializedError = globalThis.__serializer(error);
         globalThis.__workletsModuleProxy.handlePromise(reject, serializedError);
       }
-      globalThis.__callMicrotasks?.();
     }), scheduleStack);
   });
 }
-if (__DEV__ && !globalThis._WORKLETS_BUNDLE_MODE_ENABLED) {
+if (__DEV__ && !isBundleModeEnabled()) {
   /**
    * QoL guards to give a meaningful error message when the user tries to call
    * these functions on Worklet Runtimes outside of the Bundle Mode.

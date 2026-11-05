@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  *
  * @noformat
- * @generated SignedSource<<f56c9fdb2fc1c692fa880c61a14ba1e3>>
+ * @generated SignedSource<<7c26a64673afa295660693ad5f530335>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-file-map/src/plugins/haste/computeConflicts.js
@@ -24,10 +24,7 @@ type Conflict = {
 };
 export declare function computeHasteConflicts(
   options: Readonly<{
-    duplicates: ReadonlyMap<
-      string,
-      ReadonlyMap<string, ReadonlyMap<string, number>>
-    >;
+    duplicates: ReadonlyMap<string, ReadonlyMap<string, ReadonlyMap<string, number>>>;
     map: ReadonlyMap<string, HasteMapItem>;
     rootDir: string;
   }>,

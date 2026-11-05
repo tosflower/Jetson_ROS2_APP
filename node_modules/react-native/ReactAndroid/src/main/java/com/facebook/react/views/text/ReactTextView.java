@@ -46,6 +46,7 @@ import com.facebook.react.uimanager.style.BorderRadiusProp;
 import com.facebook.react.uimanager.style.BorderStyle;
 import com.facebook.react.uimanager.style.LogicalEdge;
 import com.facebook.react.uimanager.style.Overflow;
+import com.facebook.react.views.text.internal.span.CanvasEffectSpan;
 import com.facebook.react.views.text.internal.span.ReactFragmentIndexSpan;
 import com.facebook.react.views.text.internal.span.ReactTagSpan;
 import com.facebook.yoga.YogaMeasureMode;
@@ -212,8 +213,97 @@ public class ReactTextView extends AppCompatTextView implements ReactCompoundVie
         BackgroundStyleApplicator.clipToPaddingBox(this, canvas);
       }
 
-      super.onDraw(canvas);
+      if (spanned != null) {
+        Layout layout = getLayout();
+        if (layout != null) {
+          CanvasEffectSpan[] drawSpans =
+              spanned.getSpans(0, spanned.length(), CanvasEffectSpan.class);
+          if (shouldDrawLayoutWithoutTextViewClip()) {
+            drawLayoutWithoutTextViewClip(canvas, spanned, layout, drawSpans);
+          } else {
+            if (drawSpans.length > 0) {
+              drawTextEffects(canvas, spanned, layout, drawSpans, true, false);
+              super.onDraw(canvas);
+              drawTextEffects(canvas, spanned, layout, drawSpans, false, false);
+            } else {
+              super.onDraw(canvas);
+            }
+          }
+        } else {
+          super.onDraw(canvas);
+        }
+      } else {
+        super.onDraw(canvas);
+      }
     }
+  }
+
+  private boolean shouldDrawLayoutWithoutTextViewClip() {
+    return mOverflow == Overflow.VISIBLE && !mTextIsSelectable && getMovementMethod() == null;
+  }
+
+  private void drawLayoutWithoutTextViewClip(
+      Canvas canvas, Spannable spanned, Layout layout, CanvasEffectSpan[] drawSpans) {
+    getPaint().setColor(getCurrentTextColor());
+    getPaint().drawableState = getDrawableState();
+
+    drawTextEffects(canvas, spanned, layout, drawSpans, true, true);
+
+    canvas.save();
+    canvas.translate(
+        getCompoundPaddingLeft(), getExtendedPaddingTop() + getVerticalGravityOffset(layout));
+    layout.draw(canvas);
+    canvas.restore();
+
+    drawTextEffects(canvas, spanned, layout, drawSpans, false, true);
+  }
+
+  private void drawTextEffects(
+      Canvas canvas,
+      Spannable spanned,
+      Layout layout,
+      CanvasEffectSpan[] drawSpans,
+      boolean beforeText,
+      boolean includeVerticalGravityOffset) {
+    if (drawSpans.length == 0) {
+      return;
+    }
+
+    canvas.save();
+    canvas.translate(
+        getCompoundPaddingLeft(),
+        getExtendedPaddingTop()
+            + (includeVerticalGravityOffset ? getVerticalGravityOffset(layout) : 0));
+    for (CanvasEffectSpan span : drawSpans) {
+      int start = spanned.getSpanStart(span);
+      int end = spanned.getSpanEnd(span);
+      if (beforeText) {
+        span.onPreDraw(start, end, canvas, layout);
+      } else {
+        span.onDraw(start, end, canvas, layout);
+      }
+    }
+    canvas.restore();
+  }
+
+  private int getVerticalGravityOffset(Layout layout) {
+    int availableVerticalSpace = getAvailableVerticalSpace();
+    if (layout.getHeight() >= availableVerticalSpace) {
+      return 0;
+    }
+
+    int verticalGravity = getGravity() & Gravity.VERTICAL_GRAVITY_MASK;
+    if (verticalGravity == Gravity.BOTTOM) {
+      return availableVerticalSpace - layout.getHeight();
+    } else if (verticalGravity == Gravity.CENTER_VERTICAL) {
+      return (availableVerticalSpace - layout.getHeight()) / 2;
+    }
+
+    return 0;
+  }
+
+  private int getAvailableVerticalSpace() {
+    return getHeight() - getExtendedPaddingTop() - getExtendedPaddingBottom();
   }
 
   @Override
@@ -223,11 +313,19 @@ public class ReactTextView extends AppCompatTextView implements ReactCompoundVie
     }
   }
 
+  @Override
+  protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+    super.onSizeChanged(w, h, oldw, oldh);
+    if (mAdjustsFontSizeToFit && (w != oldw || h != oldh)) {
+      mShouldAdjustSpannableFontSize = true;
+    }
+  }
+
   public void setText(ReactTextUpdate update) {
     try (SystraceSection s = new SystraceSection("ReactTextView.setText(ReactTextUpdate)")) {
       // Android's TextView crashes when it tries to relayout if LayoutParams are
       // null; explicitly set the LayoutParams to prevent this crash. See:
-      // https://github.com/react/react-native/pull/7011
+      // https://github.com/facebook/react-native/pull/7011
       if (getLayoutParams() == null) {
         setLayoutParams(EMPTY_LAYOUT_PARAMS);
       }
@@ -575,13 +673,11 @@ public class ReactTextView extends AppCompatTextView implements ReactCompoundVie
   }
 
   public void setOverflow(@Nullable String overflow) {
-    if (overflow == null) {
-      mOverflow = Overflow.VISIBLE;
-    } else {
-      @Nullable Overflow parsedOverflow = Overflow.fromString(overflow);
-      mOverflow = parsedOverflow == null ? Overflow.VISIBLE : parsedOverflow;
-    }
-
+    mOverflow = Overflow.fromString(overflow);
     invalidate();
+  }
+
+  /* package */ Overflow getOverflow() {
+    return mOverflow;
   }
 }

@@ -7,8 +7,11 @@
 
 #pragma once
 
+#include <react/cxxstableapi/FrameworksGuard.h>
+
 #include <atomic>
 #include <memory>
+#include <vector>
 
 #include <ReactCommon/RuntimeExecutor.h>
 #include <react/performance/cdpmetrics/CdpMetricsReporter.h>
@@ -117,17 +120,12 @@ class Scheduler final : public UIManagerDelegate {
   void removeEventListener(const std::shared_ptr<const EventListener> &listener);
 
 #pragma mark - Surface start callback
-  void uiManagerShouldSetOnSurfaceStartCallback(OnSurfaceStartCallback &&callback) override;
+  void uiManagerShouldAddOnSurfaceStartCallback(OnSurfaceStartCallback &&callback) override;
 
  private:
   friend class SurfaceHandler;
 
   SchedulerDelegate *delegate_;
-  // Invalidation token captured by-value into lambdas deferred via
-  // runtimeScheduler_->scheduleRenderingUpdate. Set to true on delegate
-  // change or Scheduler destruction so a lambda that outlives its captured
-  // raw delegate pointer can no-op instead of dereferencing dangling memory.
-  std::shared_ptr<std::atomic<bool>> delegateInvalidated_;
   SharedComponentDescriptorRegistry componentDescriptorRegistry_;
   RuntimeExecutor runtimeExecutor_;
   std::shared_ptr<UIManager> uiManager_;
@@ -159,7 +157,7 @@ class Scheduler final : public UIManagerDelegate {
   std::shared_ptr<ViewTransitionModule> viewTransitionModule_;
 
   mutable std::shared_mutex onSurfaceStartCallbackMutex_;
-  OnSurfaceStartCallback onSurfaceStartCallback_;
+  std::vector<OnSurfaceStartCallback> onSurfaceStartCallbacks_;
 };
 
 } // namespace facebook::react

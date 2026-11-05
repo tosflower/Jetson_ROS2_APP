@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<000f29900c01342de92d247507075575>>
+ * @generated SignedSource<<012256ba84cab6f440ac7663ddb2ce48>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/shared/output/RamBundle/write-sourcemap.js
@@ -15,9 +15,5 @@
  *   yarn run build-ts-defs (OSS) 
  */
 
-declare function writeSourcemap(
-  fileName: string,
-  contents: string,
-  log: (...args: Array<string>) => void,
-): Promise<unknown>;
+declare function writeSourcemap(fileName: string, contents: string, log: (...args: Array<string>) => void): Promise<unknown>;
 export default writeSourcemap;

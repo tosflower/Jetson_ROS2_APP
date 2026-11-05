@@ -11,7 +11,7 @@
  */
 import React from 'react';
 import { WindowsWebViewProps } from './WebViewTypes';
-declare const WebView: React.ForwardRefExoticComponent<WindowsWebViewProps & React.RefAttributes<{}>> & {
+declare const WebView: React.ForwardRefExoticComponent<WindowsWebViewProps & React.RefAttributes<unknown>> & {
     isFileUploadSupported: () => Promise<boolean>;
 };
 export default WebView;

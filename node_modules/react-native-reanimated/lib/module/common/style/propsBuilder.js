@@ -24,5 +24,5 @@ export function createNativePropsBuilder(config) {
     }
   });
 }
-export const stylePropsBuilder = createNativePropsBuilder(STYLE_PROPERTIES_CONFIG);
+export const stylePropsBuilder = /* @__PURE__ */createNativePropsBuilder(STYLE_PROPERTIES_CONFIG);
 //# sourceMappingURL=propsBuilder.js.map

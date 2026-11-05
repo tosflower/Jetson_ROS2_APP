@@ -8,5 +8,5 @@ export { withSequence } from "./sequence.js";
 export { GentleSpringConfig, GentleSpringConfigWithDuration, Reanimated3DefaultSpringConfig, Reanimated3DefaultSpringConfigWithDuration, SnappySpringConfig, SnappySpringConfigWithDuration, WigglySpringConfig, WigglySpringConfigWithDuration, withSpring } from "./spring/index.js";
 export { withStyleAnimation } from "./styleAnimation.js";
 export { withTiming } from "./timing.js";
-export { cancelAnimation, defineAnimation, initialUpdaterRun } from "./util.js";
+export { cancelAnimation, defineAnimation, initialUpdaterRun } from './util';
 //# sourceMappingURL=index.js.map

@@ -1,7 +1,7 @@
 'use strict';
 
 import { Animated as AnimatedRN, Image as ImageRN, processColor as processColorRN, Text as TextRN, View as ViewRN } from 'react-native';
-import { advanceAnimationByFrame, advanceAnimationByTime, Extrapolation, getAnimatedStyle, InterfaceOrientation, IOSReferenceFrame, KeyboardState, reanimatedVersion, ReduceMotion, SensorType, setUpTests, withReanimatedTimer } from "./index.js";
+import { advanceAnimationByFrame, advanceAnimationByTime, contrastColor, convertToRGBA, css as cssStyleSheet, cubicBezier, DynamicColorIOS, Extrapolation, GentleSpringConfig, GentleSpringConfigWithDuration, getAnimatedStyle, getUseOfValueInStyleWarning, InterfaceOrientation, IOSReferenceFrame, isColor, isSharedValue as isSharedValueReal, isWorkletFunction, KeyboardState, linear, PlatformColor, Reanimated3DefaultSpringConfig, Reanimated3DefaultSpringConfigWithDuration, ReanimatedLogLevel, reanimatedVersion, ReduceMotion, ScreenTransition as ScreenTransitionPresets, SensorType, setUpTests, SnappySpringConfig, SnappySpringConfigWithDuration, steps, WigglySpringConfig, WigglySpringConfigWithDuration, withReanimatedTimer } from "./index.js";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const NOOP = () => {};
@@ -9,15 +9,76 @@ const NOOP_FACTORY = () => NOOP;
 const ID = t => t;
 const IMMEDIATE_CALLBACK_INVOCATION = callback => callback();
 const hook = {
+  useAnimatedKeyboard: () => ({
+    height: 0,
+    state: 0
+  }),
   useAnimatedProps: IMMEDIATE_CALLBACK_INVOCATION,
+  useAnimatedReaction: NOOP,
+  useAnimatedRef: () => ({
+    current: null
+  }),
+  useAnimatedScrollHandler: NOOP_FACTORY,
+  useAnimatedSensor: () => ({
+    sensor: {
+      value: {
+        x: 0,
+        y: 0,
+        z: 0,
+        interfaceOrientation: 0,
+        qw: 0,
+        qx: 0,
+        qy: 0,
+        qz: 0,
+        yaw: 0,
+        pitch: 0,
+        roll: 0
+      }
+    },
+    unregister: NOOP,
+    isAvailable: false,
+    config: {
+      interval: 0,
+      adjustToInterfaceOrientation: false,
+      iosReferenceFrame: 0
+    }
+  }),
+  useAnimatedStyle: IMMEDIATE_CALLBACK_INVOCATION,
+  useComposedEventHandler: NOOP_FACTORY,
+  useDerivedValue: processor => {
+    const result = processor();
+    return {
+      value: result,
+      get: () => result
+    };
+  },
   useEvent: (_handler, _eventNames, _rebuild) => NOOP,
-  // useHandler: ADD ME IF NEEDED
+  useFrameCallback: () => ({
+    callbackId: -1,
+    isActive: false,
+    setActive: NOOP
+  }),
+  useHandler: () => ({
+    context: {},
+    doDependenciesDiffer: false,
+    useWeb: false
+  }),
+  useReducedMotion: () => false,
+  useScrollOffset: () => ({
+    value: 0
+  }),
+  useScrollViewOffset: () => ({
+    value: 0
+  }),
   useSharedValue: init => {
     const value = {
       value: init
     };
     return new Proxy(value, {
       get(target, prop) {
+        if (prop === '_isReanimatedSharedValue') {
+          return true;
+        }
         if (prop === 'value') {
           return target.value;
         }
@@ -43,60 +104,22 @@ const hook = {
       }
     });
   },
-  // useReducedMotion: ADD ME IF NEEDED
-  useAnimatedStyle: IMMEDIATE_CALLBACK_INVOCATION,
-  useAnimatedReaction: NOOP,
-  useAnimatedRef: () => ({
-    current: null
-  }),
-  useAnimatedScrollHandler: NOOP_FACTORY,
-  useDerivedValue: processor => {
-    const result = processor();
-    return {
-      value: result,
-      get: () => result
-    };
-  },
-  useAnimatedSensor: () => ({
-    sensor: {
-      value: {
-        x: 0,
-        y: 0,
-        z: 0,
-        interfaceOrientation: 0,
-        qw: 0,
-        qx: 0,
-        qy: 0,
-        qz: 0,
-        yaw: 0,
-        pitch: 0,
-        roll: 0
-      }
-    },
-    unregister: NOOP,
-    isAvailable: false,
-    config: {
-      interval: 0,
-      adjustToInterfaceOrientation: false,
-      iosReferenceFrame: 0
-    }
-  }),
-  // useFrameCallback: ADD ME IF NEEDED
-  useAnimatedKeyboard: () => ({
-    height: 0,
-    state: 0
-  }),
-  useScrollViewOffset: () => ({
-    value: 0
-  }),
-  useScrollOffset: () => ({
+  useTimestamp: () => ({
     value: 0
   })
 };
 const animation = {
   cancelAnimation: NOOP,
-  // defineAnimation: ADD ME IF NEEDED
-  // withClamp: ADD ME IF NEEDED
+  defineAnimation: (_starting, factory) => factory(),
+  GentleSpringConfig,
+  GentleSpringConfigWithDuration,
+  Reanimated3DefaultSpringConfig,
+  Reanimated3DefaultSpringConfigWithDuration,
+  SnappySpringConfig,
+  SnappySpringConfigWithDuration,
+  WigglySpringConfig,
+  WigglySpringConfigWithDuration,
+  withClamp: (_config, animationToClamp) => animationToClamp,
   withDecay: (_userConfig, callback) => {
     callback?.(true);
     return 0;
@@ -116,9 +139,9 @@ const animation = {
   }
 };
 const interpolation = {
+  clamp: NOOP,
   Extrapolation,
-  interpolate: NOOP,
-  clamp: NOOP
+  interpolate: NOOP
 };
 const interpolateColor = {
   Extrapolate: Extrapolation,
@@ -126,29 +149,37 @@ const interpolateColor = {
   interpolateColor: NOOP
 };
 const Easing = {
+  cubicBezier,
   Easing: {
-    linear: ID,
-    ease: ID,
-    quad: ID,
-    cubic: ID,
-    poly: ID,
-    sin: ID,
-    circle: ID,
-    exp: ID,
-    elastic: ID,
     back: ID,
-    bounce: ID,
     bezier: () => ({
       factory: ID
     }),
     bezierFn: ID,
-    steps: ID,
+    bounce: ID,
+    circle: ID,
+    cubic: ID,
+    ease: ID,
+    elastic: ID,
+    exp: ID,
     in: ID,
+    inOut: ID,
+    linear: ID,
     out: ID,
-    inOut: ID
-  }
+    poly: ID,
+    quad: ID,
+    sin: ID,
+    steps: ID
+  },
+  linear,
+  steps
 };
 const platformFunctions = {
+  dispatchCommand: NOOP,
+  getRelativeCoords: () => ({
+    x: 0,
+    y: 0
+  }),
   measure: () => ({
     x: 0,
     y: 0,
@@ -157,19 +188,20 @@ const platformFunctions = {
     pageX: 0,
     pageY: 0
   }),
-  // dispatchCommand: ADD ME IF NEEDED
-  scrollTo: NOOP
-  // setGestureState: ADD ME IF NEEDED
-  // setNativeProps: ADD ME IF NEEDED
-  // getRelativeCoords: ADD ME IF NEEDED
+  scrollTo: NOOP,
+  setGestureState: NOOP,
+  setNativeProps: NOOP
 };
 const Colors = {
-  // isColor: ADD ME IF NEEDED
+  contrastColor,
+  convertToRGBA,
+  DynamicColorIOS,
+  isColor,
+  PlatformColor,
   processColor: processColorRN
-  // convertToRGBA: ADD ME IF NEEDED
 };
 const PropAdapters = {
-  // createAnimatedPropAdapter: ADD ME IF NEEDED
+  createAnimatedPropAdapter: ID
 };
 class BaseAnimationMock {
   duration() {
@@ -245,97 +277,85 @@ class BaseAnimationMock {
     return this;
   }
 }
+class NativeEventsManagerMock {
+  attachEvents = NOOP;
+  detachEvents = NOOP;
+  updateEvents = NOOP;
+}
 const core = {
-  runOnJS: ID,
-  runOnUI: ID,
+  configureReanimatedLogger: NOOP,
+  createAnimatedComponent: ID,
+  createCSSAnimatedComponent: ID,
   createWorkletRuntime: NOOP,
-  runOnRuntime: NOOP,
-  makeMutable: ID,
-  createSerializable: ID,
+  enableLayoutAnimations: NOOP,
+  executeOnUIRuntimeSync: ID,
+  getDynamicFeatureFlag: () => false,
+  getStaticFeatureFlag: () => false,
+  getViewProp: () => Promise.resolve(undefined),
+  isConfigured: () => false,
   isReanimated3: () => false,
-  // isConfigured: ADD ME IF NEEDED
-  enableLayoutAnimations: NOOP
-  // getViewProp: ADD ME IF NEEDED
+  isWorkletFunction,
+  makeMutable: ID,
+  makeShareableCloneRecursive: ID,
+  NativeEventsManager: NativeEventsManagerMock,
+  ReanimatedLogLevel,
+  runOnJS: ID,
+  runOnRuntime: NOOP,
+  runOnUI: ID,
+  setDynamicFeatureFlag: NOOP
 };
 const layoutReanimation = {
   BaseAnimationBuilder: new BaseAnimationMock(),
-  ComplexAnimationBuilder: new BaseAnimationMock(),
-  Keyframe: BaseAnimationMock,
-  // Flip
-  FlipInXUp: new BaseAnimationMock(),
-  FlipInYLeft: new BaseAnimationMock(),
-  FlipInXDown: new BaseAnimationMock(),
-  FlipInYRight: new BaseAnimationMock(),
-  FlipInEasyX: new BaseAnimationMock(),
-  FlipInEasyY: new BaseAnimationMock(),
-  FlipOutXUp: new BaseAnimationMock(),
-  FlipOutYLeft: new BaseAnimationMock(),
-  FlipOutXDown: new BaseAnimationMock(),
-  FlipOutYRight: new BaseAnimationMock(),
-  FlipOutEasyX: new BaseAnimationMock(),
-  FlipOutEasyY: new BaseAnimationMock(),
-  // Stretch
-  StretchInX: new BaseAnimationMock(),
-  StretchInY: new BaseAnimationMock(),
-  StretchOutX: new BaseAnimationMock(),
-  StretchOutY: new BaseAnimationMock(),
-  // Fade
-  FadeIn: new BaseAnimationMock(),
-  FadeInRight: new BaseAnimationMock(),
-  FadeInLeft: new BaseAnimationMock(),
-  FadeInUp: new BaseAnimationMock(),
-  FadeInDown: new BaseAnimationMock(),
-  FadeOut: new BaseAnimationMock(),
-  FadeOutRight: new BaseAnimationMock(),
-  FadeOutLeft: new BaseAnimationMock(),
-  FadeOutUp: new BaseAnimationMock(),
-  FadeOutDown: new BaseAnimationMock(),
-  // Slide
-  SlideInRight: new BaseAnimationMock(),
-  SlideInLeft: new BaseAnimationMock(),
-  SlideOutRight: new BaseAnimationMock(),
-  SlideOutLeft: new BaseAnimationMock(),
-  SlideInUp: new BaseAnimationMock(),
-  SlideInDown: new BaseAnimationMock(),
-  SlideOutUp: new BaseAnimationMock(),
-  SlideOutDown: new BaseAnimationMock(),
-  // Zoom
-  ZoomIn: new BaseAnimationMock(),
-  ZoomInRotate: new BaseAnimationMock(),
-  ZoomInLeft: new BaseAnimationMock(),
-  ZoomInRight: new BaseAnimationMock(),
-  ZoomInUp: new BaseAnimationMock(),
-  ZoomInDown: new BaseAnimationMock(),
-  ZoomInEasyUp: new BaseAnimationMock(),
-  ZoomInEasyDown: new BaseAnimationMock(),
-  ZoomOut: new BaseAnimationMock(),
-  ZoomOutRotate: new BaseAnimationMock(),
-  ZoomOutLeft: new BaseAnimationMock(),
-  ZoomOutRight: new BaseAnimationMock(),
-  ZoomOutUp: new BaseAnimationMock(),
-  ZoomOutDown: new BaseAnimationMock(),
-  ZoomOutEasyUp: new BaseAnimationMock(),
-  ZoomOutEasyDown: new BaseAnimationMock(),
-  // Bounce
   BounceIn: new BaseAnimationMock(),
   BounceInDown: new BaseAnimationMock(),
-  BounceInUp: new BaseAnimationMock(),
   BounceInLeft: new BaseAnimationMock(),
   BounceInRight: new BaseAnimationMock(),
+  BounceInUp: new BaseAnimationMock(),
   BounceOut: new BaseAnimationMock(),
   BounceOutDown: new BaseAnimationMock(),
-  BounceOutUp: new BaseAnimationMock(),
   BounceOutLeft: new BaseAnimationMock(),
   BounceOutRight: new BaseAnimationMock(),
-  // Lightspeed
-  LightSpeedInRight: new BaseAnimationMock(),
+  BounceOutUp: new BaseAnimationMock(),
+  ComplexAnimationBuilder: new BaseAnimationMock(),
+  CurvedTransition: new BaseAnimationMock(),
+  EntryExitTransition: new BaseAnimationMock(),
+  FadeIn: new BaseAnimationMock(),
+  FadeInDown: new BaseAnimationMock(),
+  FadeInLeft: new BaseAnimationMock(),
+  FadeInRight: new BaseAnimationMock(),
+  FadeInUp: new BaseAnimationMock(),
+  FadeOut: new BaseAnimationMock(),
+  FadeOutDown: new BaseAnimationMock(),
+  FadeOutLeft: new BaseAnimationMock(),
+  FadeOutRight: new BaseAnimationMock(),
+  FadeOutUp: new BaseAnimationMock(),
+  FadingTransition: new BaseAnimationMock(),
+  FlipInEasyX: new BaseAnimationMock(),
+  FlipInEasyY: new BaseAnimationMock(),
+  FlipInXDown: new BaseAnimationMock(),
+  FlipInXUp: new BaseAnimationMock(),
+  FlipInYLeft: new BaseAnimationMock(),
+  FlipInYRight: new BaseAnimationMock(),
+  FlipOutEasyX: new BaseAnimationMock(),
+  FlipOutEasyY: new BaseAnimationMock(),
+  FlipOutXDown: new BaseAnimationMock(),
+  FlipOutXUp: new BaseAnimationMock(),
+  FlipOutYLeft: new BaseAnimationMock(),
+  FlipOutYRight: new BaseAnimationMock(),
+  JumpingTransition: new BaseAnimationMock(),
+  Keyframe: BaseAnimationMock,
+  Layout: new BaseAnimationMock(),
   LightSpeedInLeft: new BaseAnimationMock(),
-  LightSpeedOutRight: new BaseAnimationMock(),
+  LightSpeedInRight: new BaseAnimationMock(),
   LightSpeedOutLeft: new BaseAnimationMock(),
-  // Pinwheel
+  LightSpeedOutRight: new BaseAnimationMock(),
+  LinearTransition: new BaseAnimationMock(),
   PinwheelIn: new BaseAnimationMock(),
   PinwheelOut: new BaseAnimationMock(),
-  // Rotate
+  RollInLeft: new BaseAnimationMock(),
+  RollInRight: new BaseAnimationMock(),
+  RollOutLeft: new BaseAnimationMock(),
+  RollOutRight: new BaseAnimationMock(),
   RotateInDownLeft: new BaseAnimationMock(),
   RotateInDownRight: new BaseAnimationMock(),
   RotateInUpLeft: new BaseAnimationMock(),
@@ -344,78 +364,115 @@ const layoutReanimation = {
   RotateOutDownRight: new BaseAnimationMock(),
   RotateOutUpLeft: new BaseAnimationMock(),
   RotateOutUpRight: new BaseAnimationMock(),
-  // Roll
-  RollInLeft: new BaseAnimationMock(),
-  RollInRight: new BaseAnimationMock(),
-  RollOutLeft: new BaseAnimationMock(),
-  RollOutRight: new BaseAnimationMock(),
-  // Transitions
-  Layout: new BaseAnimationMock(),
-  LinearTransition: new BaseAnimationMock(),
-  FadingTransition: new BaseAnimationMock(),
   SequencedTransition: new BaseAnimationMock(),
-  JumpingTransition: new BaseAnimationMock(),
-  CurvedTransition: new BaseAnimationMock(),
-  EntryExitTransition: new BaseAnimationMock()
+  SharedTransition: new BaseAnimationMock(),
+  SlideInDown: new BaseAnimationMock(),
+  SlideInLeft: new BaseAnimationMock(),
+  SlideInRight: new BaseAnimationMock(),
+  SlideInUp: new BaseAnimationMock(),
+  SlideOutDown: new BaseAnimationMock(),
+  SlideOutLeft: new BaseAnimationMock(),
+  SlideOutRight: new BaseAnimationMock(),
+  SlideOutUp: new BaseAnimationMock(),
+  StretchInX: new BaseAnimationMock(),
+  StretchInY: new BaseAnimationMock(),
+  StretchOutX: new BaseAnimationMock(),
+  StretchOutY: new BaseAnimationMock(),
+  ZoomIn: new BaseAnimationMock(),
+  ZoomInDown: new BaseAnimationMock(),
+  ZoomInEasyDown: new BaseAnimationMock(),
+  ZoomInEasyUp: new BaseAnimationMock(),
+  ZoomInLeft: new BaseAnimationMock(),
+  ZoomInRight: new BaseAnimationMock(),
+  ZoomInRotate: new BaseAnimationMock(),
+  ZoomInUp: new BaseAnimationMock(),
+  ZoomOut: new BaseAnimationMock(),
+  ZoomOutDown: new BaseAnimationMock(),
+  ZoomOutEasyDown: new BaseAnimationMock(),
+  ZoomOutEasyUp: new BaseAnimationMock(),
+  ZoomOutLeft: new BaseAnimationMock(),
+  ZoomOutRight: new BaseAnimationMock(),
+  ZoomOutRotate: new BaseAnimationMock(),
+  ZoomOutUp: new BaseAnimationMock()
 };
 const isSharedValue = {
-  // isSharedValue: ADD ME IF NEEDED
+  isSharedValue: isSharedValueReal
 };
 const commonTypes = {
-  SensorType,
-  IOSReferenceFrame,
   InterfaceOrientation,
+  IOSReferenceFrame,
   KeyboardState,
-  ReduceMotion
+  ReduceMotion,
+  SensorType
 };
 const pluginUtils = {
-  // getUseOfValueInStyleWarning: ADD ME IF NEEDED
+  getUseOfValueInStyleWarning
 };
 const jestUtils = {
-  withReanimatedTimer,
-  advanceAnimationByTime,
   advanceAnimationByFrame,
+  advanceAnimationByTime,
+  getAnimatedStyle,
   setUpTests,
-  getAnimatedStyle
+  withReanimatedTimer
 };
 const LayoutAnimationConfig = {
-  // LayoutAnimationConfig: ADD ME IF NEEDED
+  LayoutAnimationConfig: ({
+    children
+  }) => children
 };
 const mappers = {
-  // startMapper: ADD ME IF NEEDED
-  // stopMapper: ADD ME IF NEEDED
+  startMapper: () => 0,
+  stopMapper: NOOP
+};
+const components = {
+  PerformanceMonitor: () => null,
+  ReducedMotionConfig: () => null,
+  SharedTransitionBoundary: ({
+    children
+  }) => children
+};
+const css = {
+  css: cssStyleSheet
+};
+const screenTransition = {
+  finishScreenTransition: NOOP,
+  ScreenTransition: ScreenTransitionPresets,
+  startScreenTransition: NOOP
 };
 const Animated = {
-  View: ViewRN,
-  Text: TextRN,
-  Image: ImageRN,
-  ScrollView: AnimatedRN.ScrollView,
-  FlatList: AnimatedRN.FlatList,
-  Extrapolate: Extrapolation,
-  interpolate: NOOP,
-  interpolateColor: NOOP,
+  addWhitelistedNativeProps: NOOP,
+  addWhitelistedUIProps: NOOP,
   clamp: NOOP,
   createAnimatedComponent: ID,
-  addWhitelistedUIProps: NOOP,
-  addWhitelistedNativeProps: NOOP
+  Extrapolate: Extrapolation,
+  FlatList: AnimatedRN.FlatList,
+  Image: ImageRN,
+  interpolate: NOOP,
+  interpolateColor: NOOP,
+  ScrollView: AnimatedRN.ScrollView,
+  Text: TextRN,
+  View: ViewRN
 };
 const Reanimated = {
-  ...core,
-  ...hook,
   ...animation,
-  ...interpolation,
-  ...interpolateColor,
-  ...Easing,
-  ...platformFunctions,
   ...Colors,
-  ...PropAdapters,
-  ...layoutReanimation,
-  ...isSharedValue,
   ...commonTypes,
-  ...pluginUtils,
+  ...components,
+  ...core,
+  ...css,
+  ...Easing,
+  ...hook,
+  ...interpolateColor,
+  ...interpolation,
+  ...isSharedValue,
   ...jestUtils,
   ...LayoutAnimationConfig,
-  ...mappers
+  ...layoutReanimation,
+  ...mappers,
+  ...platformFunctions,
+  ...pluginUtils,
+  ...PropAdapters,
+  ...screenTransition
 };
 module.exports = {
   __esModule: true,

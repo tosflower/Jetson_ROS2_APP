@@ -70,4 +70,3 @@ export declare function initObserveIntegrationIfNeededImpl(activate: (state: Int
  */
 export declare function initObserveIntegrationIfNeeded(): void;
 export {};
-//# sourceMappingURL=observe.d.ts.map

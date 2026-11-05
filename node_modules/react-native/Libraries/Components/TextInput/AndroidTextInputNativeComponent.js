@@ -24,7 +24,10 @@ import type {TextInputNativeCommands} from './TextInputNativeCommands';
 
 import * as NativeComponentRegistry from '../../NativeComponent/NativeComponentRegistry';
 import codegenNativeCommands from '../../Utilities/codegenNativeCommands';
-import {colorAttribute} from '../View/ReactNativeStyleAttributes';
+import {
+  colorAttribute,
+  fontVariationSettingsAttribute,
+} from '../View/ReactNativeStyleAttributes';
 
 export type KeyboardType =
   // Cross Platform
@@ -576,7 +579,7 @@ export type AndroidTextInputNativeProps = Readonly<{
    * - `borderBottomRightRadius`
    * - `borderBottomLeftRadius`
    *
-   * see [Issue#7070](https://github.com/react/react-native/issues/7070)
+   * see [Issue#7070](https://github.com/facebook/react-native/issues/7070)
    * for more detail.
    *
    * [Styles](docs/style.html)
@@ -615,6 +618,7 @@ export type AndroidTextInputNativeProps = Readonly<{
   includeFontPadding?: ?boolean,
   fontWeight?: ?string,
   fontFamily?: ?string,
+  fontVariationSettings?: ?string,
 
   /**
    * I cannot find where these are defined but JS complains without them.
@@ -714,6 +718,7 @@ export const __INTERNAL_VIEW_CONFIG: PartialViewConfig = {
     includeFontPadding: true,
     fontWeight: true,
     fontFamily: true,
+    fontVariationSettings: fontVariationSettingsAttribute,
     allowFontScaling: true,
     onSelectionChange: true,
     mostRecentEventCount: true,

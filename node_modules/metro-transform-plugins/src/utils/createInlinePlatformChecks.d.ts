@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<13269e5dcf93e0b31428517812e3bb88>>
+ * @generated SignedSource<<03de55110a92713945c8e6470f410a10>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-transform-plugins/src/utils/createInlinePlatformChecks.js
@@ -21,19 +21,8 @@ import type {CallExpression, MemberExpression} from '@babel/types';
 
 type Types = typeof $$IMPORT_TYPEOF_1$$;
 type PlatformChecks = {
-  isPlatformNode: (
-    node: MemberExpression,
-    scope: Scope,
-    isWrappedModule: boolean,
-  ) => boolean;
-  isPlatformSelectNode: (
-    node: CallExpression,
-    scope: Scope,
-    isWrappedModule: boolean,
-  ) => boolean;
+  isPlatformNode: (node: MemberExpression, scope: Scope, isWrappedModule: boolean) => boolean;
+  isPlatformSelectNode: (node: CallExpression, scope: Scope, isWrappedModule: boolean) => boolean;
 };
-declare function createInlinePlatformChecks(
-  t: Types,
-  requireName?: string,
-): PlatformChecks;
+declare function createInlinePlatformChecks(t: Types, requireName?: string): PlatformChecks;
 export default createInlinePlatformChecks;

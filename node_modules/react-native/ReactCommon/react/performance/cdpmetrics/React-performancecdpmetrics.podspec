@@ -8,7 +8,7 @@ require "json"
 package = JSON.parse(File.read(File.join(__dir__, "..", "..", "..", "..", "package.json")))
 version = package['version']
 
-source = { :git => 'https://github.com/react/react-native.git' }
+source = { :git => 'https://github.com/facebook/react-native.git' }
 if version == '1000.0.0'
   # This is an unpublished version, use the latest commit hash of the react-native repo, which we’re presumably in.
   source[:commit] = `git rev-parse HEAD`.strip if system("git rev-parse --git-dir > /dev/null 2>&1")
@@ -40,6 +40,8 @@ Pod::Spec.new do |s|
 
   resolve_use_frameworks(s, header_mappings_dir: "../../..", module_name: "React_performancecdpmetrics")
 
+  s.dependency "React-cxxstableapi"
+
   add_dependency(s, "React-runtimeexecutor", :additional_framework_paths => ["platform/ios"])
   s.dependency "React-jsi"
   s.dependency "React-performancetimeline"
@@ -50,4 +52,6 @@ Pod::Spec.new do |s|
   if use_hermes()
     s.dependency 'hermes-engine'
   end
+
+  mark_as_react_native_build(s)
 end

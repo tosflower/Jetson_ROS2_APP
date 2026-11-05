@@ -1,8 +1,4 @@
-import type { LoggerConfig } from './common';
-/** @deprecated This function is a no-op in Reanimated 4. */
-export declare function addWhitelistedNativeProps(_props: Record<string, boolean>): void;
-/** @deprecated This function is a no-op in Reanimated 4. */
-export declare function addWhitelistedUIProps(_props: Record<string, boolean>): void;
+import type { LogFunction, LoggerConfig } from './common';
 /**
  * Updates Reanimated logger config with the user-provided configuration. Will
  * affect Reanimated code executed after call to this function so it should be
@@ -11,6 +7,9 @@ export declare function addWhitelistedUIProps(_props: Record<string, boolean>): 
  * call it only once).
  *
  * @param config - The new logger configuration to apply.
+ * @param onLog - Optional callback invoked for every log that passes the
+ *   `level` and `strict` filters, in addition to the default console output.
+ *   Omitting it clears a previously registered callback.
  */
-export declare function configureReanimatedLogger(config: LoggerConfig): void;
+export declare function configureReanimatedLogger(config: LoggerConfig, onLog?: LogFunction): void;
 //# sourceMappingURL=ConfigHelper.d.ts.map

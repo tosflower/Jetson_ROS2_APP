@@ -1,5 +1,6 @@
 'use strict';
 
+import { isBundleModeEnabled } from '../debug/bundleMode';
 import { addNoBundleModeGuardImplementation } from '../guardImplementation';
 import { isWorkletFunction } from "../workletFunction.js";
 import { WorkletsModule } from '../WorkletsModule/NativeWorklets';
@@ -35,7 +36,7 @@ export function createShareable(hostRuntimeId, initial, config) {
   const shareableRef = WorkletsModule.createShareable(hostRuntimeId, createSerializable(initial), !!initSynchronously, createSerializable(hostDecorator), createSerializable(guestDecorator));
   return globalThis.__shareableGuestUnpacker(hostRuntimeId, shareableRef, guestDecorator);
 }
-if (__DEV__ && !globalThis._WORKLETS_BUNDLE_MODE_ENABLED) {
+if (__DEV__ && !isBundleModeEnabled()) {
   addNoBundleModeGuardImplementation(createShareable);
 }
 //# sourceMappingURL=shareable.native.js.map

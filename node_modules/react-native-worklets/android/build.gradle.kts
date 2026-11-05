@@ -8,7 +8,21 @@ plugins {
     id("com.android.library")
     id("maven-publish")
     id("com.diffplug.spotless") version "8.1.0"
-    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.android") apply false
+}
+
+fun shouldApplyKotlinAndroidPlugin(): Boolean {
+    val agpMajorVersion = com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION.substringBefore('.').toInt()
+    if (agpMajorVersion <= 8) {
+        return true
+    }
+
+    val builtInKotlin = providers.gradleProperty("android.builtInKotlin").orNull?.toBoolean() ?: true
+    return !builtInKotlin
+}
+
+if (shouldApplyKotlinAndroidPlugin()) {
+    apply(plugin = "org.jetbrains.kotlin.android")
 }
 
 fun safeExtGet(prop: String, fallback: Any?): Any? =
@@ -23,9 +37,13 @@ fun safeAppExtGet(prop: String, fallback: Any?): Any? {
 }
 
 fun resolveReactNativeDirectory(): File {
-    val reactNativeLocation = safeAppExtGet("REACT_NATIVE_NODE_MODULES_DIR", null) as String?
-    if (reactNativeLocation != null) {
-        return file(reactNativeLocation)
+    val reactNativeLocationProperty = safeAppExtGet("REACT_NATIVE_NODE_MODULES_DIR", null)
+    if (reactNativeLocationProperty != null) {
+        return when (reactNativeLocationProperty) {
+            is File -> reactNativeLocationProperty
+            is String -> file(reactNativeLocationProperty)
+            else -> file(reactNativeLocationProperty.toString())
+        }
     }
 
     // Fallback to node resolver for custom directory structures like monorepos.
@@ -51,22 +69,13 @@ fun getReactNativeVersion(): String {
     return reactProperties.getProperty("VERSION_NAME")
 }
 
-fun getReactNativeMinorVersion(): Int {
-    val reactNativeVersion = getReactNativeVersion()
-    return if (reactNativeVersion.startsWith("0.0.0-")) 1000 else reactNativeVersion.split(".")[1].toInt()
-}
-
 fun getHermesV1Enabled(): Boolean {
     // Even though `HERMES_V1_ENABLED` is now centralized
-    // in `react-native-flags.cmake` for React Native >= 0.84
-    // that CMake file depends on definitions provided
-    // in local `externalNativeBuild` configuration of the LIBRARY.
+    // in `react-native-flags.cmake`, that CMake file depends
+    // on definitions provided in local `externalNativeBuild`
+    // configuration of the LIBRARY.
     // I hope this is only a temporary workaround.
-    return if (getReactNativeMinorVersion() >= 84) {
-        safeAppExtGet("hermesV1Enabled", true)?.toString()?.toBoolean() ?: true
-    } else {
-        safeAppExtGet("hermesV1Enabled", false)?.toString()?.toBoolean() ?: false
-    }
+    return safeAppExtGet("hermesV1Enabled", true)?.toString()?.toBoolean() ?: true
 }
 
 fun getWorkletsVersion(): String {
@@ -109,9 +118,6 @@ fun getStaticFeatureFlags(): Map<String, String> {
 fun getStaticFeatureFlagsString(featureFlags: Map<String, String>): String =
     featureFlags.entries.joinToString("") { (key, value) -> "[$key:$value]" }
 
-fun isFlagEnabled(featureFlags: Map<String, String>, flagName: String): Boolean =
-    featureFlags.containsKey(flagName) && featureFlags[flagName] == "true"
-
 if (project != rootProject) {
     apply(plugin = "com.facebook.react")
 }
@@ -123,7 +129,6 @@ val reactNativeRootDir: File = resolveReactNativeDirectory()
 val REACT_NATIVE_VERSION: String = getReactNativeVersion()
 val WORKLETS_VERSION: String = getWorkletsVersion()
 val IS_REANIMATED_EXAMPLE_APP: Boolean = safeAppExtGet("isReanimatedExampleApp", false)?.toString()?.toBoolean() ?: false
-val FETCH_PREVIEW_ENABLED: Boolean = isFlagEnabled(featureFlags, "FETCH_PREVIEW_ENABLED")
 val WORKLETS_FEATURE_FLAGS: String = getStaticFeatureFlagsString(featureFlags)
 val HERMES_V1_ENABLED: Boolean = getHermesV1Enabled()
 val WORKLETS_PROFILING: Boolean = safeAppExtGet("enableWorkletsProfiling", false)?.toString()?.toBoolean() ?: false
@@ -155,15 +160,18 @@ apply(from = "./fix-prefab.gradle.kts")
 apply(from = "./generate-stub-pch.gradle.kts")
 
 android {
-    compileSdk = safeExtGet("compileSdkVersion", 36) as Int
+    compileSdk = safeExtGet("compileSdkVersion", 37) as Int
 
     namespace = "com.swmansion.worklets"
 
-    if (rootProject.hasProperty("ndkPath")) {
-        ndkPath = rootProject.extensions.extraProperties.get("ndkPath") as String
+    val resolvedNdkPath = rootProject.findProperty("ndkPath") as? String
+    if (!resolvedNdkPath.isNullOrEmpty()) {
+        ndkPath = resolvedNdkPath
     }
-    if (rootProject.hasProperty("ndkVersion")) {
-        ndkVersion = rootProject.extensions.extraProperties.get("ndkVersion") as String
+
+    val resolvedNdkVersion = rootProject.findProperty("ndkVersion") as? String
+    if (!resolvedNdkVersion.isNullOrEmpty()) {
+        ndkVersion = resolvedNdkVersion
     }
 
     buildFeatures {
@@ -195,7 +203,6 @@ android {
                     "-DANDROID_TOOLCHAIN=clang",
                     "-DREACT_NATIVE_DIR=${toPlatformFileString(reactNativeRootDir.path)}",
                     "-DIS_REANIMATED_EXAMPLE_APP=$IS_REANIMATED_EXAMPLE_APP",
-                    "-DWORKLETS_FETCH_PREVIEW_ENABLED=$FETCH_PREVIEW_ENABLED",
                     "-DWORKLETS_PROFILING=$WORKLETS_PROFILING",
                     "-DWORKLETS_VERSION=$WORKLETS_VERSION",
                     "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
@@ -265,25 +272,13 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    sourceSets {
-        getByName("main") {
-            java {
-                if (FETCH_PREVIEW_ENABLED) {
-                    srcDir("src/networking")
-                } else {
-                    srcDir("src/no-networking")
-                }
-            }
-        }
-    }
-
     if (IS_REANIMATED_EXAMPLE_APP) {
         apply(from = "../../../scripts/llvm-tools/android-hook.gradle.kts")
     }
 }
 
 if (project != rootProject) {
-    kotlin {
+    extensions.configure<org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension> {
         compilerOptions {
             jvmTarget = JvmTarget.fromTarget("17")
         }
@@ -315,7 +310,7 @@ tasks.named("preBuild") { dependsOn("assertMinimalReactNativeVersionTask") }
 
 // Workaround for AGP 9 + Kotlin 2.x lint K2 UAST crash on .gradle.kts build scripts.
 // See: https://issuetracker.google.com/issues/432144179
-tasks.configureEach { if (name.startsWith("lintVital")) enabled = false }
+tasks.configureEach { if (name.startsWith("lint")) enabled = false }
 
 tasks.register<Copy>("prepareWorkletsHeadersForPrefabs") {
     from("$projectDir/src/main/cpp")

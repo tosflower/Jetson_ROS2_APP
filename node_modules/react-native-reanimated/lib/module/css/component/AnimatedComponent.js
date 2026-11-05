@@ -2,13 +2,10 @@
 
 import { Component } from 'react';
 import { Platform, StyleSheet } from 'react-native';
-import { IS_JEST, SHOULD_BE_USE_WEB } from "../../common/index.js";
-import { getViewInfo } from "../../createAnimatedComponent/getViewInfo.js";
-import { getShadowNodeWrapperFromRef } from '../../fabricUtils';
-import { findHostInstance } from '../../platform-specific/findHostInstance';
-import { markNodeAsRemovable, unmarkNodeAsRemovable } from "../native/index.js";
+import { IS_JEST } from "../../common/index.js";
+import { assignRef } from "../../reactUtils.js";
 import { CSSManager } from '../platform';
-import { filterNonCSSStyleProps } from "./utils.js";
+import { filterCSSProps } from "./utils.js";
 import { jsx as _jsx } from "react/jsx-runtime";
 // TODO - change these ugly underscore prefixed methods and properties to real
 // private/protected ones when possible (when changes from this repo are merged
@@ -16,7 +13,6 @@ import { jsx as _jsx } from "react/jsx-runtime";
 export default class AnimatedComponent extends Component {
   _cssStyle = {}; // RN style object with Reanimated CSS properties
   _componentRef = null;
-  // Used only on web
   _componentDOMRef = null;
   _willUnmount = false;
   constructor(ChildComponent, props) {
@@ -33,31 +29,14 @@ export default class AnimatedComponent extends Component {
     if (this._viewInfo !== undefined) {
       return this._viewInfo;
     }
-    let viewTag;
-    let shadowNodeWrapper = null;
-    let DOMElement = null;
-    let reactViewName;
-    if (SHOULD_BE_USE_WEB) {
-      // At this point we assume that `_setComponentRef` was already called and `_component` is set.
-      // `this._component` on web represents HTMLElement of our component, that's why we use casting
-      // TODO - implement a valid solution later on - this is a temporary fix
-      viewTag = this._componentRef;
-      DOMElement = this._componentDOMRef;
-    } else {
-      const hostInstance = findHostInstance(this);
-      if (!hostInstance) {
-        /*
-          findHostInstance can return null for a component that doesn't render anything 
-          (render function returns null). Example: 
-          svg Stop: https://github.com/react-native-svg/react-native-svg/blob/develop/src/elements/Stop.tsx
-        */
-        throw new Error('[Reanimated] Cannot find host instance for this component. Maybe it renders nothing?');
-      }
-      const viewInfo = getViewInfo(hostInstance);
-      viewTag = viewInfo.viewTag ?? -1;
-      reactViewName = viewInfo.reactViewName;
-      shadowNodeWrapper = getShadowNodeWrapperFromRef(this, hostInstance);
-    }
+    const shadowNodeWrapper = null;
+    const reactViewName = undefined;
+
+    // At this point we assume that `_setComponentRef` was already called and `_componentRef` is set.
+    // `this._componentRef` on web represents HTMLElement of our component, that's why we use casting
+    // TODO - implement a valid solution later on - this is a temporary fix
+    const viewTag = this._componentRef;
+    const DOMElement = this._componentDOMRef;
     this._viewInfo = {
       viewTag,
       shadowNodeWrapper,
@@ -69,19 +48,19 @@ export default class AnimatedComponent extends Component {
     return this._viewInfo;
   }
   _setComponentRef = ref => {
-    const forwardedRef = this.props.forwardedRef;
     // Forward to user ref prop (if one has been specified)
-    if (typeof forwardedRef === 'function') {
-      // Handle function-based refs. String-based refs are handled as functions.
-      forwardedRef(ref);
-    } else if (typeof forwardedRef === 'object' && forwardedRef) {
-      // Handle createRef-based refs
-      forwardedRef.current = ref;
-    }
+    const forwardedRef = this.props.forwardedRef;
     if (!ref) {
       // component has been unmounted
+      if (this._forwardedRefCleanup) {
+        this._forwardedRefCleanup();
+        this._forwardedRefCleanup = undefined;
+      } else {
+        assignRef(forwardedRef, null);
+      }
       return;
     }
+    this._forwardedRefCleanup = assignRef(forwardedRef, ref);
     if (ref !== this._componentRef) {
       this._componentRef = this._resolveComponentRef(ref);
       // if ref is changed, reset viewInfo
@@ -97,12 +76,10 @@ export default class AnimatedComponent extends Component {
       return componentRef.getAnimatableRef();
     }
     // Case for SVG components on Web
-    if (SHOULD_BE_USE_WEB) {
-      if (componentRef && componentRef.elementRef) {
-        this._componentDOMRef = componentRef.elementRef.current;
-      } else {
-        this._componentDOMRef = ref;
-      }
+    if (componentRef && componentRef.elementRef) {
+      this._componentDOMRef = componentRef.elementRef.current;
+    } else {
+      this._componentDOMRef = ref;
     }
     return componentRef;
   };
@@ -111,17 +88,13 @@ export default class AnimatedComponent extends Component {
   }
   componentDidMount() {
     this._updateStyles(this.props);
-    const viewTag = this._viewInfo?.viewTag;
-    if (!SHOULD_BE_USE_WEB && this._willUnmount && typeof viewTag === 'number') {
-      unmarkNodeAsRemovable(viewTag);
-    }
     if (!IS_JEST) {
       this._CSSManager ??= new CSSManager(this._getViewInfo(),
       // `react-native-svg`'s web classes don't set `static displayName`
       // (only the native side does), so fall back to the class `name` which
       // matches the React `displayName` pattern used elsewhere.
       this.ChildComponent.displayName ?? this.ChildComponent.name);
-      this._CSSManager?.update(this._cssStyle);
+      this._CSSManager?.update(this._cssStyle, this.props);
     }
     this._willUnmount = false;
   }
@@ -129,21 +102,12 @@ export default class AnimatedComponent extends Component {
     if (!IS_JEST && this._CSSManager) {
       this._CSSManager.unmountCleanup();
     }
-    const wrapper = this._viewInfo?.shadowNodeWrapper;
-    if (!SHOULD_BE_USE_WEB && wrapper) {
-      // Mark node as removable on the native (C++) side, but only actually remove it
-      // when it no longer exists in the Shadow Tree. This ensures proper cleanup of
-      // animations/transitions/props while handling cases where the node might be
-      // remounted (e.g., when frozen) after componentWillUnmount is called.
-
-      markNodeAsRemovable(wrapper);
-    }
     this._willUnmount = true;
   }
   shouldComponentUpdate(nextProps) {
     this._updateStyles(nextProps);
     if (this._CSSManager) {
-      this._CSSManager.update(this._cssStyle);
+      this._CSSManager.update(this._cssStyle, nextProps);
     }
 
     // TODO - maybe check if the render is necessary instead of always returning true
@@ -160,12 +124,10 @@ export default class AnimatedComponent extends Component {
       }
     });
     return /*#__PURE__*/_jsx(ChildComponent, {
-      ...(props ?? this.props),
+      ...filterCSSProps(props ?? this.props),
       ...platformProps,
-      style: filterNonCSSStyleProps(props?.style ?? this.props.style)
       // Casting is used here, because ref can be null - in that case it cannot be assigned to HTMLElement.
       // After spending some time trying to figure out what to do with this problem, we decided to leave it this way
-      ,
       ref: this._setComponentRef
     });
   }

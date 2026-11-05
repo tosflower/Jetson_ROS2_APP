@@ -4,6 +4,7 @@
 #import "RNSContainer.h"
 #import "RNSReactMountingTransactionObserving.h"
 #import "RNSTabBarAppearanceCoordinator.h"
+#import "RNSTabBarItemCoordinator.h"
 #import "RNSTabsNavigationState.h"
 #import "RNSTabsScreenViewController.h"
 
@@ -117,6 +118,8 @@ NS_ASSUME_NONNULL_BEGIN
  */
 @property (nonatomic, readonly, strong, nonnull) RNSTabBarAppearanceCoordinator *tabBarAppearanceCoordinator;
 
+@property (nonatomic, readonly, strong, nonnull) RNSTabBarItemCoordinator *tabBarItemCoordinator;
+
 /**
  * If true, the controller will reject any navigation state updates if the provenance of the
  * update is stale.
@@ -156,6 +159,19 @@ NS_ASSUME_NONNULL_BEGIN
  * origin (e.g. `RNSTabsActionOriginProgrammaticJs` for JS-driven `navStateRequest` updates).
  */
 - (void)setPendingNavigationStateUpdate:(nullable RNSTabsNavigationStateUpdateRequest *)stateUpdate;
+
+/**
+ * Set the React `screenKey` of the tab screen that should receive the prominent treatment
+ * (`UITabBarController.prominentTabIdentifier`, iOS 27+). Pass nil or an empty string to
+ * unset it, letting UIKit decide which tab (if any) is prominent.
+ *
+ * The key is resolved to the backing `UITab` identifier lazily & re-applied after every child
+ * installation, so the call is valid before the children are installed. A key not matching any
+ * tab screen is warned about on the next update flush and behaves like an unset key.
+ *
+ * No-op below iOS 27.
+ */
+- (void)setProminentScreenKey:(nullable NSString *)screenKey;
 
 /**
  * Idempotent teardown. Releases observer references and any retained host references.

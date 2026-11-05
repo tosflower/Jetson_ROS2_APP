@@ -82,7 +82,7 @@ constructor(private val fpsListener: FpsListener? = null) :
 
   @ReactProp(name = "scrollEnabled", defaultBoolean = true)
   public fun setScrollEnabled(view: ReactScrollView, value: Boolean) {
-    view.setScrollEnabled(value)
+    view.scrollEnabled = value
 
     // Set focusable to match whether scroll is enabled. This improves keyboarding
     // experience by not making scrollview a tab stop when you cannot interact with it.
@@ -313,7 +313,7 @@ constructor(private val fpsListener: FpsListener? = null) :
     val child =
         scrollView.getChildAt(0)
             ?: throw RetryableMountingLayerException(
-                "scrollToEnd called on ScrollView without child"
+                "scrollToEnd called on ScrollView without child",
             )
 
     // ScrollView always has one child - the scrollable area
@@ -335,8 +335,8 @@ constructor(private val fpsListener: FpsListener? = null) :
   public fun setFadingEdgeLength(view: ReactScrollView, value: Dynamic) {
     when (value.type) {
       ReadableType.Number -> {
-        view.setFadingEdgeLengthStart(value.asInt())
-        view.setFadingEdgeLengthEnd(value.asInt())
+        view.fadingEdgeLengthStart = value.asInt()
+        view.fadingEdgeLengthEnd = value.asInt()
       }
       ReadableType.Map -> {
         value.asMap()?.let { map ->
@@ -348,8 +348,8 @@ constructor(private val fpsListener: FpsListener? = null) :
           if (map.hasKey("end") && map.getInt("end") > 0) {
             end = map.getInt("end")
           }
-          view.setFadingEdgeLengthStart(start)
-          view.setFadingEdgeLengthEnd(end)
+          view.fadingEdgeLengthStart = start
+          view.fadingEdgeLengthEnd = end
         }
       }
       else -> {
@@ -359,7 +359,7 @@ constructor(private val fpsListener: FpsListener? = null) :
     if (view.fadingEdgeLengthStart > 0 || view.fadingEdgeLengthEnd > 0) {
       view.isVerticalFadingEdgeEnabled = true
       view.setFadingEdgeLength(
-          Math.round(Math.max(view.fadingEdgeLengthStart, view.fadingEdgeLengthEnd).dpToPx())
+          Math.round(Math.max(view.fadingEdgeLengthStart, view.fadingEdgeLengthEnd).dpToPx()),
       )
     } else {
       view.isVerticalFadingEdgeEnabled = false
@@ -376,7 +376,7 @@ constructor(private val fpsListener: FpsListener? = null) :
   public fun setMaintainVisibleContentPosition(view: ReactScrollView, value: ReadableMap?) {
     if (value != null) {
       view.setMaintainVisibleContentPosition(
-          MaintainVisibleScrollPositionHelper.Config.fromReadableMap(value)
+          MaintainVisibleScrollPositionHelper.Config.fromReadableMap(value),
       )
     } else {
       view.setMaintainVisibleContentPosition(null)
@@ -388,7 +388,7 @@ constructor(private val fpsListener: FpsListener? = null) :
       props: ReactStylesDiffMap,
       stateWrapper: StateWrapper,
   ): Any? {
-    view.setStateWrapper(stateWrapper)
+    view.stateWrapper = stateWrapper
     if (
         ReactNativeFeatureFlags.enableViewCulling() ||
             ReactNativeFeatureFlags.useTraitHiddenOnAndroid()
@@ -430,7 +430,7 @@ constructor(private val fpsListener: FpsListener? = null) :
     // be on the wrong side. Thus we are moving it to the other side, when the list
     // is inverted.
     // See also:
-    //  - https://github.com/react/react-native/issues/35350
+    //  - https://github.com/facebook/react-native/issues/35350
     //  - https://issuetracker.google.com/issues/287304310
     if (applyFix) {
       view.verticalScrollbarPosition = View.SCROLLBAR_POSITION_LEFT
@@ -442,17 +442,15 @@ constructor(private val fpsListener: FpsListener? = null) :
   public companion object {
     public const val REACT_CLASS: String = "RCTScrollView"
 
-    public fun createExportedCustomDirectEventTypeConstants(): Map<String, Any> =
-        mapOf(
-            getJSEventName(ScrollEventType.SCROLL) to mapOf("registrationName" to "onScroll"),
-            getJSEventName(ScrollEventType.BEGIN_DRAG) to
-                mapOf("registrationName" to "onScrollBeginDrag"),
-            getJSEventName(ScrollEventType.END_DRAG) to
-                mapOf("registrationName" to "onScrollEndDrag"),
-            getJSEventName(ScrollEventType.MOMENTUM_BEGIN) to
-                mapOf("registrationName" to "onMomentumScrollBegin"),
-            getJSEventName(ScrollEventType.MOMENTUM_END) to
-                mapOf("registrationName" to "onMomentumScrollEnd"),
-        )
+    public fun createExportedCustomDirectEventTypeConstants(): Map<String, Any> = mapOf(
+        getJSEventName(ScrollEventType.SCROLL) to mapOf("registrationName" to "onScroll"),
+        getJSEventName(ScrollEventType.BEGIN_DRAG) to
+            mapOf("registrationName" to "onScrollBeginDrag"),
+        getJSEventName(ScrollEventType.END_DRAG) to mapOf("registrationName" to "onScrollEndDrag"),
+        getJSEventName(ScrollEventType.MOMENTUM_BEGIN) to
+            mapOf("registrationName" to "onMomentumScrollBegin"),
+        getJSEventName(ScrollEventType.MOMENTUM_END) to
+            mapOf("registrationName" to "onMomentumScrollEnd"),
+    )
   }
 }

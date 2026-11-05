@@ -1,12 +1,14 @@
 'use strict';
 
+import { camelizeKebabCase } from "../../utils/conversions.js";
 import { isLength, isNumber } from "../../utils/guards.js";
+import { CSS_NUMBER_PATTERN } from "../../utils/parsers.js";
 import { processColor } from "./colors.js";
 
 // Capture filter functions and their content eg "brightness(0.5) opacity(1)" => [["brightness(0.5)", "brightness", "0.5"], ["opacity(1)", "opacity", "1"]]
 const FILTER_REGEX = /([\w-]+)\(([^()]*|\([^()]*\)|[^()]*\([^()]*\)[^()]*)\)/g;
 // Capture two groups: current transform value and optional unit -> "21.37px" => ["21.37px", "21.37", "px"] + accepts scientific notation like 'e-14'
-const FILTER_VALUE_REGEX = /^([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)([a-z%]*)$/;
+const FILTER_VALUE_REGEX = new RegExp(`^(${CSS_NUMBER_PATTERN})([a-z%]*)$`);
 // Capture drop-shadow parts "10px 5px 5px #888888" => ["10px", "5px", "5px", "#888888"]
 const DROP_SHADOW_REGEX = /[^,\s()]+(?:\([^()]*\))?/g;
 const parseHueRotate = value => {
@@ -176,7 +178,7 @@ const parseFilterString = (value, context) => {
     if (!name || !content) {
       return [];
     }
-    const parsed = parseFilterProperty(name, content, context);
+    const parsed = parseFilterProperty(camelizeKebabCase(name), content, context);
     if (parsed === null) {
       return [];
     }

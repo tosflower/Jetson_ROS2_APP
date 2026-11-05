@@ -10,6 +10,7 @@ export function SharedTransitionBoundary({
   return /*#__PURE__*/_jsx(REASharedTransitionBoundary, {
     style: styles.contents,
     isActive: isActive,
+    pointerEvents: "box-none",
     children: children
   });
 }

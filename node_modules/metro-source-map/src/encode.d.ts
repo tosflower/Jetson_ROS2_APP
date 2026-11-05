@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<e31ac8f472e7aa09b837bf36083edf6c>>
+ * @generated SignedSource<<434f3b5bd72fe24ce754f3f2d57bb686>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-source-map/src/encode.js
@@ -65,9 +65,5 @@ export type THIRD_PARTY_LICENSE = unknown;
  * DON'T ADD MORE COMMENTS TO THIS FUNCTION TO KEEP ITS LENGTH SHORT ENOUGH FOR
  * V8 OPTIMIZATION!
  */
-declare function encode(
-  value: number,
-  buffer: Buffer,
-  position: number,
-): number;
+declare function encode(value: number, buffer: Buffer, position: number): number;
 export default encode;

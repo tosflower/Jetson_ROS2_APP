@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<17ae3fc242dc6b3915a72d04dad032b8>>
+ * @generated SignedSource<<43f035756b9c964c9ac5461adaa9a38e>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/shared/output/meta.js
@@ -15,8 +15,5 @@
  *   yarn run build-ts-defs (OSS) 
  */
 
-declare function meta(
-  code: Buffer | string,
-  encoding?: 'ascii' | 'utf16le' | 'utf8',
-): Buffer;
+declare function meta(code: Buffer | string, encoding?: 'ascii' | 'utf16le' | 'utf8'): Buffer;
 export default meta;

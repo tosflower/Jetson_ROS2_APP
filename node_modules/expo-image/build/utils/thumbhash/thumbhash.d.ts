@@ -63,4 +63,3 @@ export declare function thumbHashToDataURL(hash: Uint8Array): string;
  * @returns A data URL containing a PNG for the rendered ThumbHash
  */
 export declare function thumbHashStringToDataURL(thumbhash: string): string;
-//# sourceMappingURL=thumbhash.d.ts.map

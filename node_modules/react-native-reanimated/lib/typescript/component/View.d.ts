@@ -1,8 +1,10 @@
+import type { ComponentProps, ComponentRef } from 'react';
 import { View } from 'react-native';
-interface AnimatedViewComplement extends View {
-    getNode(): View;
-}
-export declare const AnimatedView: import("../createAnimatedComponent").AnimatedComponentType<Readonly<import("react-native").ViewProps>, typeof View>;
+import { type AnimatedComponentType } from '../createAnimatedComponent';
+type AnimatedViewComplement = ComponentRef<typeof View> & {
+    getNode(): ComponentRef<typeof View>;
+};
+export declare const AnimatedView: AnimatedComponentType<Readonly<ComponentProps<typeof View>>, ComponentRef<typeof View>>;
 export type AnimatedView = typeof AnimatedView & AnimatedViewComplement;
 export {};
 //# sourceMappingURL=View.d.ts.map

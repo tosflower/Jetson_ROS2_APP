@@ -11,7 +11,7 @@ require "json"
 package = JSON.parse(File.read(File.join(__dir__, "..", "package.json")))
 version = package['version']
 
-source = { :git => 'https://github.com/react/react-native.git' }
+source = { :git => 'https://github.com/facebook/react-native.git' }
 if version == '1000.0.0'
   # This is an unpublished version, use the latest commit hash of the react-native repo, which we’re presumably in.
   source[:commit] = `git rev-parse HEAD`.strip if system("git rev-parse --git-dir > /dev/null 2>&1")
@@ -54,7 +54,7 @@ Pod::Spec.new do |s|
   s.dependency "React-NativeModulesApple"
 
   add_dependency(s, "ReactCommon", :subspec => "turbomodule/core", :additional_framework_paths => ["react/nativemodule/core"])
-  add_dependency(s, "ReactCommon", :subspec => "turbomodule/bridging", :additional_framework_paths => ["react/nativemodule/bridging"])
+  s.dependency "React-bridging"
 
   depend_on_js_engine(s)
   add_rn_third_party_dependencies(s)
@@ -68,6 +68,7 @@ Pod::Spec.new do |s|
     add_dependency(ss, "React-debug")
     add_dependency(ss, "React-rendererdebug")
     add_dependency(ss, "React-utils")
+    add_dependency(ss, "React-cxxstableapi")
     add_dependency(ss, "React-graphics", :additional_framework_paths => ["react/renderer/graphics/platform/ios"])
     add_dependency(ss, "React-Fabric", :additional_framework_paths => [
       "react/renderer/components/view/platform/cxx",
@@ -92,4 +93,6 @@ fi
       EOS
     }
   ]
+
+  mark_as_react_native_build(s)
 end

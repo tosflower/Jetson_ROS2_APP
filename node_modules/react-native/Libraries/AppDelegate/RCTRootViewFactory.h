@@ -184,9 +184,7 @@ typedef void (^RCTLoadSourceForBridgeBlock)(RCTBridge *bridge, RCTSourceLoadBloc
  */
 @interface RCTRootViewFactory : NSObject
 
-@property (nonatomic, strong, nullable) RCTBridge *bridge;
 @property (nonatomic, strong, nullable) RCTHost *reactHost;
-@property (nonatomic, strong, nullable) RCTSurfacePresenterBridgeAdapter *bridgeAdapter;
 
 - (instancetype)initWithConfiguration:(RCTRootViewFactoryConfiguration *)configuration
         andTurboModuleManagerDelegate:(id<RCTTurboModuleManagerDelegate> _Nullable)turboModuleManagerDelegate;

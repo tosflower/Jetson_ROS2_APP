@@ -1,1 +1,0 @@
-{"version":3,"file":"InternalLinkPreviewContext.d.ts","sourceRoot":"","sources":["../../src/link/InternalLinkPreviewContext.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EAAE,SAAS,EAAE,MAAM,gBAAgB,CAAC;AAEhD,MAAM,MAAM,+BAA+B,GAAG;IAC5C,SAAS,EAAE,OAAO,CAAC;IACnB,IAAI,EAAE,SAAS,CAAC,MAAM,CAAC,CAAC;CACzB,CAAC;AAEF,eAAO,MAAM,0BAA0B,sEAE3B,CAAC"}

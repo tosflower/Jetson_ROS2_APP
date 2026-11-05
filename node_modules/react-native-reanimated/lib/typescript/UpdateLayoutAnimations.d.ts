@@ -1,4 +1,5 @@
 import type { LayoutAnimationFunction, LayoutAnimationType } from './commonTypes';
+import type { ReanimatedKeyframe } from './layoutReanimation/animationBuilder/Keyframe';
 /**
  * Lets you update the current configuration of the layout animation or shared
  * element transition for a given component. Configurations are batched and
@@ -15,5 +16,5 @@ import type { LayoutAnimationFunction, LayoutAnimationType } from './commonTypes
  *   those that were updated later). This is used to retain the correct ordering
  *   of shared elements. Defaults to `false`.
  */
-export declare let updateLayoutAnimations: (viewTag: number, type: LayoutAnimationType, config?: Keyframe | LayoutAnimationFunction, isUnmounting?: boolean, sharedTransitionTag?: string) => void;
+export declare const updateLayoutAnimations: (viewTag: number, type: LayoutAnimationType, config?: ReanimatedKeyframe | LayoutAnimationFunction, isUnmounting?: boolean, sharedTransitionTag?: string) => void;
 //# sourceMappingURL=UpdateLayoutAnimations.d.ts.map

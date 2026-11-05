@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<bf08da4ef625a52c96e6ab5e4b6b088a>>
+ * @generated SignedSource<<81f42fb3ff062f769288a6ff47a47b13>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-resolver/src/utils/isSubpathDefinedInExportsLike.js
@@ -22,7 +22,4 @@
  */
 import type {NormalizedExportsLikeMap} from '../types';
 
-export declare function isSubpathDefinedInExportsLike(
-  exportsLikeMap: NormalizedExportsLikeMap,
-  subpath: string,
-): boolean;
+export declare function isSubpathDefinedInExportsLike(exportsLikeMap: NormalizedExportsLikeMap, subpath: string): boolean;

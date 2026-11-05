@@ -8,7 +8,6 @@
 #import "RCTModalHostViewComponentView.h"
 
 #import <React/RCTBridge+Private.h>
-#import <React/RCTModalManager.h>
 #import <React/UIView+React.h>
 #import <react/renderer/components/FBReactNativeSpec/EventEmitters.h>
 #import <react/renderer/components/FBReactNativeSpec/Props.h>
@@ -18,6 +17,10 @@
 #import "RCTConversions.h"
 
 #import "RCTFabricModalHostViewController.h"
+
+@interface RCTFabricModalHostViewController ()
+- (void)captureStatusBarAppearance;
+@end
 
 using namespace facebook::react;
 
@@ -169,6 +172,7 @@ static ModalHostViewEventEmitter::OnOrientationChange onOrientationChangeStruct(
     [self saveAccessibilityFocusedView];
     self.viewController.presentationController.delegate = self;
     self.viewController.modalInPresentation = _modalInPresentation;
+    [self.viewController captureStatusBarAppearance];
 
     _isPresented = YES;
     [self presentViewController:self.viewController

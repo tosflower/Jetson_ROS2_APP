@@ -1,9 +1,6 @@
 'use strict';
 
-import { useEffect } from 'react';
-import { SHOULD_BE_USE_WEB } from "../common/index.js";
-import { startMapper, stopMapper } from "../core.js";
-import { useSharedValue } from "./useSharedValue.js";
+import { useAnimatedReactionBase } from "./useAnimatedReactionCommon.js";
 
 /**
  * Lets you to respond to changes in a [shared
@@ -22,32 +19,11 @@ import { useSharedValue } from "./useSharedValue.js";
 // @ts-expect-error This overload is required by our API.
 
 export function useAnimatedReaction(prepare, react, dependencies) {
-  const previous = useSharedValue(null);
-  let inputs = Object.values(prepare.__closure ?? {});
-  if (SHOULD_BE_USE_WEB) {
-    if (!inputs.length && dependencies?.length) {
-      // let web work without Worklets Babel plugin
-      inputs = dependencies;
-    }
+  let inputs = prepare.__closure ?? [];
+  if (!inputs.length && dependencies?.length) {
+    // let web work without Worklets Babel plugin
+    inputs = dependencies;
   }
-  if (dependencies === undefined) {
-    dependencies = [...Object.values(prepare.__closure ?? {}), ...Object.values(react.__closure ?? {}), prepare.__workletHash, react.__workletHash];
-  } else {
-    dependencies.push(prepare.__workletHash, react.__workletHash);
-  }
-  useEffect(() => {
-    const fun = () => {
-      'worklet';
-
-      const input = prepare();
-      react(input, previous.value);
-      previous.value = input;
-    };
-    const mapperId = startMapper(fun, inputs);
-    return () => {
-      stopMapper(mapperId);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, dependencies);
+  useAnimatedReactionBase(prepare, react, dependencies, inputs);
 }
 //# sourceMappingURL=useAnimatedReaction.js.map

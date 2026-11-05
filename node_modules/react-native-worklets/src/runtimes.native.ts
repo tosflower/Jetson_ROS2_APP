@@ -1,5 +1,6 @@
 'use strict';
 
+import { isBundleModeEnabled } from './debug/bundleMode';
 import { getStaticFeatureFlag } from './featureFlags/featureFlags';
 import { addNoBundleModeGuardImplementation } from './guardImplementation';
 import {
@@ -80,6 +81,8 @@ export function createWorkletRuntime(
   let queue: 'default' | object | null = 'default';
   let animationQueuePollingRate: number;
   let enableEventLoop = true;
+  let enableLocking = true;
+  let enableNetworking = true;
   if (typeof nameOrConfig === 'string') {
     name = nameOrConfig;
     initializerFn = initializer;
@@ -95,7 +98,22 @@ export function createWorkletRuntime(
     animationQueuePollingRate = Math.round(
       nameOrConfig?.animationQueuePollingRate ?? 16
     );
-    enableEventLoop = nameOrConfig?.enableEventLoop ?? true;
+    enableLocking = nameOrConfig?.enableLocking ?? true;
+    if (__DEV__ && !enableLocking && nameOrConfig?.enableEventLoop) {
+      throw new Error(
+        '[Worklets] The Event Loop cannot be enabled on a runtime with locking disabled.'
+      );
+    }
+    enableEventLoop = enableLocking
+      ? (nameOrConfig?.enableEventLoop ?? true)
+      : false;
+    /**
+     * The networking API depends on the Event Loop - `whatwg-fetch` resolves
+     * its responses through `setTimeout`. Without it, requests would hang
+     * instead of failing visibly.
+     */
+    enableNetworking =
+      (nameOrConfig?.enableNetworking ?? true) && enableEventLoop;
   }
 
   const useDefaultQueue = queue === 'default';
@@ -125,7 +143,9 @@ export function createWorkletRuntime(
     }),
     useDefaultQueue,
     customQueue,
-    enableEventLoop
+    enableEventLoop,
+    enableLocking,
+    enableNetworking
   );
 }
 
@@ -171,13 +191,12 @@ export function scheduleOnRuntime<Args extends unknown[], ReturnValue>(
     createSerializable(() => {
       'worklet';
       worklet(...args);
-      globalThis.__callMicrotasks?.();
     }),
     SHOULD_CAPTURE_SCHEDULE_STACK ? new Error().stack : undefined
   );
 }
 
-if (!globalThis._WORKLETS_BUNDLE_MODE_ENABLED) {
+if (!isBundleModeEnabled()) {
   function scheduleOnRuntimeWorklet<Args extends unknown[], ReturnValue>(
     workletRuntime: WorkletRuntime,
     worklet: WorkletFunction<Args, ReturnValue>,
@@ -195,7 +214,6 @@ if (!globalThis._WORKLETS_BUNDLE_MODE_ENABLED) {
       globalThis.__serializer(() => {
         'worklet';
         worklet(...args);
-        globalThis.__callMicrotasks?.();
       })
     );
   }
@@ -249,13 +267,12 @@ export function scheduleOnRuntimeWithId<Args extends unknown[], ReturnValue>(
     createSerializable(() => {
       'worklet';
       worklet(...args);
-      globalThis.__callMicrotasks?.();
     }),
     SHOULD_CAPTURE_SCHEDULE_STACK ? new Error().stack : undefined
   );
 }
 
-if (!globalThis._WORKLETS_BUNDLE_MODE_ENABLED) {
+if (!isBundleModeEnabled()) {
   function scheduleOnRuntimeWithIdWorklet<Args extends unknown[], ReturnValue>(
     runtimeId: number,
     worklet: WorkletFunction<Args, ReturnValue>,
@@ -273,7 +290,6 @@ if (!globalThis._WORKLETS_BUNDLE_MODE_ENABLED) {
       globalThis.__serializer(() => {
         'worklet';
         worklet(...args);
-        globalThis.__callMicrotasks?.();
       })
     );
   }
@@ -469,7 +485,6 @@ export function runOnRuntimeAsync<Args extends unknown[], ReturnValue>(
             serializedError
           );
         }
-        globalThis.__callMicrotasks?.();
       }),
       scheduleStack
     );
@@ -544,14 +559,13 @@ export function runOnRuntimeAsyncWithId<Args extends unknown[], ReturnValue>(
             serializedError
           );
         }
-        globalThis.__callMicrotasks?.();
       }),
       scheduleStack
     );
   });
 }
 
-if (__DEV__ && !globalThis._WORKLETS_BUNDLE_MODE_ENABLED) {
+if (__DEV__ && !isBundleModeEnabled()) {
   /**
    * QoL guards to give a meaningful error message when the user tries to call
    * these functions on Worklet Runtimes outside of the Bundle Mode.

@@ -8,7 +8,7 @@ require "json"
 package = JSON.parse(File.read(File.join(__dir__, "..", "package.json")))
 version = package['version']
 
-source = { :git => 'https://github.com/react/react-native.git' }
+source = { :git => 'https://github.com/facebook/react-native.git' }
 if version == '1000.0.0'
   # This is an unpublished version, use the latest commit hash of the react-native repo, which we’re presumably in.
   source[:commit] = `git rev-parse HEAD`.strip if system("git rev-parse --git-dir > /dev/null 2>&1")
@@ -42,9 +42,11 @@ Pod::Spec.new do |s|
   s.dependency "React-logger"
   s.dependency "React-Core"
   s.dependency "React-debug"
+  s.dependency "React-cxxstableapi"
   s.dependency "React-featureflags"
   s.dependency "React-runtimescheduler"
   s.dependency "React-cxxreact"
+  s.dependency "React-bridging"
 
   add_dependency(s, "React-runtimeexecutor", :additional_framework_paths => ["platform/ios"])
   add_dependency(s, "React-rendererdebug")
@@ -137,6 +139,12 @@ Pod::Spec.new do |s|
       sss.header_dir           = "react/renderer/components/view"
     end
 
+    ss.subspec "viewUmbrella" do |sss|
+      sss.source_files         = "react/renderer/components/view/React/*.h"
+      sss.header_dir           = ""
+      sss.header_mappings_dir  = "react/renderer/components/view"
+    end
+
     ss.subspec "scrollview" do |sss|
       sss.source_files         = podspec_sources("react/renderer/components/scrollview/**/*.{m,mm,cpp,h}", "react/renderer/components/scrollview/**/*.{h}")
       sss.header_dir           = "react/renderer/components/scrollview"
@@ -159,6 +167,7 @@ Pod::Spec.new do |s|
 
   s.subspec "scheduler" do |ss|
     ss.source_files         = podspec_sources("react/renderer/scheduler/**/*.{m,mm,cpp,h}", "react/renderer/scheduler/**/*.h")
+    ss.exclude_files        = "react/renderer/scheduler/tests"
     ss.header_dir           = "react/renderer/scheduler"
 
     ss.dependency             "React-Fabric/animationbackend"
@@ -198,6 +207,12 @@ Pod::Spec.new do |s|
       sss.exclude_files        = "react/renderer/observers/mutation/tests"
       sss.header_dir           = "react/renderer/observers/mutation"
     end
+
+    ss.subspec "resize" do |sss|
+      sss.source_files         = podspec_sources("react/renderer/observers/resize/**/*.{m,mm,cpp,h}", "react/renderer/observers/resize/**/*.h")
+      sss.exclude_files        = "react/renderer/observers/resize/tests"
+      sss.header_dir           = "react/renderer/observers/resize"
+    end
   end
 
   s.subspec "telemetry" do |ss|
@@ -234,4 +249,6 @@ Pod::Spec.new do |s|
     ss.source_files         = podspec_sources("react/renderer/viewtransition/**/*.{m,mm,cpp,h}", "react/renderer/viewtransition/**/*.h")
     ss.header_dir           = "react/renderer/viewtransition"
   end
+
+  mark_as_react_native_build(s)
 end

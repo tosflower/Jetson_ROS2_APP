@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<f0029b50ddd46efa01d2a32c9828a0ff>>
+ * @generated SignedSource<<391ac18242ad8a464ae81d0dbb45709a>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-config/src/defaults/index.js
@@ -21,6 +21,5 @@ declare const $$EXPORT_DEFAULT_DECLARATION$$: {
   (rootPath?: string): Promise<ConfigT>;
   getDefaultValues: (rootPath?: string) => ConfigT;
 };
-declare type $$EXPORT_DEFAULT_DECLARATION$$ =
-  typeof $$EXPORT_DEFAULT_DECLARATION$$;
+declare type $$EXPORT_DEFAULT_DECLARATION$$ = typeof $$EXPORT_DEFAULT_DECLARATION$$;
 export default $$EXPORT_DEFAULT_DECLARATION$$;

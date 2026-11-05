@@ -8,7 +8,7 @@ require "json"
 package = JSON.parse(File.read(File.join(__dir__, "..", "..", "package.json")))
 version = package['version']
 
-source = { :git => 'https://github.com/react/react-native.git' }
+source = { :git => 'https://github.com/facebook/react-native.git' }
 if version == '1000.0.0'
   # This is an unpublished version, use the latest commit hash of the react-native repo, which we’re presumably in.
   source[:commit] = `git rev-parse HEAD`.strip if system("git rev-parse --git-dir > /dev/null 2>&1")
@@ -59,9 +59,11 @@ Pod::Spec.new do |s|
   s.dependency "RCTTypeSafety"
   s.dependency "React-RCTNetwork"
   s.dependency "React-RCTImage"
+  s.dependency "React-RCTLinking"
   s.dependency "React-CoreModules"
   s.dependency "React-RCTFBReactNativeSpec"
   s.dependency "React-defaultsnativemodule"
+  s.dependency "React-RCTAnimatedModuleProvider"
   if use_hermes()
     s.dependency 'React-hermes'
   end
@@ -85,4 +87,6 @@ Pod::Spec.new do |s|
   depend_on_js_engine(s)
   add_rn_third_party_dependencies(s)
   add_rncore_dependency(s)
+
+  mark_as_react_native_build(s)
 end

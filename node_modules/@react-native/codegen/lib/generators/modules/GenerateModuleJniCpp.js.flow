@@ -24,7 +24,11 @@ import type {AliasResolver} from './Utils';
 
 const {unwrapNullable} = require('../../parsers/parsers-commons');
 const {parseValidUnionType} = require('../Utils');
-const {createAliasResolver, getModules} = require('./Utils');
+const {
+  createAliasResolver,
+  getModules,
+  throwIfUnsupportedPromiseArrayBuffer,
+} = require('./Utils');
 
 type FilesOutput = Map<string, string>;
 
@@ -35,7 +39,8 @@ type JSReturnType =
   | 'NumberKind'
   | 'PromiseKind'
   | 'ObjectKind'
-  | 'ArrayKind';
+  | 'ArrayKind'
+  | 'ArrayBufferKind';
 
 const HostFunctionTemplate = ({
   hasteModuleName,
@@ -216,6 +221,8 @@ function translateReturnTypeToKind(
       return 'ObjectKind';
     case 'ArrayTypeAnnotation':
       return 'ArrayKind';
+    case 'ArrayBufferTypeAnnotation':
+      return 'ArrayBufferKind';
     default:
       realTypeAnnotation.type as 'MixedTypeAnnotation';
       throw new Error(
@@ -303,6 +310,8 @@ function translateParamTypeToJniType(
       return 'Lcom/facebook/react/bridge/ReadableArray;';
     case 'FunctionTypeAnnotation':
       return 'Lcom/facebook/react/bridge/Callback;';
+    case 'ArrayBufferTypeAnnotation':
+      return 'Lcom/facebook/react/bridge/ArrayBuffer;';
     default:
       realTypeAnnotation.type as 'MixedTypeAnnotation';
       throw new Error(
@@ -387,6 +396,8 @@ function translateReturnTypeToJniType(
       return 'Lcom/facebook/react/bridge/WritableMap;';
     case 'ArrayTypeAnnotation':
       return 'Lcom/facebook/react/bridge/WritableArray;';
+    case 'ArrayBufferTypeAnnotation':
+      return 'Lcom/facebook/react/bridge/ArrayBuffer;';
     default:
       realTypeAnnotation.type as 'MixedTypeAnnotation';
       throw new Error(
@@ -441,6 +452,8 @@ function translateMethodForImplementation(
   const [propertyTypeAnnotation] =
     unwrapNullable<NativeModuleFunctionTypeAnnotation>(property.typeAnnotation);
   const {returnTypeAnnotation} = propertyTypeAnnotation;
+
+  throwIfUnsupportedPromiseArrayBuffer(property.name, returnTypeAnnotation);
 
   if (
     property.name === 'getConstants' &&

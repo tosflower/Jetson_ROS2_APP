@@ -1,7 +1,6 @@
 import type { HostInstance } from 'react-native';
 import type { InstanceOrElement } from '../commonTypes';
 import type { AnimatedRef } from './commonTypes';
-declare function useAnimatedRefWeb<TRef extends InstanceOrElement = HostInstance>(): AnimatedRef<TRef>;
 /**
  * Lets you get a reference of a view that you can use inside a worklet.
  *
@@ -9,6 +8,5 @@ declare function useAnimatedRefWeb<TRef extends InstanceOrElement = HostInstance
  *   the reference object.
  * @see https://docs.swmansion.com/react-native-reanimated/docs/core/useAnimatedRef
  */
-export declare const useAnimatedRef: typeof useAnimatedRefWeb;
-export {};
+export declare function useAnimatedRef<TRef extends InstanceOrElement = HostInstance>(): AnimatedRef<TRef>;
 //# sourceMappingURL=useAnimatedRef.d.ts.map

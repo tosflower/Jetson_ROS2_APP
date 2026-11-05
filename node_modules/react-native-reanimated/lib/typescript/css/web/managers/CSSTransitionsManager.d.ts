@@ -3,14 +3,11 @@ import type { CSSTransitionCallbacks, CSSTransitionProperties, ICSSTransitionsMa
 export default class CSSTransitionsManager implements ICSSTransitionsManager {
     private readonly element;
     private isAttached;
-    private callbacks;
-    private readonly attachedStateListeners;
+    private readonly callbackListeners;
     constructor(element: ReanimatedHTMLElement);
     update(transitionProperties: CSSTransitionProperties | null, callbacks?: CSSTransitionCallbacks | null): void;
     unmountCleanup(): void;
     private detach;
-    private syncStateListeners;
-    private createStateListener;
     private setElementTransition;
 }
 //# sourceMappingURL=CSSTransitionsManager.d.ts.map

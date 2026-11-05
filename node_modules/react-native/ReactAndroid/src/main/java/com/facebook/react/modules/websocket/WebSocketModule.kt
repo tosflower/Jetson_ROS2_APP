@@ -6,6 +6,7 @@
  */
 
 @file:Suppress("DEPRECATION_ERROR") // Conflicting okhttp versions
+@file:OptIn(UnstableReactNativeAPI::class)
 
 package com.facebook.react.modules.websocket
 
@@ -19,14 +20,19 @@ import com.facebook.react.bridge.ReadableType
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.bridge.buildReadableMap
 import com.facebook.react.common.ReactConstants
+import com.facebook.react.common.annotations.UnstableReactNativeAPI
+import com.facebook.react.internal.featureflags.ReactNativeFeatureFlags
 import com.facebook.react.module.annotations.ReactModule
 import com.facebook.react.modules.network.CustomClientBuilder
 import com.facebook.react.modules.network.ForwardingCookieHandler
+import com.facebook.react.modules.network.InspectorNetworkReporter
+import com.facebook.react.modules.network.NetworkEventUtil
 import com.facebook.react.modules.network.OkHttpClientProvider
 import java.io.IOException
 import java.net.URI
 import java.net.URISyntaxException
 import java.util.HashMap
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import okhttp3.CookieJar
@@ -51,12 +57,30 @@ public class WebSocketModule(context: ReactApplicationContext) :
   private val contentHandlers: MutableMap<Int, ContentHandler> = ConcurrentHashMap()
   private val cookieHandler: ForwardingCookieHandler = ForwardingCookieHandler()
 
+  /** CDP request IDs used to report each connection's events to the modern debugger server. */
+  private val inspectorRequestIds: MutableMap<Int, String> = ConcurrentHashMap()
+
   override fun invalidate() {
     for (socket in webSocketConnections.values) {
       socket.close(1_001 /* endpoint is going away */, null)
     }
     webSocketConnections.clear()
     contentHandlers.clear()
+    inspectorRequestIds.clear()
+  }
+
+  /** Whether WebSocket events should be reported to the modern debugger server. */
+  private fun isInspectorNetworkReportingEnabled(): Boolean =
+      ReactNativeFeatureFlags.fuseboxWebSocketEventsEnabled()
+
+  /**
+   * Run [block] with the connection's CDP request ID, when WebSocket event reporting to the modern
+   * debugger server is enabled.
+   */
+  private inline fun reportToInspector(id: Int, block: (requestId: String) -> Unit) {
+    if (isInspectorNetworkReportingEnabled()) {
+      inspectorRequestIds[id]?.let(block)
+    }
   }
 
   private fun sendEvent(eventName: String, params: ReadableMap) {
@@ -142,11 +166,41 @@ public class WebSocketModule(context: ReactApplicationContext) :
       }
     }
 
+    val request = builder.build()
+
+    if (isInspectorNetworkReportingEnabled()) {
+      // Prefer the DevTools request ID created by the JS caller, which carries
+      // the request initiator stack trace for CDP reporting.
+      val devToolsRequestId =
+          if (
+              options?.hasKey("unstable_devToolsRequestId") == true &&
+                  options.getType("unstable_devToolsRequestId") == ReadableType.String
+          ) {
+            options.getString("unstable_devToolsRequestId")
+          } else {
+            null
+          }
+      val requestId = devToolsRequestId ?: UUID.randomUUID().toString()
+      inspectorRequestIds[id] = requestId
+      InspectorNetworkReporter.reportWebSocketCreated(requestId, url)
+      InspectorNetworkReporter.reportWebSocketWillSendHandshakeRequest(
+          requestId,
+          NetworkEventUtil.okHttpHeadersToMap(request.headers()),
+      )
+    }
+
     client.newWebSocket(
-        builder.build(),
+        request,
         object : WebSocketListener() {
           override fun onOpen(webSocket: WebSocket, response: Response) {
             webSocketConnections[id] = webSocket
+            reportToInspector(id) { requestId ->
+              InspectorNetworkReporter.reportWebSocketHandshakeResponseReceived(
+                  requestId,
+                  response.code(),
+                  NetworkEventUtil.okHttpHeadersToMap(response.headers()),
+              )
+            }
             val params = buildReadableMap {
               put("id", id)
               put("protocol", response.header("Sec-WebSocket-Protocol", ""))
@@ -154,11 +208,15 @@ public class WebSocketModule(context: ReactApplicationContext) :
             sendEvent("websocketOpen", params)
           }
 
-          override fun onClosing(websocket: WebSocket, code: Int, reason: String) {
-            websocket.close(code, reason)
+          override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+            webSocket.close(code, reason)
           }
 
           override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+            reportToInspector(id) { requestId ->
+              InspectorNetworkReporter.reportWebSocketClosed(requestId)
+            }
+            inspectorRequestIds.remove(id)
             val params = buildReadableMap {
               put("id", id)
               put("code", code)
@@ -168,10 +226,17 @@ public class WebSocketModule(context: ReactApplicationContext) :
           }
 
           override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+            reportToInspector(id) { requestId ->
+              InspectorNetworkReporter.reportWebSocketClosed(requestId)
+            }
+            inspectorRequestIds.remove(id)
             notifyWebSocketFailed(id, t.message)
           }
 
           override fun onMessage(webSocket: WebSocket, text: String) {
+            reportToInspector(id) { requestId ->
+              InspectorNetworkReporter.reportWebSocketMessageReceived(requestId, text)
+            }
             val params = Arguments.createMap()
             params.putInt("id", id)
             params.putString("type", "text")
@@ -186,6 +251,9 @@ public class WebSocketModule(context: ReactApplicationContext) :
           }
 
           override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+            reportToInspector(id) { requestId ->
+              InspectorNetworkReporter.reportWebSocketMessageReceived(requestId, bytes)
+            }
             val params = Arguments.createMap()
             params.putInt("id", id)
             params.putString("type", "binary")
@@ -240,9 +308,13 @@ public class WebSocketModule(context: ReactApplicationContext) :
       sendEvent("websocketClosed", params)
       webSocketConnections.remove(id)
       contentHandlers.remove(id)
+      inspectorRequestIds.remove(id)
       return
     }
     try {
+      reportToInspector(id) { requestId ->
+        InspectorNetworkReporter.reportWebSocketMessageSent(requestId, message)
+      }
       client.send(message)
     } catch (e: Exception) {
       notifyWebSocketFailed(id, e.message)
@@ -267,10 +339,14 @@ public class WebSocketModule(context: ReactApplicationContext) :
       sendEvent("websocketClosed", params)
       webSocketConnections.remove(id)
       contentHandlers.remove(id)
+      inspectorRequestIds.remove(id)
       return
     }
     try {
       val decodedString = checkNotNull(ByteString.decodeBase64(base64String)) { "bytes == null" }
+      reportToInspector(id) { requestId ->
+        InspectorNetworkReporter.reportWebSocketMessageSent(requestId, decodedString)
+      }
       client.send(decodedString)
     } catch (e: Exception) {
       notifyWebSocketFailed(id, e.message)
@@ -294,9 +370,13 @@ public class WebSocketModule(context: ReactApplicationContext) :
       sendEvent("websocketClosed", params)
       webSocketConnections.remove(id)
       contentHandlers.remove(id)
+      inspectorRequestIds.remove(id)
       return
     }
     try {
+      reportToInspector(id) { requestId ->
+        InspectorNetworkReporter.reportWebSocketMessageSent(requestId, byteString)
+      }
       client.send(byteString)
     } catch (e: Exception) {
       notifyWebSocketFailed(id, e.message)
@@ -321,6 +401,7 @@ public class WebSocketModule(context: ReactApplicationContext) :
       sendEvent("websocketClosed", params)
       webSocketConnections.remove(id)
       contentHandlers.remove(id)
+      inspectorRequestIds.remove(id)
       return
     }
     try {

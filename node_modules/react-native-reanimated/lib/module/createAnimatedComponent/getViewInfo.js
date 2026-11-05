@@ -21,4 +21,28 @@ export function getViewInfo(element) {
     viewTag: element?.__nativeTag
   };
 }
+export function getViewTagFromInstance(instance) {
+  if (!instance) {
+    return null;
+  }
+  if (typeof instance.getComponentViewTag === 'function') {
+    const viewTag = instance.getComponentViewTag();
+    if (viewTag !== -1) {
+      return viewTag;
+    }
+  }
+  const viewTag = getViewInfo(instance).viewTag;
+  if (viewTag !== undefined) {
+    return viewTag;
+  }
+  const nativeScrollRef = instance.getNativeScrollRef?.();
+  if (nativeScrollRef) {
+    return getViewInfo(nativeScrollRef).viewTag ?? null;
+  }
+  const scrollableNode = instance.getScrollableNode?.();
+  if (typeof scrollableNode === 'number') {
+    return scrollableNode;
+  }
+  return scrollableNode ? getViewInfo(scrollableNode).viewTag ?? null : null;
+}
 //# sourceMappingURL=getViewInfo.js.map

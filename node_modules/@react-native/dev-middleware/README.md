@@ -1,6 +1,9 @@
 # @react-native/dev-middleware
 
-![npm package](https://img.shields.io/npm/v/@react-native/dev-middleware?color=brightgreen&label=npm%20package)
+[![npm]](https://www.npmjs.com/package/@react-native/dev-middleware) [![npm downloads]](https://www.npmjs.com/package/@react-native/dev-middleware)
+
+[npm]: https://img.shields.io/npm/v/@react-native/dev-middleware.svg?color=blue
+[npm downloads]: https://img.shields.io/npm/dm/@react-native/dev-middleware.svg
 
 Dev server middleware supporting core React Native development features. This package is preconfigured in all React Native projects.
 
@@ -37,7 +40,7 @@ function myDevServerImpl(args) {
 
 ## Included middleware
 
-`@react-native/dev-middleware` is designed for integrators such as [`@expo/dev-server`](https://www.npmjs.com/package/@expo/dev-server) and [`@react-native/community-cli-plugin`](https://github.com/react/react-native/tree/main/packages/community-cli-plugin). It provides a common default implementation for core React Native dev server responsibilities.
+`@react-native/dev-middleware` is designed for integrators such as [`@expo/dev-server`](https://www.npmjs.com/package/@expo/dev-server) and [`@react-native/community-cli-plugin`](https://github.com/facebook/react-native/tree/main/packages/community-cli-plugin). It provides a common default implementation for core React Native dev server responsibilities.
 
 We intend to keep this to a narrow set of functionality, based around:
 

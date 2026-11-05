@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  *
  * @noformat
- * @generated SignedSource<<3d628d7c2b6149348fcdc5782fc24bb7>>
+ * @generated SignedSource<<4c299e390e413dabcafa756b03a0e274>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-file-map/src/plugins/haste/getPlatformExtension.js
@@ -14,8 +14,5 @@
  *   yarn run build-ts-defs (OSS) 
  */
 
-declare function getPlatformExtension(
-  file: string,
-  platforms: ReadonlySet<string>,
-): null | undefined | string;
+declare function getPlatformExtension(file: string, platforms: ReadonlySet<string>): null | undefined | string;
 export default getPlatformExtension;

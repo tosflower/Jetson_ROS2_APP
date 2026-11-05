@@ -56,11 +56,18 @@ module ReanimatedUtils
   end
 
   def assert_conflicting_feature_flags(feature_flags)
-    ios_sync_ui_props = feature_flags['IOS_SYNCHRONOUSLY_UPDATE_UI_PROPS'] == 'true'
+    legacy_layout_animations_proxy = feature_flags['USE_LEGACY_LAYOUT_ANIMATIONS_PROXY'] == 'true'
     shared_element_transitions = feature_flags['ENABLE_SHARED_ELEMENT_TRANSITIONS'] == 'true'
 
-    if ios_sync_ui_props && shared_element_transitions
-      raise "[Reanimated] The feature flags `IOS_SYNCHRONOUSLY_UPDATE_UI_PROPS` and `ENABLE_SHARED_ELEMENT_TRANSITIONS` cannot be enabled simultaneously. Please disable one of them in your package.json"
+    if legacy_layout_animations_proxy && shared_element_transitions
+      raise "[Reanimated] The feature flags `USE_LEGACY_LAYOUT_ANIMATIONS_PROXY` and `ENABLE_SHARED_ELEMENT_TRANSITIONS` cannot be enabled simultaneously. The legacy layout animations proxy does not support shared element transitions. Please disable one of them in your package.json"
+    end
+
+    use_animation_backend = feature_flags['USE_ANIMATION_BACKEND'] == 'true'
+    force_react_render_for_settled_animations = feature_flags['FORCE_REACT_RENDER_FOR_SETTLED_ANIMATIONS'] == 'true'
+
+    if use_animation_backend && force_react_render_for_settled_animations
+      raise "[Reanimated] The feature flags `USE_ANIMATION_BACKEND` and `FORCE_REACT_RENDER_FOR_SETTLED_ANIMATIONS` cannot be enabled simultaneously. If you want to use the animation backend, you need to explicitly disable `FORCE_REACT_RENDER_FOR_SETTLED_ANIMATIONS` feature flag (enabled by default) in your package.json"
     end
   end
 

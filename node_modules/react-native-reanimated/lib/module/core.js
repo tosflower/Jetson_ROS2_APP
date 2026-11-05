@@ -5,8 +5,8 @@ import { createSerializable } from 'react-native-worklets';
 import { logger } from "./common/index.js";
 import { ReanimatedModule } from './ReanimatedModule';
 import { SensorContainer } from "./SensorContainer.js";
-export { startMapper, stopMapper } from "./mappers.js";
-export { makeMutable } from "./mutables.js";
+export { startMapper, stopMapper } from './mappers';
+export { makeMutable } from './mutables';
 const EDGE_TO_EDGE = /* @__PURE__ */isEdgeToEdge();
 
 /**

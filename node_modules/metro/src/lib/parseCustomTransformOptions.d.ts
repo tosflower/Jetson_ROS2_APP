@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<086e5d861160a99775fa58beba59492a>>
+ * @generated SignedSource<<91fabaafea5f0638b2c273e3087ef077>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/lib/parseCustomTransformOptions.js
@@ -17,7 +17,5 @@
 
 import type {CustomTransformOptions} from 'metro-transform-worker';
 
-declare function parseCustomTransformOptions(
-  searchParams: URLSearchParams,
-): CustomTransformOptions;
+declare function parseCustomTransformOptions(searchParams: URLSearchParams): CustomTransformOptions;
 export default parseCustomTransformOptions;

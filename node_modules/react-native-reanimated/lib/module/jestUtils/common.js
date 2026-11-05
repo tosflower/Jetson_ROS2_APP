@@ -12,7 +12,6 @@
 export const worklet = callback => {
   const fn = callback ?? (() => undefined);
   fn.__workletHash = Math.random();
-  fn.__closure = {};
   return fn;
 };
 
@@ -20,9 +19,9 @@ export const worklet = callback => {
 export const cloneWorklet = original => {
   const w = worklet();
   w.__workletHash = original.__workletHash;
-  w.__closure = {
-    ...original.__closure
-  };
+  if (original.__closure !== undefined) {
+    w.__closure = [...original.__closure];
+  }
   return w;
 };
 //# sourceMappingURL=common.js.map

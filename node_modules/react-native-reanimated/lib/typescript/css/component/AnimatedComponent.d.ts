@@ -18,6 +18,7 @@ export default class AnimatedComponent<P extends UnknownRecord = AnimatedCompone
     _componentRef: AnimatedComponentRef | HTMLElement | null;
     _componentDOMRef: HTMLElement | null;
     _willUnmount: boolean;
+    _forwardedRefCleanup?: () => void;
     constructor(ChildComponent: AnyComponent, props: P);
     getComponentViewTag(): number;
     _onSetLocalRef(): void;

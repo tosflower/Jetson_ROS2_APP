@@ -2,6 +2,7 @@ import type { Component, Ref, RefObject } from 'react';
 import type { AnimatedStyle, EntryExitAnimationFunction, ILayoutAnimationBuilder, ShadowNodeWrapper, SharedValue, StyleProps, StyleUpdaterContainer } from '../commonTypes';
 import type { SkipEnteringContext } from '../component/LayoutAnimationConfig';
 import type { BaseAnimationBuilder } from '../layoutReanimation';
+import type { ReanimatedKeyframe } from '../layoutReanimation/animationBuilder/Keyframe';
 import type { SharedTransition } from '../layoutReanimation/SharedTransition';
 import type { ViewDescriptorsSet } from '../ViewDescriptorsSet';
 export interface AnimatedProps extends Record<string, unknown> {
@@ -50,10 +51,10 @@ export type AnimatedComponentProps<P extends Record<string, unknown> = Record<st
     sharedTransitionTag?: string;
     sharedTransitionStyle?: SharedTransition & LayoutAnimationStaticContext;
     layout?: (BaseAnimationBuilder | ILayoutAnimationBuilder | typeof BaseAnimationBuilder) & LayoutAnimationStaticContext;
-    entering?: (BaseAnimationBuilder | typeof BaseAnimationBuilder | EntryExitAnimationFunction | Keyframe) & LayoutAnimationStaticContext;
-    exiting?: (BaseAnimationBuilder | typeof BaseAnimationBuilder | EntryExitAnimationFunction | Keyframe) & LayoutAnimationStaticContext;
+    entering?: (BaseAnimationBuilder | typeof BaseAnimationBuilder | EntryExitAnimationFunction | ReanimatedKeyframe) & LayoutAnimationStaticContext;
+    exiting?: (BaseAnimationBuilder | typeof BaseAnimationBuilder | EntryExitAnimationFunction | ReanimatedKeyframe) & LayoutAnimationStaticContext;
 };
-export type LayoutAnimationOrBuilder = (BaseAnimationBuilder | typeof BaseAnimationBuilder | EntryExitAnimationFunction | Keyframe | ILayoutAnimationBuilder) & LayoutAnimationStaticContext;
+export type LayoutAnimationOrBuilder = (BaseAnimationBuilder | typeof BaseAnimationBuilder | EntryExitAnimationFunction | ReanimatedKeyframe | ILayoutAnimationBuilder) & LayoutAnimationStaticContext;
 export interface AnimatedComponentRef extends Component {
     setNativeProps?: (props: Record<string, unknown>) => void;
     getScrollableNode?: () => AnimatedComponentRef;
@@ -65,8 +66,8 @@ export interface IAnimatedComponentInternalBase {
     _componentRef: AnimatedComponentRef | HTMLElement | null;
     _viewInfo?: ViewInfo;
     /**
-     * Used for Layout Animations and Animated Styles. It is not related to event
-     * handling.
+     * Resolves the tag of the host view backing this component. Used for Layout
+     * Animations, Animated Styles and event registration.
      */
     getComponentViewTag: () => number;
 }

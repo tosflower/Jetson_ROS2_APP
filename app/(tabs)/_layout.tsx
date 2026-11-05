@@ -9,7 +9,8 @@ export default function TabLayout(): React.JSX.Element {
         <NativeTabs.Trigger.Icon sf={{ default: 'waveform.path.ecg', selected: 'waveform.path.ecg' }} md="monitor_heart" />
         <NativeTabs.Trigger.Label>监控</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="test">
+      {/* 地图使用原生 SafeAreaView 计算可用区域，避免再叠加 WebView 自动 inset。 */}
+      <NativeTabs.Trigger name="test" disableAutomaticContentInsets>
         <NativeTabs.Trigger.Icon sf={{ default: 'map', selected: 'map.fill' }} md="map" />
         <NativeTabs.Trigger.Label>地图</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>

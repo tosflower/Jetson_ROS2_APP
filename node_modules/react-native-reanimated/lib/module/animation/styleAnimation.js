@@ -3,7 +3,7 @@
 import { ColorProperties } from "../Colors.js";
 import { logger, processColor } from "../common/index.js";
 import { withTiming } from "./timing.js";
-import { defineAnimation, isValidLayoutAnimationProp } from "./util.js";
+import { defineAnimation, isValidLayoutAnimationProp } from './util';
 
 // resolves path to value for nested objects
 // if path cannot be resolved returns undefined
@@ -45,7 +45,7 @@ function setPath(obj, path, value) {
 }
 export function withStyleAnimation(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-styleAnimations) {
+styleAnimations, callback) {
   'worklet';
 
   return defineAnimation({}, () => {
@@ -121,7 +121,7 @@ styleAnimations) {
         } else {
           const prevAnimation = resolvePath(previousAnimation?.styleAnimations, currentEntry.path);
           let prevVal = resolvePath(value, currentEntry.path);
-          if (prevAnimation && !prevVal) {
+          if (prevAnimation && prevVal === undefined) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             prevVal = prevAnimation.current;
           }
@@ -148,7 +148,7 @@ styleAnimations) {
         }
       }
     };
-    const callback = finished => {
+    const styleAnimationCallback = finished => {
       if (!finished) {
         const animationsToCheck = [styleAnimations];
         while (animationsToCheck.length > 0) {
@@ -169,6 +169,7 @@ styleAnimations) {
           }
         }
       }
+      callback?.(finished);
     };
     return {
       isHigherOrder: true,
@@ -176,7 +177,7 @@ styleAnimations) {
       onStart,
       current: {},
       styleAnimations,
-      callback
+      callback: styleAnimationCallback
     };
   });
 }

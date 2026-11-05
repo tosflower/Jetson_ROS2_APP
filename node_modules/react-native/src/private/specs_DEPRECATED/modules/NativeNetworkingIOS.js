@@ -4,35 +4,36 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  *
- * @flow
+ * @flow strict-local
  * @format
  */
 
 import type {TurboModule} from '../../../../Libraries/TurboModule/RCTExport';
+import type {UnsafeObject} from '../../../../Libraries/Types/CodegenTypes';
 
 import * as TurboModuleRegistry from '../../../../Libraries/TurboModule/TurboModuleRegistry';
 
 export interface Spec extends TurboModule {
-  +sendRequest: (
+  readonly sendRequest: (
     query: {
       method: string,
       url: string,
-      data: Object,
-      headers: Object,
+      data: UnsafeObject,
+      headers: UnsafeObject,
       responseType: string,
       incrementalUpdates: boolean,
       timeout: number,
       withCredentials: boolean,
-      +unstable_devToolsRequestId?: string,
+      readonly unstable_devToolsRequestId?: string,
     },
     callback: (requestId: number) => void,
   ) => void;
-  +abortRequest: (requestId: number) => void;
-  +clearCookies: (callback: (result: boolean) => void) => void;
+  readonly abortRequest: (requestId: number) => void;
+  readonly clearCookies: (callback: (result: boolean) => void) => void;
 
   // RCTEventEmitter
-  +addListener: (eventName: string) => void;
-  +removeListeners: (count: number) => void;
+  readonly addListener: (eventName: string) => void;
+  readonly removeListeners: (count: number) => void;
 }
 
 export default TurboModuleRegistry.getEnforcing<Spec>('Networking') as Spec;

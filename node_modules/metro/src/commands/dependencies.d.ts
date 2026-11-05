@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<a73d915901dde7a679972b78a1e08a3e>>
+ * @generated SignedSource<<c030a294fa58633b4d3c3d5a0f96263c>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/commands/dependencies.js
@@ -18,6 +18,5 @@
 import type {CommandModule} from 'yargs';
 
 declare const $$EXPORT_DEFAULT_DECLARATION$$: () => CommandModule;
-declare type $$EXPORT_DEFAULT_DECLARATION$$ =
-  typeof $$EXPORT_DEFAULT_DECLARATION$$;
+declare type $$EXPORT_DEFAULT_DECLARATION$$ = typeof $$EXPORT_DEFAULT_DECLARATION$$;
 export default $$EXPORT_DEFAULT_DECLARATION$$;

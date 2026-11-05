@@ -1,3 +1,4 @@
+import type { UnknownRecord } from '../common';
 import type { StyleProps } from '../commonTypes';
 import type { ViewDescriptorsSet } from '../ViewDescriptorsSet';
 import type { AnimatedComponentTypeInternal, IInlinePropManager, ViewInfo } from './commonTypes';
@@ -6,7 +7,8 @@ export declare function getInlineStyle(style: Record<string, unknown>, isFirstRe
 export declare class InlinePropManager implements IInlinePropManager {
     _inlinePropsViewDescriptors: ViewDescriptorsSet | null;
     _inlinePropsMapperId: number | null;
-    _inlineProps: StyleProps;
+    _inlineStyleProps: UnknownRecord;
+    _inlineTopLevelProps: UnknownRecord;
     attachInlineProps(animatedComponent: AnimatedComponentTypeInternal, viewInfo: ViewInfo): void;
     detachInlineProps(): void;
 }

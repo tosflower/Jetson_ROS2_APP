@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<e21aeb433f191f32b37d05733b0b76bd>>
+ * @generated SignedSource<<031bce5849e92c342ef2e74f2a84aca6>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/DeltaBundler/Serializers/baseJSBundle.js
@@ -18,10 +18,5 @@
 import type {Module, ReadOnlyGraph, SerializerOptions} from '../types';
 import type {Bundle} from 'metro-runtime/src/modules/types';
 
-declare function baseJSBundle(
-  entryPoint: string,
-  preModules: ReadonlyArray<Module>,
-  graph: ReadOnlyGraph,
-  options: SerializerOptions,
-): Bundle;
+declare function baseJSBundle(entryPoint: string, preModules: ReadonlyArray<Module>, graph: ReadOnlyGraph, options: SerializerOptions): Bundle;
 export default baseJSBundle;

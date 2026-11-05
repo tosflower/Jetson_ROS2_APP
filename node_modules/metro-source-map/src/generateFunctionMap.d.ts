@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<6f37d9027ca5bd3db3a9752a9498ab11>>
+ * @generated SignedSource<<cb2dbf5be484aef5be17b21a4f0bd40e>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-source-map/src/generateFunctionMap.js
@@ -30,23 +30,13 @@ export type Context = {filename?: null | undefined | string};
  * The output is encoded for use in a source map. For details about the format,
  * see MappingEncoder below.
  */
-declare function generateFunctionMap(
-  ast: BabelNode,
-  context?: Context,
-): FBSourceFunctionMap;
+declare function generateFunctionMap(ast: BabelNode, context?: Context): FBSourceFunctionMap;
 /**
  * Same as generateFunctionMap, but returns the raw array of mappings instead
  * of encoding it for use in a source map.
  *
  * Lines are 1-based and columns are 0-based.
  */
-declare function generateFunctionMappingsArray(
-  ast: BabelNode,
-  context?: Context,
-): ReadonlyArray<RangeMapping>;
+declare function generateFunctionMappingsArray(ast: BabelNode, context?: Context): ReadonlyArray<RangeMapping>;
 declare function functionMapBabelPlugin(): PluginObj;
-export {
-  functionMapBabelPlugin,
-  generateFunctionMap,
-  generateFunctionMappingsArray,
-};
+export {functionMapBabelPlugin, generateFunctionMap, generateFunctionMappingsArray};

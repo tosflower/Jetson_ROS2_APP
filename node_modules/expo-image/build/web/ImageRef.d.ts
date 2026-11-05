@@ -10,4 +10,3 @@ export default class ImageRefWeb extends SharedRef<'image'> implements ImageRef 
     isAnimated: boolean;
     static init(uri: string, width: number, height: number, mediaType: string | null): ImageRefWeb;
 }
-//# sourceMappingURL=ImageRef.d.ts.map

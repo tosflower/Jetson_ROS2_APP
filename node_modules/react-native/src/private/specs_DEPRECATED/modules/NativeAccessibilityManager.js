@@ -4,64 +4,65 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  *
- * @flow
+ * @flow strict-local
  * @format
  */
 
 import type {TurboModule} from '../../../../Libraries/TurboModule/RCTExport';
+import type {UnsafeObject} from '../../../../Libraries/Types/CodegenTypes';
 
 import * as TurboModuleRegistry from '../../../../Libraries/TurboModule/TurboModuleRegistry';
 
 export interface Spec extends TurboModule {
-  +getCurrentBoldTextState: (
+  readonly getCurrentBoldTextState: (
     onSuccess: (isBoldTextEnabled: boolean) => void,
-    onError: (error: Object) => void,
+    onError: (error: UnsafeObject) => void,
   ) => void;
-  +getCurrentGrayscaleState: (
+  readonly getCurrentGrayscaleState: (
     onSuccess: (isGrayscaleEnabled: boolean) => void,
-    onError: (error: Object) => void,
+    onError: (error: UnsafeObject) => void,
   ) => void;
-  +getCurrentInvertColorsState: (
+  readonly getCurrentInvertColorsState: (
     onSuccess: (isInvertColorsEnabled: boolean) => void,
-    onError: (error: Object) => void,
+    onError: (error: UnsafeObject) => void,
   ) => void;
-  +getCurrentReduceMotionState: (
+  readonly getCurrentReduceMotionState: (
     onSuccess: (isReduceMotionEnabled: boolean) => void,
-    onError: (error: Object) => void,
+    onError: (error: UnsafeObject) => void,
   ) => void;
-  +getCurrentDarkerSystemColorsState?: (
+  readonly getCurrentDarkerSystemColorsState?: (
     onSuccess: (isDarkerSystemColorsEnabled: boolean) => void,
-    onError: (error: Object) => void,
+    onError: (error: UnsafeObject) => void,
   ) => void;
-  +getCurrentPrefersCrossFadeTransitionsState?: (
+  readonly getCurrentPrefersCrossFadeTransitionsState?: (
     onSuccess: (prefersCrossFadeTransitions: boolean) => void,
-    onError: (error: Object) => void,
+    onError: (error: UnsafeObject) => void,
   ) => void;
-  +getCurrentReduceTransparencyState: (
+  readonly getCurrentReduceTransparencyState: (
     onSuccess: (isReduceTransparencyEnabled: boolean) => void,
-    onError: (error: Object) => void,
+    onError: (error: UnsafeObject) => void,
   ) => void;
-  +getCurrentVoiceOverState: (
+  readonly getCurrentVoiceOverState: (
     onSuccess: (isScreenReaderEnabled: boolean) => void,
-    onError: (error: Object) => void,
+    onError: (error: UnsafeObject) => void,
   ) => void;
-  +setAccessibilityContentSizeMultipliers: (JSMultipliers: {
-    +extraSmall?: ?number,
-    +small?: ?number,
-    +medium?: ?number,
-    +large?: ?number,
-    +extraLarge?: ?number,
-    +extraExtraLarge?: ?number,
-    +extraExtraExtraLarge?: ?number,
-    +accessibilityMedium?: ?number,
-    +accessibilityLarge?: ?number,
-    +accessibilityExtraLarge?: ?number,
-    +accessibilityExtraExtraLarge?: ?number,
-    +accessibilityExtraExtraExtraLarge?: ?number,
+  readonly setAccessibilityContentSizeMultipliers: (JSMultipliers: {
+    readonly extraSmall?: ?number,
+    readonly small?: ?number,
+    readonly medium?: ?number,
+    readonly large?: ?number,
+    readonly extraLarge?: ?number,
+    readonly extraExtraLarge?: ?number,
+    readonly extraExtraExtraLarge?: ?number,
+    readonly accessibilityMedium?: ?number,
+    readonly accessibilityLarge?: ?number,
+    readonly accessibilityExtraLarge?: ?number,
+    readonly accessibilityExtraExtraLarge?: ?number,
+    readonly accessibilityExtraExtraExtraLarge?: ?number,
   }) => void;
-  +setAccessibilityFocus: (reactTag: number) => void;
-  +announceForAccessibility: (announcement: string) => void;
-  +announceForAccessibilityWithOptions?: (
+  readonly setAccessibilityFocus: (reactTag: number) => void;
+  readonly announceForAccessibility: (announcement: string) => void;
+  readonly announceForAccessibilityWithOptions?: (
     announcement: string,
     options: {queue?: boolean, priority?: 'low' | 'default' | 'high'},
   ) => void;

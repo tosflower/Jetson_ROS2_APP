@@ -44,7 +44,6 @@ import com.facebook.react.common.annotations.UnstableReactNativeAPI
 import com.facebook.react.devsupport.InspectorFlags.getIsProfilingBuild
 import com.facebook.react.devsupport.StackTraceHelper
 import com.facebook.react.devsupport.interfaces.DevSupportManager
-import com.facebook.react.fabric.AnimationBackendChoreographer
 import com.facebook.react.fabric.ComponentFactory
 import com.facebook.react.fabric.FabricUIManager
 import com.facebook.react.fabric.FabricUIManagerBinding
@@ -120,11 +119,10 @@ internal class ReactInstance(
      * Prepare the ReactInstance by installing JSI bindings, initializing Fabric + TurboModules, and
      * loading the JS bundle.
      */
-    val spec =
-        ReactQueueConfigurationSpec(
-            MessageQueueThreadSpec.newBackgroundThreadSpec("v_native"),
-            MessageQueueThreadSpec.newBackgroundThreadSpec("v_js"),
-        )
+    val spec = ReactQueueConfigurationSpec(
+        MessageQueueThreadSpec.newBackgroundThreadSpec("v_native"),
+        MessageQueueThreadSpec.newBackgroundThreadSpec("v_js"),
+    )
     reactQueueConfiguration = ReactQueueConfigurationImpl.create(spec, exceptionHandler)
     FLog.d(TAG, "Calling initializeMessageQueueThreads()")
     context.initializeMessageQueueThreads(reactQueueConfiguration)
@@ -169,7 +167,7 @@ internal class ReactInstance(
 
     val reactPackages: MutableList<ReactPackage> = ArrayList<ReactPackage>()
     reactPackages.add(
-        CoreReactPackage(context.devSupportManager, context.defaultHardwareBackBtnHandler)
+        CoreReactPackage(context.devSupportManager, context.defaultHardwareBackBtnHandler),
     )
     if (useDevSupport) {
       reactPackages.add(DebugCorePackage())
@@ -259,8 +257,6 @@ internal class ReactInstance(
     // Misc initialization that needs to be done before Fabric init
     DisplayMetricsHolder.initDisplayMetricsIfNotInitialized(context)
 
-    val animationBackendChoreographer = AnimationBackendChoreographer(context)
-
     val binding = FabricUIManagerBinding()
     binding.register(
         getBufferedRuntimeExecutor(),
@@ -268,7 +264,6 @@ internal class ReactInstance(
         fabricUIManager,
         eventBeatManager,
         componentFactory,
-        animationBackendChoreographer,
     )
 
     // Initialize the FabricUIManager
@@ -290,16 +285,15 @@ internal class ReactInstance(
   }
 
   private inner class ReactJsExceptionHandlerImpl(
-      private val queueThreadExceptionHandler: QueueThreadExceptionHandler
+      private val queueThreadExceptionHandler: QueueThreadExceptionHandler,
   ) : ReactJsExceptionHandler {
 
     override fun reportJsException(errorMap: ProcessedError) {
       val data = StackTraceHelper.convertProcessedError(errorMap)
       try {
-        val exceptionsManager =
-            checkNotNull(
-                getNativeModule<NativeExceptionsManagerSpec>(NativeExceptionsManagerSpec.NAME)
-            )
+        val exceptionsManager = checkNotNull(
+            getNativeModule<NativeExceptionsManagerSpec>(NativeExceptionsManagerSpec.NAME),
+        )
         exceptionsManager.reportException(data)
       } catch (e: Exception) {
         // Sometimes (e.g: always with the default exception manager) the native module exceptions
@@ -339,7 +333,7 @@ internal class ReactInstance(
           override fun setSourceURLs(deviceURL: String, remoteURL: String) {
             context.sourceURL = deviceURL
           }
-        }
+        },
     )
     Systrace.endSection(Systrace.TRACE_TAG_REACT)
   }
@@ -400,7 +394,7 @@ internal class ReactInstance(
       ReactSoftExceptionLogger.logSoftException(
           TAG,
           IllegalViewOperationException(
-              "surfaceView's is NOT equal to View.NO_ID before calling startSurface."
+              "surfaceView's is NOT equal to View.NO_ID before calling startSurface.",
           ),
       )
       view.id = View.NO_ID
@@ -462,7 +456,7 @@ internal class ReactInstance(
 
   private external fun getJavaScriptContext(): Long
 
-  external fun callFunctionOnModule(moduleName: String, methodName: String, args: NativeArray)
+  external fun callFunctionOnModule(moduleName: String, methodName: String, args: NativeArray?)
 
   private external fun registerSegmentNative(segmentId: Int, segmentPath: String)
 
@@ -477,7 +471,7 @@ internal class ReactInstance(
       ReactSoftExceptionLogger.logSoftException(
           TAG,
           ReactNoCrashSoftException(
-              "Native method handleMemoryPressureJs is called earlier than librninstance.so got ready."
+              "Native method handleMemoryPressureJs is called earlier than librninstance.so got ready.",
           ),
       )
     }
@@ -569,7 +563,7 @@ internal class ReactInstance(
             // We need to null check here because some Java implementation of the
             // `ViewManagerOnDemandReactPackage` interface could still return null even
             // if the method is marked as returning a non-nullable collection in Kotlin.
-            // See https://github.com/react/react-native/issues/52014
+            // See https://github.com/facebook/react-native/issues/52014
             @Suppress("SENSELESS_COMPARISON")
             if (names == null) {
               RNLog.w(

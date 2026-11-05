@@ -5,5 +5,5 @@
  * version used to build the native part of the library in runtime. Remember to
  * keep this in sync with the version declared in `package.json`
  */
-export const jsVersion = '4.5.1';
+export const jsVersion = '4.7.1';
 //# sourceMappingURL=jsVersion.js.map

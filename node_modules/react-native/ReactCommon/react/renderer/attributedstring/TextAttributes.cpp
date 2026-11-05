@@ -43,6 +43,9 @@ void TextAttributes::apply(TextAttributes textAttributes) {
   fontVariant = textAttributes.fontVariant.has_value()
       ? textAttributes.fontVariant
       : fontVariant;
+  fontVariationSettings = textAttributes.fontVariationSettings.has_value()
+      ? textAttributes.fontVariationSettings
+      : fontVariationSettings;
   allowFontScaling = textAttributes.allowFontScaling.has_value()
       ? textAttributes.allowFontScaling
       : allowFontScaling;
@@ -114,6 +117,8 @@ void TextAttributes::apply(TextAttributes textAttributes) {
       ? textAttributes.accessibilityRole
       : accessibilityRole;
   role = textAttributes.role.has_value() ? textAttributes.role : role;
+  textEffects = !textAttributes.textEffects.empty() ? textAttributes.textEffects
+                                                    : textEffects;
 }
 
 #pragma mark - Operators
@@ -126,6 +131,7 @@ bool TextAttributes::operator==(const TextAttributes& rhs) const {
              fontWeight,
              fontStyle,
              fontVariant,
+             fontVariationSettings,
              allowFontScaling,
              dynamicTypeRamp,
              alignment,
@@ -141,7 +147,8 @@ bool TextAttributes::operator==(const TextAttributes& rhs) const {
              layoutDirection,
              accessibilityRole,
              role,
-             textTransform) ==
+             textTransform,
+             textEffects) ==
       std::tie(
              rhs.foregroundColor,
              rhs.backgroundColor,
@@ -149,6 +156,7 @@ bool TextAttributes::operator==(const TextAttributes& rhs) const {
              rhs.fontWeight,
              rhs.fontStyle,
              rhs.fontVariant,
+             rhs.fontVariationSettings,
              rhs.allowFontScaling,
              rhs.dynamicTypeRamp,
              rhs.alignment,
@@ -164,7 +172,8 @@ bool TextAttributes::operator==(const TextAttributes& rhs) const {
              rhs.layoutDirection,
              rhs.accessibilityRole,
              rhs.role,
-             rhs.textTransform) &&
+             rhs.textTransform,
+             rhs.textEffects) &&
       floatEquality(maxFontSizeMultiplier, rhs.maxFontSizeMultiplier) &&
       floatEquality(opacity, rhs.opacity) &&
       floatEquality(fontSize, rhs.fontSize) &&
@@ -214,6 +223,10 @@ SharedDebugStringConvertibleList TextAttributes::getDebugProps() const {
           "fontStyle", fontStyle, textAttributes.fontStyle),
       debugStringConvertibleItem(
           "fontVariant", fontVariant, textAttributes.fontVariant),
+      debugStringConvertibleItem(
+          "fontVariationSettings",
+          fontVariationSettings,
+          textAttributes.fontVariationSettings),
       debugStringConvertibleItem(
           "allowFontScaling",
           allowFontScaling,

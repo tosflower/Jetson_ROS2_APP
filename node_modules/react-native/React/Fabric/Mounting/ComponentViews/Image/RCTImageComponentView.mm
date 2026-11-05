@@ -11,9 +11,11 @@
 #import <React/RCTConversions.h>
 #import <React/RCTImageBlurUtils.h>
 #import <React/RCTImageResponseObserverProxy.h>
+#import <react/featureflags/ReactNativeFeatureFlags.h>
 #import <react/renderer/components/image/ImageComponentDescriptor.h>
 #import <react/renderer/components/image/ImageEventEmitter.h>
 #import <react/renderer/components/image/ImageProps.h>
+#import <react/renderer/graphics/Color.h>
 #import <react/renderer/imagemanager/ImageRequest.h>
 #import <react/renderer/imagemanager/RCTImagePrimitivesConversions.h>
 
@@ -35,8 +37,6 @@ using namespace facebook::react;
     _imageView.contentMode = RCTContentModeFromImageResizeMode(defaultProps->resizeMode);
     _imageView.layer.minificationFilter = kCAFilterTrilinear;
     _imageView.layer.magnificationFilter = kCAFilterTrilinear;
-
-    _imageResponseObserverProxy = std::make_shared<RCTImageResponseObserverProxy>(self);
 
     self.contentView = _imageView;
   }
@@ -63,7 +63,15 @@ using namespace facebook::react;
 
   // `tintColor`
   if (oldImageProps.tintColor != newImageProps.tintColor) {
-    _imageView.tintColor = RCTUIColorFromSharedColor(newImageProps.tintColor);
+    if (ReactNativeFeatureFlags::enableImageTransparentTintColor()) {
+      if (newImageProps.tintColor.has_value()) {
+        _imageView.tintColor = RCTUIColorFromSharedColor(newImageProps.tintColor.value());
+      } else {
+        _imageView.tintColor = nil;
+      }
+    } else {
+      _imageView.tintColor = RCTUIColorFromSharedColor(newImageProps.tintColor.value_or(SharedColor{}));
+    }
   }
 
   [super updateProps:props oldProps:oldProps];
@@ -110,6 +118,11 @@ using namespace facebook::react;
   _state = state;
 
   if (_state) {
+    // A new observer per subscription: callbacks of a previous request can still be queued on the
+    // main queue (e.g. after this view was recycled and reused), and must not be applied here.
+    // The callbacks are matched by the proxy's address. The new proxy is allocated before the
+    // previous one is released, so two consecutive subscriptions never share an address.
+    _imageResponseObserverProxy = std::make_shared<RCTImageResponseObserverProxy>(self);
     auto &observerCoordinator = _state->getData().getImageRequest().getObserverCoordinator();
     observerCoordinator.addObserver(_imageResponseObserverProxy);
   }
@@ -126,8 +139,9 @@ using namespace facebook::react;
 
 - (void)didReceiveImage:(UIImage *)image metadata:(id)metadata fromObserver:(const void *)observer
 {
-  if (!_eventEmitter || !_state) {
-    // Notifications are delivered asynchronously and might arrive after the view is already recycled.
+  if (!_eventEmitter || !_state || observer != _imageResponseObserverProxy.get()) {
+    // Notifications are delivered asynchronously and might arrive after the view is already recycled,
+    // or after it has been reused for another image.
     // In the future, we should incorporate an `EventEmitter` into a separate object owned by `ImageRequest` or `State`.
     // See for more info: T46311063.
     return;
@@ -173,7 +187,7 @@ using namespace facebook::react;
                      total:(int64_t)total
               fromObserver:(const void *)observer
 {
-  if (!_eventEmitter) {
+  if (!_eventEmitter || observer != _imageResponseObserverProxy.get()) {
     return;
   }
 
@@ -182,6 +196,10 @@ using namespace facebook::react;
 
 - (void)didReceiveFailure:(NSError *)error fromObserver:(const void *)observer
 {
+  if (observer != _imageResponseObserverProxy.get()) {
+    return;
+  }
+
   _imageView.image = nil;
 
   if (!_eventEmitter) {

@@ -11,7 +11,6 @@ package com.facebook.react.utils
 
 import com.facebook.react.ReactExtension
 import com.facebook.react.model.ModelPackageJson
-import com.facebook.react.utils.KotlinStdlibCompatUtils.capitalizeCompat
 import com.facebook.react.utils.Os.cliPath
 import java.io.File
 import org.gradle.api.Project
@@ -26,12 +25,14 @@ import org.gradle.api.file.DirectoryProperty
  *
  * @param config The [ReactExtension] configured for this project
  */
-internal fun detectedEntryFile(config: ReactExtension, envVariableOverride: String? = null): File =
-    detectEntryFile(
-        entryFile = config.entryFile.orNull?.asFile,
-        reactRoot = config.root.get().asFile,
-        envVariableOverride = envVariableOverride,
-    )
+internal fun detectedEntryFile(
+    config: ReactExtension,
+    envVariableOverride: String? = null,
+): File = detectEntryFile(
+    entryFile = config.entryFile.orNull?.asFile,
+    reactRoot = config.root.get().asFile,
+    envVariableOverride = envVariableOverride,
+)
 
 /**
  * Computes the CLI file for React Native. The Algo follows this order:
@@ -40,12 +41,11 @@ internal fun detectedEntryFile(config: ReactExtension, envVariableOverride: Stri
  * 3. The `node_modules/react-native/cli.js` file if exists
  * 4. Fails otherwise
  */
-internal fun detectedCliFile(config: ReactExtension): File =
-    detectCliFile(
-        project = config.project,
-        reactNativeRoot = config.root.get().asFile,
-        preconfiguredCliFile = config.cliFile.asFile.orNull,
-    )
+internal fun detectedCliFile(config: ReactExtension): File = detectCliFile(
+    project = config.project,
+    reactNativeRoot = config.root.get().asFile,
+    preconfiguredCliFile = config.cliFile.asFile.orNull,
+)
 
 /**
  * Computes the `hermesc` command location. The Algo follows this order:
@@ -114,7 +114,7 @@ private fun detectCliFile(
       build.gradle to the path of the react-native cli.js file.
       This file typically resides in `node_modules/react-native/cli.js`
       """
-          .trimIndent()
+          .trimIndent(),
   )
 }
 
@@ -123,11 +123,9 @@ private fun detectCliFile(
  * 1. The path provided by the `hermesCommand` config in the `react` Gradle extension
  * 2. The file located in `node_modules/react-native/sdks/hermes/build/bin/hermesc`. This will be
  *    used if the user is building Hermes from source.
- * 3. The file located in `node_modules/react-native/sdks/hermesc/%OS-BIN%/hermesc` where `%OS-BIN%`
- *    is substituted with the correct OS arch. This will be used if the user is using a precompiled
- *    hermes-engine package. Or, if the user has opted in to use Hermes V1, the used file will be
- *    located in `node_modules/hermes-compiler/%OS-BIN%/hermesc` where `%OS-BIN%` is substituted
- *    with the correct OS arch.
+ * 3. The file located in `node_modules/hermes-compiler/%OS-BIN%/hermesc` where `%OS-BIN%` is
+ *    substituted with the correct OS arch. This is used when Hermes V1 is consumed as a prebuilt
+ *    package via the `hermes-compiler` npm package.
  * 4. Fails otherwise
  */
 internal fun detectOSAwareHermesCommand(
@@ -168,7 +166,7 @@ internal fun detectOSAwareHermesCommand(
   error(
       "Couldn't determine Hermesc location. " +
           "Please set `react.hermesCommand` to the path of the hermesc binary file. " +
-          "node_modules/react-native/sdks/hermesc/%OS-BIN%/hermesc"
+          "node_modules/react-native/sdks/hermesc/%OS-BIN%/hermesc",
   )
 }
 
@@ -195,14 +193,14 @@ internal fun getHermesOSBin(): String {
   if (Os.isLinuxAmd64()) return "linux64-bin"
   error(
       "OS not recognized. Please set project.react.hermesCommand " +
-          "to the path of a working Hermes compiler."
+          "to the path of a working Hermes compiler.",
   )
 }
 
 internal fun projectPathToLibraryName(projectPath: String): String =
     projectPath
         .split(':', '-', '_', '.')
-        .joinToString("") { token -> token.capitalizeCompat() }
+        .joinToString("") { token -> token.replaceFirstChar { it.titlecase() } }
         .plus("Spec")
 
 /**

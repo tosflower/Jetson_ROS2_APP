@@ -18,6 +18,24 @@
 
 using namespace facebook::react;
 
+inline static TextAlignment RCTResolveTextAlignment(TextAlignment textAlignment, bool isRTL)
+{
+  switch (textAlignment) {
+    case TextAlignment::Natural:
+      return isRTL ? TextAlignment::Right : TextAlignment::Left;
+    case TextAlignment::Start:
+      return isRTL ? TextAlignment::Right : TextAlignment::Left;
+    case TextAlignment::End:
+      return isRTL ? TextAlignment::Left : TextAlignment::Right;
+    case TextAlignment::Right:
+      return isRTL ? TextAlignment::Left : TextAlignment::Right;
+    case TextAlignment::Left:
+      return isRTL ? TextAlignment::Right : TextAlignment::Left;
+    default:
+      return textAlignment;
+  }
+}
+
 inline static UIFontWeight RCTUIFontWeightFromInteger(NSInteger fontWeight)
 {
   assert(fontWeight > 50);
@@ -136,6 +154,10 @@ inline static UIFont *RCTEffectiveFontFromTextAttributes(const TextAttributes &t
   fontProperties.weight = textAttributes.fontWeight.has_value()
       ? RCTUIFontWeightFromInteger((NSInteger)textAttributes.fontWeight.value())
       : NAN;
+  if (textAttributes.fontVariationSettings.has_value()) {
+    NSString *variationSettings = [NSString stringWithUTF8String:textAttributes.fontVariationSettings->c_str()];
+    fontProperties.variations = RCTParseFontVariationSettings(variationSettings);
+  }
   fontProperties.sizeMultiplier = RCTEffectiveFontSizeMultiplierFromTextAttributes(textAttributes);
 
   return RCTFontWithFontProperties(fontProperties);
@@ -183,7 +205,8 @@ NSMutableDictionary<NSAttributedStringKey, id> *RCTNSTextAttributesFromTextAttri
     attributes[NSForegroundColorAttributeName] = effectiveForegroundColor;
   }
 
-  if (textAttributes.backgroundColor || !isnan(textAttributes.opacity)) {
+  // A clear background draws nothing, but TextKit still computes and fills its rects on every draw.
+  if (textAttributes.backgroundColor && textAttributes.backgroundColor != clearColor()) {
     attributes[NSBackgroundColorAttributeName] = RCTEffectiveBackgroundColorFromTextAttributes(textAttributes);
   }
 
@@ -195,15 +218,10 @@ NSMutableDictionary<NSAttributedStringKey, id> *RCTNSTextAttributesFromTextAttri
   // Paragraph Style
   NSMutableParagraphStyle *paragraphStyle = [NSMutableParagraphStyle new];
   BOOL isParagraphStyleUsed = NO;
-  if (textAttributes.alignment.has_value()) {
-    TextAlignment textAlignment = textAttributes.alignment.value_or(TextAlignment::Natural);
-    if (textAttributes.layoutDirection.value_or(LayoutDirection::LeftToRight) == LayoutDirection::RightToLeft) {
-      if (textAlignment == TextAlignment::Right) {
-        textAlignment = TextAlignment::Left;
-      } else if (textAlignment == TextAlignment::Left) {
-        textAlignment = TextAlignment::Right;
-      }
-    }
+  const bool isRTL = textAttributes.layoutDirection == LayoutDirection::RightToLeft;
+  if (textAttributes.alignment.has_value() || isRTL) {
+    TextAlignment textAlignment =
+        RCTResolveTextAlignment(textAttributes.alignment.value_or(TextAlignment::Natural), isRTL);
 
     paragraphStyle.alignment = RCTNSTextAlignmentFromTextAlignment(textAlignment);
     isParagraphStyleUsed = YES;
@@ -240,29 +258,56 @@ NSMutableDictionary<NSAttributedStringKey, id> *RCTNSTextAttributesFromTextAttri
   // Decoration
   if (textAttributes.textDecorationLineType.value_or(TextDecorationLineType::None) != TextDecorationLineType::None) {
     auto textDecorationLineType = textAttributes.textDecorationLineType.value();
-
-    NSUnderlineStyle style = RCTNSUnderlineStyleFromTextDecorationStyle(
-        textAttributes.textDecorationStyle.value_or(TextDecorationStyle::Solid));
-
+    auto textDecorationStyleValue = textAttributes.textDecorationStyle.value_or(TextDecorationStyle::Solid);
     UIColor *textDecorationColor = RCTUIColorFromSharedColor(textAttributes.textDecorationColor);
 
-    // Underline
-    if (textDecorationLineType == TextDecorationLineType::Underline ||
-        textDecorationLineType == TextDecorationLineType::UnderlineStrikethrough) {
-      attributes[NSUnderlineStyleAttributeName] = @(style);
-
-      if (textDecorationColor) {
-        attributes[NSUnderlineColorAttributeName] = textDecorationColor;
+    // Custom drawing for styles UIKit can't render faithfully: wavy (no
+    // native value), and dotted/dashed (UIKit's pattern bits don't match
+    // browser geometry). The other styles continue to use NSUnderlineStyle.
+    bool needsCustomDrawing = textDecorationStyleValue == TextDecorationStyle::Wavy ||
+        textDecorationStyleValue == TextDecorationStyle::Dotted ||
+        textDecorationStyleValue == TextDecorationStyle::Dashed;
+    if (needsCustomDrawing) {
+      UIColor *strokeColor = (textDecorationColor != nil) ? textDecorationColor
+                                                          : RCTUIColorFromSharedColor(textAttributes.foregroundColor);
+      NSMutableArray<NSString *> *lines = [NSMutableArray array];
+      if (textDecorationLineType == TextDecorationLineType::Underline ||
+          textDecorationLineType == TextDecorationLineType::UnderlineStrikethrough) {
+        [lines addObject:@"underline"];
       }
-    }
+      if (textDecorationLineType == TextDecorationLineType::Strikethrough ||
+          textDecorationLineType == TextDecorationLineType::UnderlineStrikethrough) {
+        [lines addObject:@"line-through"];
+      }
+      NSString *styleKey = textDecorationStyleValue == TextDecorationStyle::Wavy
+          ? @"wavy"
+          : (textDecorationStyleValue == TextDecorationStyle::Dotted ? @"dotted" : @"dashed");
+      attributes[RCTCustomDecorationAttributeName] = @{
+        @"lines" : lines,
+        @"color" : (strokeColor != nil) ? strokeColor : [UIColor labelColor],
+        @"style" : styleKey
+      };
+    } else {
+      NSUnderlineStyle style = RCTNSUnderlineStyleFromTextDecorationStyle(textDecorationStyleValue);
 
-    // Strikethrough
-    if (textDecorationLineType == TextDecorationLineType::Strikethrough ||
-        textDecorationLineType == TextDecorationLineType::UnderlineStrikethrough) {
-      attributes[NSStrikethroughStyleAttributeName] = @(style);
+      // Underline
+      if (textDecorationLineType == TextDecorationLineType::Underline ||
+          textDecorationLineType == TextDecorationLineType::UnderlineStrikethrough) {
+        attributes[NSUnderlineStyleAttributeName] = @(style);
 
-      if (textDecorationColor) {
-        attributes[NSStrikethroughColorAttributeName] = textDecorationColor;
+        if (textDecorationColor != nil) {
+          attributes[NSUnderlineColorAttributeName] = textDecorationColor;
+        }
+      }
+
+      // Strikethrough
+      if (textDecorationLineType == TextDecorationLineType::Strikethrough ||
+          textDecorationLineType == TextDecorationLineType::UnderlineStrikethrough) {
+        attributes[NSStrikethroughStyleAttributeName] = @(style);
+
+        if (textDecorationColor != nil) {
+          attributes[NSStrikethroughColorAttributeName] = textDecorationColor;
+        }
       }
     }
   }
@@ -330,7 +375,7 @@ static void RCTApplyBaselineOffsetForRange(NSMutableAttributedString *attributed
                             maximumFontLineHeight = MAX(font.lineHeight, maximumFontLineHeight);
                           }];
 
-  if (maximumLineHeight < maximumFontLineHeight) {
+  if (maximumLineHeight < maximumFontLineHeight && !ReactNativeFeatureFlags::enableIOSCompressedTextFrameAdjustment()) {
     return;
   }
 
@@ -373,7 +418,10 @@ static NSMutableAttributedString *RCTNSAttributedStringFragmentFromFragment(
 
     return [[NSMutableAttributedString attributedStringWithAttachment:attachment] mutableCopy];
   } else {
-    NSString *string = [NSString stringWithUTF8String:fragment.string.c_str()];
+    NSString *decoded = [[NSString alloc] initWithBytes:fragment.string.data()
+                                                 length:fragment.string.size()
+                                               encoding:NSUTF8StringEncoding];
+    NSString *string = decoded != nil ? decoded : @"";
 
     if (fragment.textAttributes.textTransform.has_value()) {
       auto textTransform = fragment.textAttributes.textTransform.value();

@@ -1,6 +1,7 @@
 'use strict';
 
 import { kebabizeCamelCase, maybeAddSuffix } from "../../../utils/index.js";
+const FILTER_FUNCTION_NAME_REGEX = /[a-z][a-zA-Z-]*(?=\()/g;
 const isDropShadowValue = value => {
   return typeof value === 'object' && value !== null && 'offsetX' in value && 'offsetY' in value;
 };
@@ -21,7 +22,7 @@ function parseFilterValue(filterName, filterValue) {
 }
 export const processFilterWeb = value => {
   if (typeof value === 'string') {
-    return value;
+    return value.replace(FILTER_FUNCTION_NAME_REGEX, name => kebabizeCamelCase(name));
   }
   return value.map(filter => Object.entries(filter).map(([filterProp, filterValue]) => {
     const kebabName = kebabizeCamelCase(filterProp);

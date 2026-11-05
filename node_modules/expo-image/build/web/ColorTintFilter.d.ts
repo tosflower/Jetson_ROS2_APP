@@ -7,6 +7,5 @@ type TintColorFilterProps = {
     id: string;
     tintColor?: string | null;
 };
-export default function TintColorFilter({ id, tintColor }: TintColorFilterProps): import("react/jsx-runtime").JSX.Element | null;
+export default function TintColorFilter({ id, tintColor }: TintColorFilterProps): import("react").JSX.Element | null;
 export {};
-//# sourceMappingURL=ColorTintFilter.d.ts.map

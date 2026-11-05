@@ -1,11 +1,25 @@
 'use strict';
 
+// react-native-web exposes these style helpers only through internal modules.
+// The dist/cjs build (with .js extensions) resolves under Metro, strict-ESM
+// bundlers and Node's ESM resolver (SSR); a runtime require() would not (#9844).
+// eslint-disable-next-line n/no-unpublished-import
+import * as createReactDOMStyleModule from 'react-native-web/dist/cjs/exports/StyleSheet/compiler/createReactDOMStyle.js';
+// eslint-disable-next-line n/no-unpublished-import
+import * as preprocessModule from 'react-native-web/dist/cjs/exports/StyleSheet/preprocess.js';
+
+// createReactDOMStyle is `module.exports = fn` (unwrap `.default`); the preprocess
+// helpers are named exports read directly (not on `.default`, a separate fn).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export let createReactDOMStyle;
+const interopDefault = moduleExports => moduleExports?.default ?? moduleExports;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export let createTransformValue;
+export const createReactDOMStyle = interopDefault(createReactDOMStyleModule);
+
+// React Native Web 0.19+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const createTransformValue = preprocessModule.createTransformValue;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export let createTextShadowValue;
+export const createTextShadowValue = preprocessModule.createTextShadowValue;
 //# sourceMappingURL=webUtils.js.map

@@ -15,6 +15,8 @@ import type AnimatedValue from '../nodes/AnimatedValue';
 import type AnimatedValueXY from '../nodes/AnimatedValueXY';
 import type {AnimationConfig, EndCallback} from './Animation';
 
+import * as ReactNativeFeatureFlags from '../../../src/private/featureflags/ReactNativeFeatureFlags';
+import {getCurrentAnimationTime} from '../AnimationTimingUtils';
 import AnimatedColor from '../nodes/AnimatedColor';
 import Animation from './Animation';
 
@@ -69,6 +71,7 @@ export default class TimingAnimation extends Animation {
   _animationFrame: ?AnimationFrameID;
   _timeout: ?TimeoutID;
   _platformConfig: ?PlatformConfig;
+  _deferredStart: boolean;
 
   constructor(config: TimingAnimationConfigSingle) {
     super(config);
@@ -78,6 +81,7 @@ export default class TimingAnimation extends Animation {
     this._duration = config.duration ?? 500;
     this._delay = config.delay ?? 0;
     this._platformConfig = config.platformConfig;
+    this._deferredStart = false;
   }
 
   __getNativeAnimationConfig(): Readonly<{
@@ -102,6 +106,7 @@ export default class TimingAnimation extends Animation {
       iterations: this.__iterations,
       platformConfig: this._platformConfig,
       debugID: this.__getDebugID(),
+      deferredStart: this._deferredStart,
     };
   }
 
@@ -116,11 +121,16 @@ export default class TimingAnimation extends Animation {
 
     this._fromValue = fromValue;
     this._onUpdate = onUpdate;
+    if (ReactNativeFeatureFlags.animatedDeferStartOfTimingAnimations()) {
+      this._deferredStart = animatedValue.__deferAnimationStart;
+      animatedValue.__deferAnimationStart = false;
+    }
 
     const start = () => {
-      this._startTime = Date.now();
+      this._startTime = getCurrentAnimationTime();
 
       const useNativeDriver = this.__startAnimationIfNative(animatedValue);
+      // TODO: T274006331 - Remove js-only animation once shared backend is fully rolled out
       if (!useNativeDriver) {
         // Animations that sometimes have 0 duration and sometimes do not
         // still need to use the native driver when duration is 0 so as to
@@ -141,7 +151,7 @@ export default class TimingAnimation extends Animation {
   }
 
   onUpdate(): void {
-    const now = Date.now();
+    const now = getCurrentAnimationTime();
     if (now >= this._startTime + this._duration) {
       if (this._duration === 0) {
         this._onUpdate(this._toValue);

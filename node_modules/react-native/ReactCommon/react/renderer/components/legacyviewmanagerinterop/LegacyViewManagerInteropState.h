@@ -7,6 +7,10 @@
 
 #pragma once
 
+#include <react/cxxstableapi/PrivateGuard.h>
+
+#ifndef RCT_REMOVE_LEGACY_COMPONENT_INTEROP
+
 #import <memory>
 
 namespace facebook::react {
@@ -20,3 +24,5 @@ class LegacyViewManagerInteropState final {
 };
 
 } // namespace facebook::react
+
+#endif // RCT_REMOVE_LEGACY_COMPONENT_INTEROP

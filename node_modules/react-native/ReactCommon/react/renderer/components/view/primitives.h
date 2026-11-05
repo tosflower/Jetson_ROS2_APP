@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <react/cxxstableapi/UmbrellaGuard.h>
+
 #include <react/renderer/graphics/Color.h>
 #include <react/renderer/graphics/RectangleCorners.h>
 #include <react/renderer/graphics/RectangleEdges.h>
@@ -247,5 +249,10 @@ struct BorderMetrics {
 
   bool operator==(const BorderMetrics &rhs) const = default;
 };
+
+inline bool areBorderRadiiCircular(const BorderRadii &borderRadii)
+{
+  return borderRadii.isUniform() && borderRadii.topLeft.horizontal == borderRadii.topLeft.vertical;
+}
 
 } // namespace facebook::react

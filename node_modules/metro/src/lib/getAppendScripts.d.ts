@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<72fd04e53dc895f1305e10043f986edc>>
+ * @generated SignedSource<<308e44ef8ddbcb661be2578c143f26bc>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/lib/getAppendScripts.js
@@ -30,9 +30,5 @@ type Options<T extends number | string> = Readonly<{
   sourceUrl: null | undefined | string;
   getSourceUrl: null | undefined | (($$PARAM_0$$: Module) => string);
 }>;
-declare function getAppendScripts<T extends number | string>(
-  entryPoint: string,
-  modules: ReadonlyArray<Module>,
-  options: Options<T>,
-): ReadonlyArray<Module>;
+declare function getAppendScripts<T extends number | string>(entryPoint: string, modules: ReadonlyArray<Module>, options: Options<T>): ReadonlyArray<Module>;
 export default getAppendScripts;

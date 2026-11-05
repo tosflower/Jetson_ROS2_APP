@@ -1,8 +1,10 @@
+import type { ComponentProps, ComponentRef } from 'react';
 import { Text } from 'react-native';
-interface AnimatedTextComplement extends Text {
-    getNode(): Text;
-}
-export declare const AnimatedText: import("../createAnimatedComponent").AnimatedComponentType<Readonly<import("react-native").TextProps>, typeof Text>;
+import { type AnimatedComponentType } from '../createAnimatedComponent';
+type AnimatedTextComplement = ComponentRef<typeof Text> & {
+    getNode(): ComponentRef<typeof Text>;
+};
+export declare const AnimatedText: AnimatedComponentType<Readonly<ComponentProps<typeof Text>>, ComponentRef<typeof Text>>;
 export type AnimatedText = typeof AnimatedText & AnimatedTextComplement;
 export {};
 //# sourceMappingURL=Text.d.ts.map

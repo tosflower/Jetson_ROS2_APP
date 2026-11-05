@@ -1,6 +1,6 @@
 import type { SerializableRef, WorkletFunction } from 'react-native-worklets';
 import type { InternalHostInstance, LayoutAnimationBatchItem, SettledUpdate, ShadowNodeWrapper, StyleProps, Value3D, ValueRotation } from '../commonTypes';
-import type { CSSAnimationUpdates, CSSPseudoStyleConfig, CSSTransitionConfig, NormalizedCSSAnimationKeyframesConfig } from '../css/native';
+import type { CSSAnimationUpdates, CSSEventHandler, CSSPseudoStyleConfig, CSSTransitionConfig, NormalizedCSSAnimationKeyframesConfig } from '../css/native';
 /** Type of `__reanimatedModuleProxy` injected with JSI. */
 export interface ReanimatedModuleProxy {
     registerEventHandler<T>(eventHandler: SerializableRef<T>, eventName: string, emitterReactTag: number): number;
@@ -15,13 +15,15 @@ export interface ReanimatedModuleProxy {
     configureLayoutAnimationBatch(layoutAnimationsBatch: LayoutAnimationBatchItem[]): void;
     setShouldAnimateExitingForTag(viewTag: number, shouldAnimate: boolean): void;
     setViewStyle(viewTag: number, style: StyleProps): void;
+    /** Registers the single handler receiving every CSS event batch. */
+    setCSSEventHandler(handler: CSSEventHandler): void;
     markNodeAsRemovable(shadowNodeWrapper: ShadowNodeWrapper): void;
     unmarkNodeAsRemovable(viewTag: number): void;
     registerCSSKeyframes(animationName: string, compoundComponentName: string, keyframesConfig: NormalizedCSSAnimationKeyframesConfig): void;
     unregisterCSSKeyframes(animationName: string, compoundComponentName: string): void;
     applyCSSAnimations(shadowNodeWrapper: ShadowNodeWrapper, compoundComponentName: string, animationUpdates: CSSAnimationUpdates): void;
     unregisterCSSAnimations(viewTag: number): void;
-    runCSSTransition(shadowNodeWrapper: ShadowNodeWrapper, transitionConfig: CSSTransitionConfig): void;
+    runCSSTransition(shadowNodeWrapper: ShadowNodeWrapper, transitionConfig: CSSTransitionConfig, eventMask: number): void;
     unregisterCSSTransition(viewTag: number): void;
     getSettledUpdates(): SettledUpdate[];
     registerPseudoStyles(shadowNodeWrapper: ShadowNodeWrapper, config: CSSPseudoStyleConfig): void;

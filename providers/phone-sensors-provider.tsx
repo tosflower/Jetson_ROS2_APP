@@ -10,6 +10,7 @@ import {
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { useRosbridge } from './rosbridge-provider';
+import { watchDevicePosition } from '@/services/phone-sensors/location-watch';
 import {
   PHONE_GPS_TOPIC,
   PHONE_GPS_TYPE,
@@ -79,6 +80,7 @@ type TimedHeadingSample = {
 };
 
 const GPS_PUBLISH_INTERVAL_MS = 500;
+const GPS_FIRST_FIX_TIMEOUT_MS = 15000;
 const HEADING_PUBLISH_INTERVAL_MS = 200;
 const IMU_SAMPLE_INTERVAL_MS = 20;
 const IMU_PUBLISH_INTERVAL_MS = 40;
@@ -107,7 +109,8 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
   const [latestHeading, setLatestHeading] = useState<PhoneHeadingSnapshot | null>(null);
 
   const connectionStateRef = useRef(connectionState);
-  const foregroundRef = useRef(AppState.currentState === 'active');
+  // React Native 启动时可能暂时返回 null；只在明确进入后台时暂停采集。
+  const foregroundRef = useRef(AppState.currentState !== 'background' && AppState.currentState !== 'inactive');
   const gpsDesiredRef = useRef(false);
   const headingDesiredRef = useRef(false);
   const imuDesiredRef = useRef(false);
@@ -118,12 +121,13 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
   const headingStartingRef = useRef(false);
   const imuStartingRef = useRef(false);
   const locationPermissionPromiseRef = useRef<Promise<void> | null>(null);
-  const gpsSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
+  const gpsSubscriptionRef = useRef<RemovableSubscription | null>(null);
   const headingSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
   const accelerometerSubscriptionRef = useRef<RemovableSubscription | null>(null);
   const gyroscopeSubscriptionRef = useRef<RemovableSubscription | null>(null);
   const magnetometerSubscriptionRef = useRef<RemovableSubscription | null>(null);
   const gpsTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const gpsFirstFixTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const headingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const imuTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const magneticTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -144,6 +148,8 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
     gpsSubscriptionRef.current = null;
     if (gpsTimerRef.current) clearInterval(gpsTimerRef.current);
     gpsTimerRef.current = null;
+    if (gpsFirstFixTimerRef.current) clearTimeout(gpsFirstFixTimerRef.current);
+    gpsFirstFixTimerRef.current = null;
     latestLocationRef.current = null;
     lastGpsDisplayedAtRef.current = 0;
     if (gpsDesiredRef.current) {
@@ -229,13 +235,16 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
         || !foregroundRef.current
       ) return;
 
-      const subscription = await Location.watchPositionAsync({
-        accuracy: Location.Accuracy.High,
-        timeInterval: 250,
-        distanceInterval: 0,
-      }, (location) => {
+      const subscription = await watchDevicePosition((location) => {
+        if (generation !== gpsGenerationRef.current || !gpsDesiredRef.current || !foregroundRef.current) return;
         // 采样回调只更新最新值，发布由独立 2 Hz 定时器负责。
         latestLocationRef.current = location;
+        if (gpsFirstFixTimerRef.current) clearTimeout(gpsFirstFixTimerRef.current);
+        gpsFirstFixTimerRef.current = null;
+      }, (message) => {
+        if (generation === gpsGenerationRef.current && gpsDesiredRef.current && foregroundRef.current) {
+          setGpsStatus(`定位暂不可用：${message}；正在等待设备恢复定位`);
+        }
       });
       if (
         generation !== gpsGenerationRef.current
@@ -246,6 +255,13 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
         return;
       }
       gpsSubscriptionRef.current = subscription;
+      if (!latestLocationRef.current) {
+        gpsFirstFixTimerRef.current = setTimeout(() => {
+          gpsFirstFixTimerRef.current = null;
+          if (generation !== gpsGenerationRef.current || latestLocationRef.current) return;
+          setGpsStatus('尚未收到首个位置，仍在等待定位。请检查精确位置权限，联网并到窗边或室外重试；部分平板仅支持网络定位。');
+        }, GPS_FIRST_FIX_TIMEOUT_MS);
+      }
       gpsTimerRef.current = setInterval(() => {
         const location = latestLocationRef.current;
         if (!location) return;
@@ -278,9 +294,7 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
         }
       }, GPS_PUBLISH_INTERVAL_MS);
       setGpsState('active');
-      setGpsStatus(connectionStateRef.current === 'connected'
-        ? 'GPS 已启动，正在等待首个定位采样'
-        : 'GPS 正在采集；等待 rosbridge 连接后发布');
+      setGpsStatus('定位已启动，正在等待首个位置');
     } catch (error) {
       if (generation !== gpsGenerationRef.current) return;
       gpsDesiredRef.current = false;

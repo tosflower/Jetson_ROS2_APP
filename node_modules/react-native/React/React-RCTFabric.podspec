@@ -8,7 +8,7 @@ require "json"
 package = JSON.parse(File.read(File.join(__dir__, "..", "package.json")))
 version = package['version']
 
-source = { :git => 'https://github.com/react/react-native.git' }
+source = { :git => 'https://github.com/facebook/react-native.git' }
 if version == '1000.0.0'
   # This is an unpublished version, use the latest commit hash of the react-native repo, which we’re presumably in.
   source[:commit] = `git rev-parse HEAD`.strip if system("git rev-parse --git-dir > /dev/null 2>&1")
@@ -100,6 +100,7 @@ Pod::Spec.new do |s|
   add_dependency(s, "React-networking", :framework_name => 'React_networking')
   add_dependency(s, "React-renderercss")
   add_dependency(s, "React-RCTFBReactNativeSpec")
+  add_dependency(s, "React-cxxstableapi")
 
   depend_on_js_engine(s)
   add_rn_third_party_dependencies(s)
@@ -109,4 +110,6 @@ Pod::Spec.new do |s|
     test_spec.source_files = podspec_sources("Tests/**/*.{mm}", "")
     test_spec.framework = "XCTest"
   end
+
+  mark_as_react_native_build(s)
 end

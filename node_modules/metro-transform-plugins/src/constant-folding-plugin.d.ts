@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<126e200dfee829750f4424e550c34190>>
+ * @generated SignedSource<<37d59c49a8f0dcc16de0ddda97806455>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-transform-plugins/src/constant-folding-plugin.js
@@ -22,8 +22,5 @@ import type * as $$IMPORT_TYPEOF_2$$ from '@babel/types';
 type Traverse = typeof $$IMPORT_TYPEOF_1$$;
 type Types = typeof $$IMPORT_TYPEOF_2$$;
 type State = {stripped: boolean};
-declare function constantFoldingPlugin(context: {
-  types: Types;
-  traverse: Traverse;
-}): PluginObj<State>;
+declare function constantFoldingPlugin(context: {types: Types; traverse: Traverse}): PluginObj<State>;
 export default constantFoldingPlugin;

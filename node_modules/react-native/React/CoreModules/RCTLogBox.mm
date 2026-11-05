@@ -39,7 +39,7 @@ RCT_EXPORT_MODULE()
   _bridgelessSurfacePresenter = surfacePresenter;
 }
 
-RCT_EXPORT_METHOD(show)
+- (void)show
 {
   if (RCTRedBoxGetEnabled()) {
     __weak RCTLogBox *weakSelf = self;
@@ -59,22 +59,11 @@ RCT_EXPORT_METHOD(show)
                                                  surfacePresenter:strongSelf->_bridgelessSurfacePresenter];
         [strongSelf->_view show];
       }
-#ifndef RCT_REMOVE_LEGACY_ARCH
-      else if ((strongSelf->_bridge != nullptr) && strongSelf->_bridge.valid) {
-        if (strongSelf->_bridge.surfacePresenter != nullptr) {
-          strongSelf->_view = [[RCTLogBoxView alloc] initWithWindow:RCTKeyWindow()
-                                                   surfacePresenter:strongSelf->_bridge.surfacePresenter];
-        } else {
-          strongSelf->_view = [[RCTLogBoxView alloc] initWithWindow:RCTKeyWindow() bridge:strongSelf->_bridge];
-        }
-        [strongSelf->_view show];
-      }
-#endif // RCT_REMOVE_LEGACY_ARCH
     });
   }
 }
 
-RCT_EXPORT_METHOD(hide)
+- (void)hide
 {
   if (RCTRedBoxGetEnabled()) {
     __weak RCTLogBox *weakSelf = self;

@@ -18,7 +18,6 @@ plugins {
   id("com.facebook.react")
   alias(libs.plugins.android.library)
   alias(libs.plugins.download)
-  alias(libs.plugins.kotlin.android)
   alias(libs.plugins.ktfmt)
 }
 
@@ -38,9 +37,6 @@ val downloadsDir =
     }
 val thirdPartyNdkDir = File("$buildDir/third-party-ndk")
 val reactNativeRootDir = projectDir.parent
-
-val hermesV1Enabled =
-    rootProject.extensions.getByType(PrivateReactExtension::class.java).hermesV1Enabled.get()
 
 // We put the publishing version from gradle.properties inside ext. so other
 // subprojects can access it as well.
@@ -119,6 +115,7 @@ val preparePrefab by
                       Pair("../ReactCommon/cxxreact/", "cxxreact/"),
                       // react_featureflags
                       Pair("../ReactCommon/react/featureflags/", "react/featureflags/"),
+                      Pair("../ReactCommon/react/featureflags/React/", "React/"),
                       // react_devtoolsruntimesettings
                       Pair(
                           "../ReactCommon/react/devtoolsruntimesettings/",
@@ -147,6 +144,7 @@ val preparePrefab by
                       Pair("../ReactCommon/react/renderer/css/", "react/renderer/css/"),
                       // react_debug
                       Pair("../ReactCommon/react/debug/", "react/debug/"),
+                      Pair("../ReactCommon/react/debug/React/", "React/"),
                       // react_renderer_debug
                       Pair("../ReactCommon/react/renderer/debug/", "react/renderer/debug/"),
                       // react_renderer_graphics
@@ -176,6 +174,10 @@ val preparePrefab by
                           "../ReactCommon/react/renderer/components/view/",
                           "react/renderer/components/view/",
                       ),
+                      Pair(
+                          "../ReactCommon/react/renderer/components/view/React/",
+                          "React/",
+                      ),
                       Pair("../ReactCommon/react/renderer/components/view/platform/android/", ""),
                       // rrc_root
                       Pair(
@@ -195,6 +197,7 @@ val preparePrefab by
                           "../ReactCommon/react/renderer/components/text/",
                           "react/renderer/components/text/",
                       ),
+                      Pair("../ReactCommon/react/renderer/components/text/platform/android/", ""),
                       Pair(
                           "../ReactCommon/react/renderer/attributedstring",
                           "react/renderer/attributedstring",
@@ -218,7 +221,10 @@ val preparePrefab by
                       Pair(File(buildDir, "third-party-ndk/folly/").absolutePath, ""),
                       Pair(File(buildDir, "third-party-ndk/glog/exported/").absolutePath, ""),
                       Pair("../ReactCommon/callinvoker/", ""),
+                      Pair("../ReactCommon/callinvoker/React/", "React/"),
                       Pair("../ReactCommon/cxxreact/", "cxxreact/"),
+                      // Exported because the public cxxreact/ErrorUtils.h includes it
+                      Pair("../ReactCommon/jserrorhandler/", "jserrorhandler/"),
                       Pair("../ReactCommon/react/bridging/", "react/bridging/"),
                       Pair("../ReactCommon/react/nativemodule/core/", ""),
                       Pair("../ReactCommon/react/nativemodule/core/platform/android/", ""),
@@ -237,6 +243,7 @@ val preparePrefab by
                           "react/renderer/leakchecker/",
                       ),
                       Pair("../ReactCommon/react/renderer/mapbuffer/", "react/renderer/mapbuffer/"),
+                      Pair("../ReactCommon/react/renderer/mapbuffer/React/", "React/"),
                       Pair("../ReactCommon/react/renderer/mounting/", "react/renderer/mounting/"),
                       Pair(
                           "../ReactCommon/react/renderer/runtimescheduler/",
@@ -246,6 +253,8 @@ val preparePrefab by
                       Pair("../ReactCommon/react/renderer/telemetry/", "react/renderer/telemetry/"),
                       Pair("../ReactCommon/react/renderer/uimanager/", "react/renderer/uimanager/"),
                       Pair("../ReactCommon/react/debug/", "react/debug/"),
+                      Pair("../ReactCommon/react/debug/React/", "React/"),
+                      Pair("../ReactCommon/react/cxxstableapi/", "react/cxxstableapi/"),
                       Pair("../ReactCommon/react/utils/", "react/utils/"),
                       Pair("src/main/jni/react/jni", "react/jni/"),
                       // react_cxxreactpackage
@@ -267,6 +276,7 @@ val preparePrefab by
                       ),
                       // react_timing
                       Pair("../ReactCommon/react/timing/", "react/timing/"),
+                      Pair("../ReactCommon/react/timing/React/", "React/"),
                       // yoga
                       Pair("../ReactCommon/yoga/", ""),
                       Pair("src/main/jni/first-party/yogajni/jni", ""),
@@ -289,7 +299,7 @@ val preparePrefab by
                   // hermes_executor
                   Pair("../ReactCommon/hermes/inspector-modern/", "hermes/inspector-modern/"),
               ),
-          )
+          ),
       )
       outputDir.set(prefabHeadersDir)
     }
@@ -304,7 +314,7 @@ val downloadBoost by
     tasks.registering(Download::class) {
       dependsOn(createNativeDepsDirectories)
       src(
-          "https://archives.boost.io/release/${BOOST_VERSION.replace("_", ".")}/source/boost_${BOOST_VERSION}.tar.gz"
+          "https://archives.boost.io/release/${BOOST_VERSION.replace("_", ".")}/source/boost_${BOOST_VERSION}.tar.gz",
       )
       onlyIfModified(true)
       overwrite(false)
@@ -328,7 +338,7 @@ val downloadDoubleConversion by
     tasks.registering(Download::class) {
       dependsOn(createNativeDepsDirectories)
       src(
-          "https://github.com/google/double-conversion/archive/v${DOUBLE_CONVERSION_VERSION}.tar.gz"
+          "https://github.com/google/double-conversion/archive/v${DOUBLE_CONVERSION_VERSION}.tar.gz",
       )
       onlyIfModified(true)
       overwrite(false)
@@ -466,7 +476,7 @@ val buildCodegenCLI by
           fileTree(codegenDir) {
             include("lib/**/*.js")
             include("lib/**/*.js.flow")
-          }
+          },
       )
       rootProjectName.set(rootProject.name)
     }
@@ -557,6 +567,15 @@ android {
   defaultConfig {
     minSdk = libs.versions.minSdk.get().toInt()
 
+    aarMetadata {
+      // RN's public ABI exposes no android API newer than 34, and the source is written to
+      // compile against SDK 34 (see util/AndroidVersion.kt). compileSdk is 36 only to build
+      // against the latest platform — it is not an API requirement. Without this, AGP 9
+      // defaults minCompileSdk to compileSdk (36), needlessly forcing every consuming
+      // library/app to compileSdk 36.
+      minCompileSdk = 34
+    }
+
     consumerProguardFiles("proguard-rules.pro")
 
     buildConfigField("boolean", "IS_INTERNAL_BUILD", "false")
@@ -564,6 +583,7 @@ android {
     buildConfigField("boolean", "UNSTABLE_ENABLE_FUSEBOX_RELEASE", "false")
     buildConfigField("boolean", "ENABLE_PERFETTO", "false")
     buildConfigField("boolean", "UNSTABLE_ENABLE_MINIFY_LEGACY_ARCHITECTURE", "false")
+    buildConfigField("boolean", "UNSTABLE_REMOVE_LEGACY_COMPONENT_INTEROP", "false")
 
     resValue("integer", "react_native_dev_server_port", reactNativeDevServerPort())
     resValue("string", "react_native_dev_server_ip", "localhost")
@@ -582,10 +602,6 @@ android {
             "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
             "-DCMAKE_POLICY_DEFAULT_CMP0069=NEW",
         )
-
-        if (hermesV1Enabled) {
-          arguments("-DHERMES_V1_ENABLED=1")
-        }
 
         targets(
             "reactnative",
@@ -615,22 +631,25 @@ android {
   tasks.getByName("generateCodegenSchemaFromJavaScript").dependsOn(buildCodegenCLI)
   prepareKotlinBuildScriptModel.dependsOn("preBuild")
   prepareKotlinBuildScriptModel.dependsOn(
-      ":packages:react-native:ReactAndroid:hermes-engine:preBuild"
+      ":packages:react-native:ReactAndroid:hermes-engine:preBuild",
   )
 
-  sourceSets.getByName("main") {
-    res.setSrcDirs(
-        listOf(
-            "src/main/res/devsupport",
-            "src/main/res/shell",
-            "src/main/res/views/alert",
-            "src/main/res/views/modal",
-            "src/main/res/views/uimanager",
-            "src/main/res/views/view",
+  sourceSets {
+    named("main") {
+      res.directories.apply {
+        clear()
+        addAll(
+            listOf(
+                "src/main/res/devsupport",
+                "src/main/res/shell",
+                "src/main/res/views/alert",
+                "src/main/res/views/modal",
+                "src/main/res/views/uimanager",
+                "src/main/res/views/view",
+            ),
         )
-    )
-    java.exclude("com/facebook/react/processing")
-    java.exclude("com/facebook/react/module/processing")
+      }
+    }
   }
 
   lint {
@@ -721,6 +740,8 @@ dependencies {
   // Therefore hermes-engine is a compileOnly dependencies.
   compileOnly(project(":packages:react-native:ReactAndroid:hermes-engine"))
 
+  implementation(libs.androidx.collection)
+
   testImplementation(libs.junit)
   testImplementation(libs.assertj)
   testImplementation(libs.mockito)
@@ -765,7 +786,7 @@ apply(from = "./publish.gradle")
 // We need to override the artifact ID as this project is called `ReactAndroid` but
 // the maven coordinates are on `react-android`.
 // Please note that the original coordinates, `react-native`, have been voided
-// as they caused https://github.com/react/react-native/issues/35210
+// as they caused https://github.com/facebook/react-native/issues/35210
 publishing {
   publications { getByName("release", MavenPublication::class) { artifactId = "react-android" } }
 }

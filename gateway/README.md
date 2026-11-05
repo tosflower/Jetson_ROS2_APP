@@ -5,6 +5,7 @@
 - `POST /api/launch/start` 启动白名单中的感知 launch；
 - `POST /api/launch/stop` 停止 launch 及其子进程；
 - `WS /ws/mobile` 按客户端选择的话题发送 JPEG、FPS 和延时数据；
+- `9090/TCP` 内置手机 ROS2 桥，接收手机定位、传感器和导航状态，并转发 `/rosout` 日志；
 - `GET /health` 返回网关和图像话题状态；
 - `/api/commands/*` 提供默认任务、自定义命令校验、启停、终端输出、历史与预设；
 - `GET /api/images/topics` 提供类似 rqt 的图像话题发现。
@@ -29,7 +30,7 @@ source <ros2_workspace>/install/setup.bash
 python3 gateway/gateway.py
 ```
 
-Ubuntu 22.04/Humble 或其他 ROS2 版本时，将 `foxy` 换成对应发行版。启动成功后，网关默认监听所有网卡的 `8080` 端口，并通过 `zeroconf` 在局域网发布 `_jetson-gateway._tcp` 服务。手机连接 Jetson 热点或与 Jetson 接入同一路由器后，独立 Android APP 会自动发现并显示 IP，用户只需输入 Ubuntu 密码；该用户需要有 sudo 权限。密码仅用于当次验证，不会写入 App 或网关存储。网关换 IP 后最多约 15 秒更新公告。
+Ubuntu 22.04/Humble 或其他 ROS2 版本时，将 `foxy` 换成对应发行版。启动成功后，网关默认监听所有网卡的 `8080` 和 `9090` 端口，并通过 `zeroconf` 在局域网发布 `_jetson-gateway._tcp` 服务。手机连接 Jetson 热点或与 Jetson 接入同一路由器后，独立 Android APP 会自动发现并显示 IP，用户只需输入 Ubuntu 密码；该用户需要有 sudo 权限。密码仅用于当次验证，不会写入 App 或网关存储。网关换 IP 后最多约 15 秒更新公告。
 
 ## 图像话题与可选配置
 
@@ -48,7 +49,14 @@ ROS_IMAGE_TOPIC=/your/camera/image/compressed python3 gateway/gateway.py
 | `ROS_IMAGE_TOPIC` | `/camera/image_raw/compressed` | ROS2 压缩图像话题 |
 | `GATEWAY_HOST` | `0.0.0.0` | HTTP/WebSocket 监听地址 |
 | `GATEWAY_PORT` | `8080` | App 连接端口 |
+| `PHONE_BRIDGE_PORT` | `9090` | 内置手机 ROS2 桥 WebSocket 端口；手机默认连接 9090 |
 | `MAX_STREAM_FPS` | `20` | 每个 App 连接的最大推流帧率 |
+
+## 内置手机 ROS2 桥
+
+启动 `gateway.py` 即同时启动 9090 WebSocket 服务，不再需要另启独立 `rosbridge_websocket`。若旧服务仍占用 9090，网关会在启动时报端口占用错误；先停止旧服务。手机先通过 8080 登录，再在 9090 WebSocket 的首条 JSON 消息发送 `{ "op": "auth", "token": "登录返回的令牌" }`，收到 `auth_response` 后才恢复发布和订阅。手动配置的外部 rosbridge 地址仍可沿用原客户端协议。
+
+当前仅支持手机 App 使用的操作：向 `/phone/gps_data` (`std_msgs/msg/String`) 与 `/phone/gps` (`sensor_msgs/msg/NavSatFix`) 发布定位；向 `/phone/heading`、`/phone/imu`、`/phone/magnetic_field` 发布传感器数据；向 `/phone/navigation/route` 和 `/phone/navigation/status` 发布现有导航消息；订阅 `/rosout` (`rcl_interfaces/msg/Log`) 显示 ROS 日志。服务调用返回不支持，不提供任意 ROS 话题发布或全局地图传输。所有发布者使用可靠 QoS、深度 10；`/rosout` 订阅使用可靠 QoS、深度 100。连接断开时清除该连接的订阅，日志转发队列最多保留 10 条。
 
 ## 验证
 
@@ -108,12 +116,39 @@ curl http://127.0.0.1:8080/health
 | `POST /api/commands/presets` | `{ "id": "成功运行记录id", "name": "预设名称" }` |
 | `DELETE /api/commands/presets/{id}` | 删除预设，不删除文件或历史 |
 | `GET /api/images/topics` | 可视化图像话题、消息类型、发布者数量和本机转换支持状态 |
+| `GET /api/images/diagnostics` | Bearer token；活动图像流的订阅世代、共享转换计数、逐客户端选择／写出／回执证据 |
+
+## 帧选择诊断
+
+`image_diagnostics` 能力启用后，图像元信息带有 `subscription_epoch`、`stream_session` 和 `frame_id`。
+新版 App 在接收、加载完成和待解码槽位替换时返回对应身份的回执。旧版 App 仍能显示图像和统计延迟，
+但缺少世代及会话的旧回执不进入诊断账本，因此不能凭此判定网络故障。
+
+诊断接口每条活动连接保留最近 128 个已选帧，默认后继事件观察时限为 3000 ms。
+`gateway_skipped_total` 只计算客户端首次选帧之后、两次实际选帧之间未被该客户端选择的生成帧；
+它说明最新帧选择产生的跳号，不能进一步区分帧率上限、发送耗时和线程调度各自的贡献。
+`previous_selected_frame_id` 与 `selected_ms` 保留窗口内每次选择的依据。
+
+| 状态 | 含义 |
+| --- | --- |
+| `write_pending` / `write_timeout` | 已选择，尚未取得本地二进制写出完成证据；等待中／超过观察时限 |
+| `receive_pending` / `receive_evidence_missing` | 已本地写出，等待接收回执／超过观察时限 |
+| `load_pending` / `load_evidence_missing` | 已收到接收回执，等待加载回执／超过观察时限 |
+| `loaded` | 收到加载完成回执 |
+| `intentional_client_skip` | 客户端明确报告待解码槽位被后续已接收帧替换 |
+| `evidence_conflict` | 同一帧同时收到加载完成与主动替换证据，需要复核 |
+
+迟到回执会修正窗口内状态；超出窗口的未终结记录单独计入 `evicted_unresolved_total`，不计为丢帧。
+所有时间均由网关单调时钟记录，不依赖手机校时。断线后移除该流账本，不持久化诊断历史。
+共享计数按订阅世代保留回调、成功生成和转换失败次数，支持人工对照多客户端；
+当前接口未实现自动跨客户端根因判断，也未实现异步订阅资源状态机诊断。
 
 命令和计时单元测试无需 ROS 或硬件。接口测试通过模拟 ROS 图验证连接、双客户端订阅和释放，不替代 Jetson 实机测试：
 
 ```bash
 python3 -m unittest discover -s gateway -p 'test_commands.py' -v
 python3 -m unittest discover -s gateway -p 'test_streaming.py' -v
+python3 -m unittest discover -s gateway -p 'test_diagnostics.py' -v
 python3 -m unittest discover -s gateway -p 'test_auth.py' -v
 python3 -m pip install --user -r gateway/requirements-test.txt
 python3 -m unittest discover -s gateway -p 'test_gateway_api.py' -v

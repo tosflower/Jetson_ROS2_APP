@@ -46,19 +46,18 @@ public open class ReactViewManager : ReactClippingViewManager<ReactViewGroup>() 
   public companion object {
     public const val REACT_CLASS: String = ViewProps.VIEW_CLASS_NAME
 
-    private val SPACING_TYPES =
-        intArrayOf(
-            Spacing.ALL,
-            Spacing.LEFT,
-            Spacing.RIGHT,
-            Spacing.TOP,
-            Spacing.BOTTOM,
-            Spacing.START,
-            Spacing.END,
-            Spacing.BLOCK,
-            Spacing.BLOCK_END,
-            Spacing.BLOCK_START,
-        )
+    private val SPACING_TYPES = intArrayOf(
+        Spacing.ALL,
+        Spacing.LEFT,
+        Spacing.RIGHT,
+        Spacing.TOP,
+        Spacing.BOTTOM,
+        Spacing.START,
+        Spacing.END,
+        Spacing.BLOCK,
+        Spacing.BLOCK_END,
+        Spacing.BLOCK_START,
+    )
     private const val CMD_HOTSPOT_UPDATE = 1
     private const val CMD_SET_PRESSED = 2
     private const val HOTSPOT_UPDATE_KEY = "hotspotUpdate"
@@ -150,6 +149,14 @@ public open class ReactViewManager : ReactClippingViewManager<ReactViewGroup>() 
     }
   }
 
+  @ReactProp(name = ViewProps.EXPERIMENTAL_BACKGROUND_IMAGE, customType = "BackgroundImage")
+  public open fun setExperimentalBackgroundImage(
+      view: ReactViewGroup,
+      backgroundImage: ReadableArray?,
+  ) {
+    setBackgroundImage(view, backgroundImage)
+  }
+
   @ReactProp(name = ViewProps.BACKGROUND_SIZE, customType = "BackgroundSize")
   public open fun setBackgroundSize(view: ReactViewGroup, backgroundSize: ReadableArray?) {
     if (backgroundSize != null && backgroundSize.size() > 0) {
@@ -165,6 +172,18 @@ public open class ReactViewManager : ReactClippingViewManager<ReactViewGroup>() 
     } else {
       BackgroundStyleApplicator.setBackgroundSize(view, null)
     }
+  }
+
+  @Deprecated(
+      "Use setBackgroundSize instead.",
+      ReplaceWith("setBackgroundSize(view, backgroundSize)"),
+  )
+  @ReactProp(name = ViewProps.EXPERIMENTAL_BACKGROUND_SIZE, customType = "BackgroundSize")
+  public open fun setExperimentalBackgroundSize(
+      view: ReactViewGroup,
+      backgroundSize: ReadableArray?,
+  ) {
+    setBackgroundSize(view, backgroundSize)
   }
 
   @ReactProp(name = ViewProps.BACKGROUND_POSITION, customType = "BackgroundPosition")
@@ -184,6 +203,18 @@ public open class ReactViewManager : ReactClippingViewManager<ReactViewGroup>() 
     }
   }
 
+  @Deprecated(
+      "Use setBackgroundPosition instead.",
+      ReplaceWith("setBackgroundPosition(view, backgroundPosition)"),
+  )
+  @ReactProp(name = ViewProps.EXPERIMENTAL_BACKGROUND_POSITION, customType = "BackgroundPosition")
+  public open fun setExperimentalBackgroundPosition(
+      view: ReactViewGroup,
+      backgroundPosition: ReadableArray?,
+  ) {
+    setBackgroundPosition(view, backgroundPosition)
+  }
+
   @ReactProp(name = ViewProps.BACKGROUND_REPEAT, customType = "BackgroundRepeat")
   public open fun setBackgroundRepeat(view: ReactViewGroup, backgroundRepeat: ReadableArray?) {
     if (backgroundRepeat != null && backgroundRepeat.size() > 0) {
@@ -199,6 +230,18 @@ public open class ReactViewManager : ReactClippingViewManager<ReactViewGroup>() 
     } else {
       BackgroundStyleApplicator.setBackgroundRepeat(view, null)
     }
+  }
+
+  @Deprecated(
+      "Use setBackgroundRepeat instead.",
+      ReplaceWith("setBackgroundRepeat(view, backgroundRepeat)"),
+  )
+  @ReactProp(name = ViewProps.EXPERIMENTAL_BACKGROUND_REPEAT, customType = "BackgroundRepeat")
+  public open fun setExperimentalBackgroundRepeat(
+      view: ReactViewGroup,
+      backgroundRepeat: ReadableArray?,
+  ) {
+    setBackgroundRepeat(view, backgroundRepeat)
   }
 
   @ReactProp(name = "nextFocusDown", defaultInt = View.NO_ID)
@@ -242,7 +285,7 @@ public open class ReactViewManager : ReactClippingViewManager<ReactViewGroup>() 
               ViewProps.BORDER_END_START_RADIUS,
               ViewProps.BORDER_START_END_RADIUS,
               ViewProps.BORDER_START_START_RADIUS,
-          ]
+          ],
   )
   public open fun setBorderRadius(view: ReactViewGroup, index: Int, rawBorderRadius: Dynamic) {
     val borderRadius = LengthPercentage.setFromDynamic(rawBorderRadius)
@@ -300,7 +343,6 @@ public open class ReactViewManager : ReactClippingViewManager<ReactViewGroup>() 
   @ReactProp(name = ViewProps.POINTER_EVENTS)
   public open fun setPointerEvents(view: ReactViewGroup, pointerEventsStr: String?) {
     view.pointerEvents = PointerEvents.parsePointerEvents(pointerEventsStr)
-    ImportantForInteractionHelper.setImportantForInteraction(view, view.pointerEvents)
   }
 
   @ReactProp(name = "nativeBackgroundAndroid")
@@ -380,7 +422,7 @@ public open class ReactViewManager : ReactClippingViewManager<ReactViewGroup>() 
       view.setOnClickListener {
         val eventDispatcher = UIManagerHelper.getEventDispatcher(view.context as ReactContext)
         eventDispatcher?.dispatchEvent(
-            ViewGroupClickEvent(UIManagerHelper.getSurfaceId(view.context), view.id)
+            ViewGroupClickEvent(UIManagerHelper.getSurfaceId(view.context), view.id),
         )
       }
 
@@ -451,7 +493,7 @@ public open class ReactViewManager : ReactClippingViewManager<ReactViewGroup>() 
   private fun handleSetPressed(root: ReactViewGroup, args: ReadableArray?) {
     if (args == null || args.size() != 1) {
       throw JSApplicationIllegalArgumentException(
-          "Illegal number of arguments for 'setPressed' command"
+          "Illegal number of arguments for 'setPressed' command",
       )
     }
     root.isPressed = args.getBoolean(0)
@@ -460,7 +502,7 @@ public open class ReactViewManager : ReactClippingViewManager<ReactViewGroup>() 
   private fun handleHotspotUpdate(root: ReactViewGroup, args: ReadableArray?) {
     if (args == null || args.size() != 2) {
       throw JSApplicationIllegalArgumentException(
-          "Illegal number of arguments for 'updateHotspot' command"
+          "Illegal number of arguments for 'updateHotspot' command",
       )
     }
 

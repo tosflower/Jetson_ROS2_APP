@@ -8,10 +8,10 @@ export { createSerializable, isSerializableRef, registerCustomSerializable, } fr
 export { serializableMappingCache } from './memory/serializableMappingCache';
 export { createShareable } from './memory/shareable';
 export { createSynchronizable } from './memory/synchronizable';
-export type { RegistrationData, SerializableRef, Shareable, ShareableConfig, ShareableGuest, ShareableGuestDecorator, ShareableGuestMeta, ShareableGuestProps, ShareableHost, ShareableHostDecorator, ShareableHostMeta, ShareableHostProps, Synchronizable, SynchronizableRef, } from './memory/types';
+export type { FixedSynchronizable, RegistrationData, SerializableRef, Shareable, ShareableConfig, ShareableGuest, ShareableGuestDecorator, ShareableGuestMeta, ShareableGuestProps, ShareableHost, ShareableHostDecorator, ShareableHostMeta, ShareableHostProps, Synchronizable, SynchronizableConfig, SynchronizableRef, } from './memory/types';
 export { getRuntimeKind, isRNRuntime, isUIRuntime, isWorkerRuntime, isWorkletRuntime, RuntimeKind, } from './runtimeKind';
 export { createWorkletRuntime, getUIRuntimeHolder, getUISchedulerHolder, runOnRuntime, runOnRuntimeAsync, runOnRuntimeAsyncWithId, runOnRuntimeSync, runOnRuntimeSyncWithId, scheduleOnRuntime, scheduleOnRuntimeWithId, UIRuntimeId, } from './runtimes';
-export { executeOnUIRuntimeSync, runOnJS, runOnUI, runOnUIAsync, runOnUISync, scheduleOnRN, scheduleOnUI, } from './threads';
+export { executeOnUIRuntimeSync, getCurrentThreadId, runOnJS, runOnUI, runOnUIAsync, runOnUISync, scheduleOnRN, scheduleOnUI, } from './threads';
 export type { WorkletFunction, WorkletRuntime, WorkletStackDetails, } from './types';
 export { isWorkletFunction } from './workletFunction';
 export { WorkletsModule } from './WorkletsModule/NativeWorklets';

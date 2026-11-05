@@ -1,5 +1,6 @@
 'use strict';
 
+import { isBundleModeEnabled } from './debug/bundleMode';
 import { getStaticFeatureFlag } from './featureFlags/featureFlags';
 import { addNoBundleModeGuardImplementation } from './guardImplementation';
 import { createSerializable, makeShareableCloneOnUIRecursive } from './memory/serializable';
@@ -8,33 +9,19 @@ import { isWorkletFunction } from "./workletFunction.js";
 import { WorkletsModule } from './WorkletsModule/NativeWorklets';
 const SHOULD_CAPTURE_SCHEDULE_STACK = __DEV__ && getStaticFeatureFlag('ENABLE_CROSS_RUNTIME_STACK_TRACES');
 let runOnUIQueue = [];
-export function setupMicrotasks() {
+function runAsyncUIJob(workletFunction, workletArgs, resolve, reject) {
   'worklet';
 
-  let microtasksQueue = [];
-  let isExecutingMicrotasksQueue = false;
-  globalThis.queueMicrotask = callback => {
-    microtasksQueue.push(callback);
-  };
-  // TODO: Remove it after support for Reanimated 4.3 is dropped.
-  globalThis._microtaskQueueFinalizers = [];
-  globalThis.__callMicrotasks = () => {
-    if (isExecutingMicrotasksQueue) {
-      return;
-    }
-    try {
-      isExecutingMicrotasksQueue = true;
-      for (let index = 0; index < microtasksQueue.length; index += 1) {
-        // we use classic 'for' loop because the size of the currentTasks array may change while executing some of the callbacks due to queueMicrotask calls
-        microtasksQueue[index]();
-      }
-      microtasksQueue = [];
-      globalThis._microtaskQueueFinalizers.forEach(finalizer => finalizer());
-    } finally {
-      isExecutingMicrotasksQueue = false;
-    }
-  };
+  try {
+    const result = workletFunction(...workletArgs);
+    const serializedResult = globalThis.__serializer(result);
+    globalThis.__workletsModuleProxy.handlePromise(resolve, serializedResult);
+  } catch (error) {
+    const serializedError = globalThis.__serializer(error);
+    globalThis.__workletsModuleProxy.handlePromise(reject, serializedError);
+  }
 }
+let serializableRunAsyncUIJob;
 
 /**
  * Lets you schedule a function to be executed on the [UI
@@ -260,29 +247,36 @@ function flushUIQueue() {
   queueMicrotask(() => {
     const queue = runOnUIQueue;
     runOnUIQueue = [];
-    const jobWorklets = queue.map(([workletFunction, workletArgs, resolve, reject]) => createSerializable(() => {
-      'worklet';
-
-      try {
-        const result = workletFunction(...workletArgs);
-        if (resolve) {
-          const serializedResult = globalThis.__serializer(result);
-          globalThis.__workletsModuleProxy.handlePromise(resolve, serializedResult);
-        }
-      } catch (error) {
-        if (reject) {
-          const serializedError = globalThis.__serializer(error);
-          globalThis.__workletsModuleProxy.handlePromise(reject, serializedError);
-        } else {
-          throw error;
-        }
+    const jobWorklets = [];
+    const jobArguments = [];
+    for (const [workletFunction, workletArgs, resolve, reject] of queue) {
+      if (resolve === undefined) {
+        jobWorklets.push(createSerializable(workletFunction));
+        jobArguments.push(createSerializable(workletArgs));
+      } else {
+        serializableRunAsyncUIJob ??= createSerializable(runAsyncUIJob);
+        jobWorklets.push(serializableRunAsyncUIJob);
+        jobArguments.push(createSerializable([workletFunction, workletArgs, resolve, reject]));
       }
-    }));
+    }
     const scheduleStacks = SHOULD_CAPTURE_SCHEDULE_STACK ? queue.map(([,,,, scheduleStack]) => scheduleStack) : undefined;
-    WorkletsModule.scheduleOnUI(WorkletsModule.createSerializableArray(jobWorklets), scheduleStacks);
+    WorkletsModule.scheduleOnUI(WorkletsModule.createSerializableArray(jobWorklets), WorkletsModule.createSerializableArray(jobArguments), scheduleStacks);
   });
 }
-if (__DEV__ && !globalThis._WORKLETS_BUNDLE_MODE_ENABLED) {
+
+/**
+ * Returns the id of the thread which currently executes JavaScript on the
+ * calling Runtime.
+ *
+ * @returns The id of the current thread.
+ * @see https://docs.swmansion.com/react-native-worklets/docs/utility/getCurrentThreadId
+ */
+export function getCurrentThreadId() {
+  'worklet';
+
+  return globalThis.__workletsModuleProxy.getCurrentThreadId();
+}
+if (__DEV__ && !isBundleModeEnabled()) {
   /**
    * QoL guards to give a meaningful error message when the user tries to call
    * these functions on Worklet Runtimes outside of the Bundle Mode.

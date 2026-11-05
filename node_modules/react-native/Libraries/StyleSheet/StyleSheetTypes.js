@@ -540,12 +540,7 @@ type ____LayoutStyle_Internal = Readonly<{
    *  for more details.
    */
   alignSelf?:
-    | 'auto'
-    | 'flex-start'
-    | 'flex-end'
-    | 'center'
-    | 'stretch'
-    | 'baseline',
+    'auto' | 'flex-start' | 'flex-end' | 'center' | 'stretch' | 'baseline',
 
   /** `alignContent` controls how rows align in the cross direction,
    *  overriding the `alignContent` of the parent.
@@ -736,10 +731,7 @@ type LinearGradientValue = {
 };
 
 type RadialExtent =
-  | 'closest-corner'
-  | 'closest-side'
-  | 'farthest-corner'
-  | 'farthest-side';
+  'closest-corner' | 'closest-side' | 'farthest-corner' | 'farthest-side';
 export type RadialGradientPosition =
   | {
       top: number | string,
@@ -785,10 +777,7 @@ export type BackgroundSizeValue = {
 };
 
 export type BackgroundRepeatKeyword =
-  | 'repeat'
-  | 'space'
-  | 'round'
-  | 'no-repeat';
+  'repeat' | 'space' | 'round' | 'no-repeat';
 
 export type BackgroundPositionValue =
   | {
@@ -845,6 +834,10 @@ export type ____ViewStyle_InternalBase = Readonly<{
   backfaceVisibility?: 'visible' | 'hidden',
   backgroundColor?: ____ColorValue_Internal,
   borderColor?: ____ColorValue_Internal,
+  /**
+   * On iOS 13+, it is possible to change the corner curve of borders.
+   * @platform ios
+   */
   borderCurve?: 'circular' | 'continuous',
   borderBottomColor?: ____ColorValue_Internal,
   borderEndColor?: ____ColorValue_Internal,
@@ -881,17 +874,31 @@ export type ____ViewStyle_InternalBase = Readonly<{
   outlineOffset?: number,
   outlineStyle?: 'solid' | 'dotted' | 'dashed',
   outlineWidth?: number,
+  /**
+   * Sets the elevation of a view, using Android's underlying
+   * [elevation API](https://developer.android.com/training/material/shadows-clipping.html#Elevation).
+   * This adds a drop shadow to the item and affects z-order for overlapping views.
+   * Only supported on Android 5.0+, has no effect on earlier versions.
+   *
+   * @platform android
+   */
   elevation?: number,
+  /**
+   * Controls whether the View can be the target of touch events.
+   */
   pointerEvents?: 'auto' | 'none' | 'box-none' | 'box-only',
   cursor?: CursorValue,
   boxShadow?: ReadonlyArray<BoxShadowValue> | string,
   filter?: ReadonlyArray<FilterFunction> | string,
   mixBlendMode?: ____BlendMode_Internal,
+  backgroundImage?: ReadonlyArray<BackgroundImageValue> | string,
   experimental_backgroundImage?: ReadonlyArray<BackgroundImageValue> | string,
+  backgroundSize?: ReadonlyArray<BackgroundSizeValue> | string,
   experimental_backgroundSize?: ReadonlyArray<BackgroundSizeValue> | string,
+  backgroundPosition?: ReadonlyArray<BackgroundPositionValue> | string,
   experimental_backgroundPosition?:
-    | ReadonlyArray<BackgroundPositionValue>
-    | string,
+    ReadonlyArray<BackgroundPositionValue> | string,
+  backgroundRepeat?: ReadonlyArray<BackgroundRepeatValue> | string,
   experimental_backgroundRepeat?: ReadonlyArray<BackgroundRepeatValue> | string,
   isolation?: 'auto' | 'isolate',
 }>;
@@ -903,7 +910,8 @@ export type ____ViewStyle_InternalCore = Readonly<{
   ...____ViewStyle_InternalBase,
 }>;
 
-export type ____ViewStyle_Internal = Readonly<{
+/** @build-types emit-as-interface react-native-web compatibility */
+export type ViewStyle = Readonly<{
   ...____ViewStyle_InternalCore,
   ...____ViewStyle_InternalOverrides,
 }>;
@@ -995,13 +1003,28 @@ export type ____FontVariant_Internal =
 export type ____FontVariantArray_Internal =
   ReadonlyArray<____FontVariant_Internal>;
 
+export type ____FontVariationSettings_Internal =
+  string | Readonly<{[axis: string]: number}>;
+
 type ____TextStyle_InternalBase = Readonly<{
   color?: ____ColorValue_Internal,
   fontFamily?: string,
   fontSize?: number,
   fontStyle?: 'normal' | 'italic',
+  /**
+   * Specifies font weight. The values 'normal' and 'bold' are supported
+   * for most fonts. Not all fonts have a variant for each of the numeric
+   * values, in that case the closest one is chosen.
+   */
   fontWeight?: ____FontWeight_Internal,
   fontVariant?: ____FontVariantArray_Internal | string,
+  /**
+   * Specifies OpenType font variation axis values using CSS syntax or an
+   * object keyed by four-character axis tags. An empty string or object resets
+   * inherited variation settings. On Android, this requires API level 26 or
+   * later.
+   */
+  fontVariationSettings?: ____FontVariationSettings_Internal,
   textShadowOffset?: Readonly<{
     width: number,
     height: number,
@@ -1010,15 +1033,13 @@ type ____TextStyle_InternalBase = Readonly<{
   textShadowColor?: ____ColorValue_Internal,
   letterSpacing?: number,
   lineHeight?: number,
-  textAlign?: 'auto' | 'left' | 'right' | 'center' | 'justify',
+  textAlign?:
+    'auto' | 'left' | 'right' | 'center' | 'justify' | 'start' | 'end',
   textAlignVertical?: 'auto' | 'top' | 'bottom' | 'center',
   includeFontPadding?: boolean,
   textDecorationLine?:
-    | 'none'
-    | 'underline'
-    | 'line-through'
-    | 'underline line-through',
-  textDecorationStyle?: 'solid' | 'double' | 'dotted' | 'dashed',
+    'none' | 'underline' | 'line-through' | 'underline line-through',
+  textDecorationStyle?: 'solid' | 'double' | 'dotted' | 'dashed' | 'wavy',
   textDecorationColor?: ____ColorValue_Internal,
   textTransform?: 'none' | 'capitalize' | 'uppercase' | 'lowercase',
   userSelect?: 'auto' | 'text' | 'none' | 'contain' | 'all',
@@ -1027,17 +1048,18 @@ type ____TextStyle_InternalBase = Readonly<{
 }>;
 
 export type ____TextStyle_InternalCore = Readonly<{
-  ...$Exact<____ViewStyle_Internal>,
+  ...$Exact<ViewStyle>,
   ...____TextStyle_InternalBase,
 }>;
 
-export type ____TextStyle_Internal = Readonly<{
+/** @build-types emit-as-interface react-native-web compatibility */
+export type TextStyle = Readonly<{
   ...____TextStyle_InternalCore,
   ...____TextStyle_InternalOverrides,
 }>;
 
 export type ____ImageStyle_InternalCore = Readonly<{
-  ...$Exact<____ViewStyle_Internal>,
+  ...$Exact<ViewStyle>,
   resizeMode?: ImageResizeMode,
   objectFit?: 'cover' | 'contain' | 'fill' | 'scale-down' | 'none',
   tintColor?: ____ColorValue_Internal,
@@ -1045,13 +1067,14 @@ export type ____ImageStyle_InternalCore = Readonly<{
   overflow?: 'visible' | 'hidden',
 }>;
 
-export type ____ImageStyle_Internal = Readonly<{
+/** @build-types emit-as-interface react-native-web compatibility */
+export type ImageStyle = Readonly<{
   ...____ImageStyle_InternalCore,
   ...____ImageStyle_InternalOverrides,
 }>;
 
 export type ____DangerouslyImpreciseStyle_InternalCore = Readonly<{
-  ...$Exact<____TextStyle_Internal>,
+  ...$Exact<TextStyle>,
   resizeMode?: ImageResizeMode,
   objectFit?: 'cover' | 'contain' | 'fill' | 'scale-down' | 'none',
   tintColor?: ____ColorValue_Internal,
@@ -1064,13 +1087,8 @@ export type ____DangerouslyImpreciseStyle_Internal = Readonly<{
   ...
 }>;
 
-export type StyleProp<+T> =
-  | null
-  | void
-  | T
-  | false
-  | ''
-  | ReadonlyArray<StyleProp<T>>;
+export type StyleProp<out T> =
+  null | void | T | false | '' | ReadonlyArray<StyleProp<T>>;
 
 export type ____DangerouslyImpreciseStyleProp_Internal = StyleProp<
   Partial<____DangerouslyImpreciseStyle_Internal>,
@@ -1080,19 +1098,19 @@ export type ____DangerouslyImpreciseAnimatedStyleProp_Internal =
   WithAnimatedValue<StyleProp<Partial<____DangerouslyImpreciseStyle_Internal>>>;
 
 export type ____ViewStyleProp_Internal = StyleProp<
-  Readonly<Partial<____ViewStyle_Internal>>,
+  Readonly<Partial<ViewStyle>>,
 >;
 export type ____TextStyleProp_Internal = StyleProp<
-  Readonly<Partial<____TextStyle_Internal>>,
+  Readonly<Partial<TextStyle>>,
 >;
 export type ____ImageStyleProp_Internal = StyleProp<
-  Readonly<Partial<____ImageStyle_Internal>>,
+  Readonly<Partial<ImageStyle>>,
 >;
 
 export type ____Styles_Internal = {
   // $FlowFixMe[incompatible-exact]
   // $FlowFixMe[incompatible-type]
-  +[key: string]: Partial<____DangerouslyImpreciseStyle_Internal>,
+  readonly [key: string]: Partial<____DangerouslyImpreciseStyle_Internal>,
   ...
 };
 
@@ -1100,7 +1118,7 @@ export type ____Styles_Internal = {
 // ____FlattenStyleProp_Helper should be considered internal.
 type FlattenDepthLimiter = [void, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 type ____FlattenStyleProp_Helper<
-  +TStyleProp extends StyleProp<unknown>,
+  out TStyleProp extends StyleProp<unknown>,
   Depth extends Values<FlattenDepthLimiter> = 9,
 > = Depth extends 0
   ? empty
@@ -1114,7 +1132,7 @@ type ____FlattenStyleProp_Helper<
       : TStyleProp;
 
 export type ____FlattenStyleProp_Internal<
-  +TStyleProp extends StyleProp<unknown>,
+  out TStyleProp extends StyleProp<unknown>,
 > =
   ____FlattenStyleProp_Helper<TStyleProp> extends empty // $FlowFixMe[unclear-type]
     ? any

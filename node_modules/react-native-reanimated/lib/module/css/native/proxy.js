@@ -6,6 +6,12 @@ import { ReanimatedModule } from '../../ReanimatedModule';
 export function setViewStyle(viewTag, style) {
   ReanimatedModule.setViewStyle(viewTag, style);
 }
+
+// EVENTS
+
+export function setCSSEventHandler(handler) {
+  ReanimatedModule.setCSSEventHandler(handler);
+}
 export function markNodeAsRemovable(shadowNodeWrapper) {
   ReanimatedModule.markNodeAsRemovable(shadowNodeWrapper);
 }
@@ -35,8 +41,8 @@ export function unregisterCSSAnimations(viewTag) {
 
 // TRANSITIONS
 
-export function runCSSTransition(shadowNodeWrapper, transitionConfig) {
-  ReanimatedModule.runCSSTransition(shadowNodeWrapper, transitionConfig);
+export function runCSSTransition(shadowNodeWrapper, transitionConfig, eventMask) {
+  ReanimatedModule.runCSSTransition(shadowNodeWrapper, transitionConfig, eventMask);
 }
 export function unregisterCSSTransition(viewTag) {
   ReanimatedModule.unregisterCSSTransition(viewTag);

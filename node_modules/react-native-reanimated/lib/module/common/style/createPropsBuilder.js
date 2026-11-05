@@ -2,6 +2,7 @@
 
 import { ValueProcessorTarget } from "../types/index.js";
 import { isRecord } from "../utils/index.js";
+import { processStyleValue } from "./processStyleValue.js";
 const MAX_PROCESS_DEPTH = 10;
 export default function createPropsBuilder({
   processConfigValue,
@@ -53,7 +54,7 @@ export default function createPropsBuilder({
           }
           continue;
         }
-        const processedValue = configValue(value, context);
+        const processedValue = processStyleValue(configValue, value, context);
         if (isRecord(processedValue) && !isRecord(value)) {
           // The value processor may return multiple values for a single property
           // as a record of new property names and processed values. In such a case,

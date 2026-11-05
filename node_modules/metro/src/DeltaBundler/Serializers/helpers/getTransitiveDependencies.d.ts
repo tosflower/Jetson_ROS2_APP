@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<55bd91c160900bb31ffe72e2ddfad85d>>
+ * @generated SignedSource<<eb7656df76dd2d4efcd6f2b7a21a864b>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/DeltaBundler/Serializers/helpers/getTransitiveDependencies.js
@@ -17,8 +17,5 @@
 
 import type {ReadOnlyGraph} from '../../types';
 
-declare function getTransitiveDependencies<T>(
-  path: string,
-  graph: ReadOnlyGraph<T>,
-): Set<string>;
+declare function getTransitiveDependencies<T>(path: string, graph: ReadOnlyGraph<T>): Set<string>;
 export default getTransitiveDependencies;

@@ -16,10 +16,7 @@ import type {
 } from './PerformanceEntry';
 
 import {PerformanceEntry} from './PerformanceEntry';
-import MaybeNativePerformance from './specs/NativePerformance';
-import nullthrows from 'nullthrows';
-
-const NativePerformance = nullthrows(MaybeNativePerformance);
+import NativePerformance from './specs/NativePerformance';
 
 export type PerformanceEventTimingJSON = {
   ...PerformanceEntryJSON,
@@ -30,9 +27,9 @@ export type PerformanceEventTimingJSON = {
 };
 
 export interface PerformanceEventTimingInit extends PerformanceEntryInit {
-  +processingStart?: DOMHighResTimeStamp;
-  +processingEnd?: DOMHighResTimeStamp;
-  +interactionId?: number;
+  readonly processingStart?: DOMHighResTimeStamp;
+  readonly processingEnd?: DOMHighResTimeStamp;
+  readonly interactionId?: number;
 }
 
 export class PerformanceEventTiming extends PerformanceEntry {

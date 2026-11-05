@@ -16,7 +16,6 @@ compilation_metadata_generation_flag = worklets_config[:is_reanimated_example_ap
 feature_flags = worklets_config[:feature_flags_flag]
 version_flag = "-DWORKLETS_VERSION=#{package['version']}"
 worklets_profiling_flag = ENV['IS_WORKLETS_PROFILING'] ? '-DWORKLETS_PROFILING' : ''
-fetch_preview_flag = worklets_config[:fetch_preview_flag]
 hermes_v1_flag = ENV['RCT_HERMES_V1_ENABLED'] == '1' ? '-DHERMES_V1_ENABLED' : ''
 
 # React Native doesn't expose these flags, but not having them
@@ -57,7 +56,6 @@ Pod::Spec.new do |s|
 
   s.dependency 'React-jsi'
   s.dependency 'React-hermes'
-  
   s.pod_target_xcconfig = {
     "USE_HEADERMAP" => "YES",
     "DEFINES_MODULE" => "YES",
@@ -70,12 +68,13 @@ Pod::Spec.new do |s|
       '"$(PODS_ROOT)/DoubleConversion"',
       '"$(PODS_ROOT)/Headers/Private/React-Core"',
       '"$(PODS_ROOT)/Headers/Private/Yoga"',
+      '"$(PODS_CONFIGURATION_BUILD_DIR)/React-utils/React_utils.framework/Headers/react/utils/platform/ios"',
     ].join(' '),
     "FRAMEWORK_SEARCH_PATHS" => '"${PODS_CONFIGURATION_BUILD_DIR}/React-hermes"',
     "CLANG_CXX_LANGUAGE_STANDARD" => "c++20",
     "GCC_PREPROCESSOR_DEFINITIONS[config=*Debug*]" => "$(inherited) #{hermes_debug_hidden_flags}",
     "GCC_PREPROCESSOR_DEFINITIONS[config=*Release*]" => "$(inherited)",
-    "OTHER_CFLAGS" => "$(inherited) #{feature_flags} #{version_flag} #{compilation_metadata_generation_flag} #{worklets_profiling_flag} #{fetch_preview_flag} #{hermes_v1_flag}",
+    "OTHER_CFLAGS" => "$(inherited) #{feature_flags} #{version_flag} #{compilation_metadata_generation_flag} #{worklets_profiling_flag} #{hermes_v1_flag}",
   }
   s.xcconfig = {
     "HEADER_SEARCH_PATHS" => [

@@ -10,7 +10,7 @@ package com.facebook.react.views.scroll
 import android.graphics.Rect
 import android.view.ViewGroup
 import com.facebook.common.logging.FLog
-import com.facebook.react.internal.featureflags.ReactNativeFeatureFlags
+import com.facebook.react.common.build.ReactBuildConfig
 import com.facebook.react.views.virtual.VirtualViewMode
 
 internal class VirtualViewContainerStateExperimental(scrollView: ViewGroup) :
@@ -251,7 +251,7 @@ internal class IntervalTree(private val horizontal: Boolean) : MutableCollection
             rotateLeft(
                 requireNotNull(node.left) {
                   "[IntervalTree] node.left must not be null when performing left rotation around it"
-                }
+                },
             )
       }
       return rotateRight(node)
@@ -264,7 +264,7 @@ internal class IntervalTree(private val horizontal: Boolean) : MutableCollection
             rotateRight(
                 requireNotNull(node.right) {
                   "[IntervalTree] node.right must not be null when performing right rotation around it"
-                }
+                },
             )
       }
       return rotateLeft(node)
@@ -325,12 +325,11 @@ internal class IntervalTree(private val horizontal: Boolean) : MutableCollection
               node.left == null -> node.right
               node.right == null -> node.left
               else -> {
-                val successor =
-                    findMin(
-                        requireNotNull(node.right) {
-                          "[IntervalTree] node.right must not be null when finding node's successor"
-                        }
-                    )
+                val successor = findMin(
+                    requireNotNull(node.right) {
+                      "[IntervalTree] node.right must not be null when finding node's successor"
+                    },
+                )
                 node.virtualView = successor.virtualView
                 node.interval = successor.interval
                 node.right = delete(node.right, successor)
@@ -503,10 +502,10 @@ internal class IntervalTree(private val horizontal: Boolean) : MutableCollection
   }
 }
 
-private const val DEBUG_TAG: String = "VirtualViewContainerStateExperimental"
+private val ENABLE_DEBUG_LOGS = ReactBuildConfig.DEBUG && false
 
 private inline fun debugLog(subtag: String, block: () -> String = { "" }) {
-  if (IS_DEBUG_BUILD && ReactNativeFeatureFlags.enableVirtualViewDebugFeatures()) {
-    FLog.d("$DEBUG_TAG:$subtag", block())
+  if (ENABLE_DEBUG_LOGS) {
+    FLog.d("VirtualViewContainerStateExperimental:$subtag", block())
   }
 }

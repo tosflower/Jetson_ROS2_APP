@@ -71,6 +71,7 @@ export class RosbridgeClient {
   private connectionTimer: ReturnType<typeof setTimeout> | null = null;
   private connectionState: RosbridgeConnectionState = 'idle';
   private url: string | null = null;
+  private authToken: string | null = null;
   private shouldReconnect = false;
   private reconnectAttempt = 0;
   private nextSubscriptionId = 0;
@@ -88,7 +89,7 @@ export class RosbridgeClient {
     this.onError = options.onError;
   }
 
-  connect(value: string): Promise<void> {
+  connect(value: string, authToken?: string): Promise<void> {
     let normalizedUrl: string;
     try {
       normalizedUrl = normalizeRosbridgeUrl(value);
@@ -98,7 +99,7 @@ export class RosbridgeClient {
       return Promise.reject(error);
     }
 
-    if (this.shouldReconnect && this.url === normalizedUrl) {
+    if (this.shouldReconnect && this.url === normalizedUrl && this.authToken === (authToken ?? null)) {
       if (this.connectionState === 'connected') return Promise.resolve();
       if (this.socket || this.reconnectTimer) return Promise.resolve();
     }
@@ -107,6 +108,7 @@ export class RosbridgeClient {
     this.clearReconnectTimer();
     this.closeCurrentSocket();
     this.url = normalizedUrl;
+    this.authToken = authToken ?? null;
     this.shouldReconnect = true;
     this.reconnectAttempt = 0;
     return this.openSocket('connecting');
@@ -221,26 +223,43 @@ export class RosbridgeClient {
 
       this.socket = socket;
       this.connectionTimer = setTimeout(() => {
-        if (this.socket !== socket || socket.readyState === SOCKET_OPEN) return;
+        if (this.socket !== socket || this.connectionState === 'connected') return;
         this.reportError('rosbridge 连接超时，请检查 IP、端口和网络');
         this.closeCurrentSocket();
         this.scheduleReconnect();
       }, this.connectionTimeoutMs);
-      socket.onopen = () => {
-        if (this.socket !== socket || !this.shouldReconnect) return;
+      const ready = (): void => {
         this.clearConnectionTimer();
         this.pendingReject = null;
         this.reconnectAttempt = 0;
         this.transition('connected');
-        // 只恢复仍在 Map 中的订阅，避免页面切换或重连后重复注册。
+        // 认证完成后再恢复订阅和发布，避免首帧在网关认证前到达。
         this.subscriptions.forEach((subscription) => this.sendSubscribe(subscription));
         this.advertisements.forEach((advertisement) => this.sendAdvertise(advertisement));
         resolve();
       };
+      socket.onopen = () => {
+        if (this.socket !== socket || !this.shouldReconnect) return;
+        if (this.authToken) this.send({ op: 'auth', token: this.authToken });
+        else ready();
+      };
       socket.onmessage = (event) => {
         if (this.socket !== socket) return;
+        if (this.authToken && this.connectionState !== 'connected') {
+          // 内置手机桥需要确认登录令牌；独立 rosbridge 没有此握手。
+          try {
+            const response = JSON.parse(String(event.data)) as { op?: string; result?: boolean };
+            if (response.op === 'auth_response' && response.result === true) ready();
+          } catch { /* 非法认证响应交给连接超时处理。 */ }
+          return;
+        }
         const incoming = parseRosbridgeMessage(event.data);
         if (!incoming) return;
+        if (incoming.op === 'status') {
+          // 发布被网关拒绝时保留 WebSocket，并把原因交给手机界面显示。
+          if (incoming.level === 'error') this.onError?.(incoming.msg);
+          return;
+        }
         if (incoming.op === 'service_response') {
           const pending = this.pendingServices.get(incoming.id);
           if (!pending) return;
@@ -271,7 +290,10 @@ export class RosbridgeClient {
         this.pendingReject = null;
         rejectPending?.(new Error(event.reason || `rosbridge 连接已关闭（${event.code ?? '未知代码'}）`));
         this.rejectPendingServices(new Error('rosbridge 连接已中断'));
-        if (this.shouldReconnect) this.scheduleReconnect();
+        if (event.code === 1008) {
+          this.shouldReconnect = false;
+          this.reportError(event.reason || '手机桥认证失败');
+        } else if (this.shouldReconnect) this.scheduleReconnect();
         else this.transition('disconnected');
       };
     });

@@ -64,15 +64,14 @@ internal class MountingManager(
       reactContext: ThemedReactContext?,
       rootView: View?,
   ): SurfaceMountingManager {
-    val surfaceMountingManager =
-        SurfaceMountingManager(
-            surfaceId,
-            jsResponderHandler,
-            viewManagerRegistry,
-            rootViewManager,
-            mountItemExecutor,
-            checkNotNull(reactContext),
-        )
+    val surfaceMountingManager = SurfaceMountingManager(
+        surfaceId,
+        jsResponderHandler,
+        viewManagerRegistry,
+        rootViewManager,
+        mountItemExecutor,
+        checkNotNull(reactContext),
+    )
 
     // There could technically be a race condition here if addRootView is called twice from
     // different threads, though this is (probably) extremely unlikely, and likely an error.
@@ -84,7 +83,7 @@ internal class MountingManager(
       logSoftException(
           TAG,
           IllegalStateException(
-              "Called startSurface more than once for the SurfaceId [$surfaceId]"
+              "Called startSurface more than once for the SurfaceId [$surfaceId]",
           ),
       )
     }
@@ -151,7 +150,7 @@ internal class MountingManager(
   fun getSurfaceManagerEnforced(surfaceId: Int, context: String): SurfaceMountingManager =
       getSurfaceManager(surfaceId)
           ?: throw RetryableMountingLayerException(
-              ("Unable to find SurfaceMountingManager for surfaceId: [$surfaceId]. Context: $context")
+              ("Unable to find SurfaceMountingManager for surfaceId: [$surfaceId]. Context: $context"),
           )
 
   fun surfaceIsStopped(surfaceId: Int): Boolean {
@@ -208,7 +207,7 @@ internal class MountingManager(
   fun getSurfaceManagerForViewEnforced(reactTag: Int): SurfaceMountingManager =
       getSurfaceManagerForView(reactTag)
           ?: throw RetryableMountingLayerException(
-              "Unable to find SurfaceMountingManager for tag: [$reactTag]"
+              "Unable to find SurfaceMountingManager for tag: [$reactTag]",
           )
 
   fun getViewExists(reactTag: Int): Boolean = getSurfaceManagerForView(reactTag) != null
@@ -265,7 +264,7 @@ internal class MountingManager(
       return
     }
 
-    getSurfaceManagerForViewEnforced(reactTag).storeSynchronousMountPropsOverride(reactTag, props)
+    getSurfaceManagerForView(reactTag)?.storeSynchronousMountPropsOverride(reactTag, props)
   }
 
   @UiThread
@@ -275,7 +274,7 @@ internal class MountingManager(
       return
     }
 
-    getSurfaceManagerForViewEnforced(reactTag).updatePropsSynchronously(reactTag, props)
+    getSurfaceManagerForView(reactTag)?.updatePropsSynchronously(reactTag, props)
   }
 
   /**
@@ -327,7 +326,7 @@ internal class MountingManager(
               attachmentsPositions,
           )
 
-  fun enqueuePendingEvent(
+  fun dispatchEvent(
       surfaceId: Int,
       reactTag: Int,
       eventName: String,
@@ -338,22 +337,16 @@ internal class MountingManager(
   ) {
     val smm = getSurfaceMountingManager(surfaceId, reactTag)
     if (smm == null) {
-      FLog.d(
+      FLog.i(
           TAG,
-          "Cannot queue event without valid surface mounting manager for tag: %d, surfaceId: %d",
+          "Unable to invoke event %s for tag [%d] in surfaceId [%d]",
+          eventName,
           reactTag,
           surfaceId,
       )
       return
     }
-    smm.enqueuePendingEvent(
-        reactTag,
-        eventName,
-        canCoalesceEvent,
-        params,
-        eventCategory,
-        eventTimestamp,
-    )
+    smm.dispatchEvent(reactTag, eventName, canCoalesceEvent, params, eventCategory, eventTimestamp)
   }
 
   private fun getSurfaceMountingManager(surfaceId: Int, reactTag: Int): SurfaceMountingManager? =

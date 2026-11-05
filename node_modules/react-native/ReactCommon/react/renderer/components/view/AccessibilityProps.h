@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <react/cxxstableapi/UmbrellaGuard.h>
+
 #include <react/renderer/components/view/AccessibilityPrimitives.h>
 #include <react/renderer/core/Props.h>
 #include <react/renderer/core/PropsParserContext.h>
@@ -62,15 +64,6 @@ class AccessibilityProps {
 #if RN_DEBUG_STRING_CONVERTIBLE
   SharedDebugStringConvertibleList getDebugProps() const;
 #endif
-
- private:
-  // Canonical prop values for overlap detection between aria-* and
-  // accessibility* props. These track the values from the explicit
-  // accessibility* props, separate from any aria-* override.
-  std::string canonicalAccessibilityLabel_;
-  AccessibilityLiveRegion canonicalAccessibilityLiveRegion_{AccessibilityLiveRegion::None};
-  ImportantForAccessibility canonicalImportantForAccessibility_{ImportantForAccessibility::Auto};
-  bool canonicalAccessibilityElementsHidden_{false};
 };
 
 } // namespace facebook::react

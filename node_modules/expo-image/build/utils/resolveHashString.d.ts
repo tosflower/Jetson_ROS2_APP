@@ -11,4 +11,3 @@ export declare function resolveBlurhashString(str: string): ImageSource;
  * @return An ImageSource representing the provided thumbhash.
  * */
 export declare function resolveThumbhashString(str: string): ImageSource;
-//# sourceMappingURL=resolveHashString.d.ts.map

@@ -1,6 +1,6 @@
 import type { ComponentRef, ElementType, RefObject } from 'react';
 import type { HostInstance, ImageStyle, NativeScrollEvent, NativeSyntheticEvent, TextStyle, ViewStyle } from 'react-native';
-import type { WorkletFunction } from 'react-native-worklets';
+import type { ShareableHost, WorkletFunction } from 'react-native-worklets';
 import type { Maybe } from '../common';
 import type { AnimatedPropsAdapterFunction, AnimatedStyle, InstanceOrElement, InternalHostInstance, ShadowNodeWrapper, StyleUpdaterContainer } from '../commonTypes';
 import type { AnimatedComponentType } from '../createAnimatedComponent';
@@ -13,22 +13,18 @@ export interface Descriptor {
 }
 export type MaybeObserverCleanup = (() => void) | undefined;
 export type AnimatedRefObserver = (tag: number | null) => MaybeObserverCleanup;
+/** Removes the observer registered via `AnimatedRef.observe`. */
+type ObserverUnsubscribe = () => void;
 export type ExtractElementRef<TRef> = TRef extends ElementType ? ComponentRef<TRef> extends never ? TRef : ComponentRef<TRef> : TRef;
 type AnimatedRefCurrent<TRef> = ExtractElementRef<TRef extends AnimatedComponentType<any, infer Instance> ? Instance : TRef>;
 export type AnimatedRef<TRef extends InstanceOrElement = HostInstance> = {
     (ref?: AnimatedRefCurrent<TRef> | null): ShadowNodeWrapper | HTMLElement;
     current: AnimatedRefCurrent<TRef> | null;
-    observe: (observer: AnimatedRefObserver) => void;
+    observe: (observer: AnimatedRefObserver) => ObserverUnsubscribe;
     getTag?: () => Maybe<number>;
 };
-export type AnimatedRefOnJS = AnimatedRef<InternalHostInstance>;
-/**
- * `AnimatedRef` is mapped to this type on the UI thread via a serializable
- * handle.
- */
-export type AnimatedRefOnUI = {
-    (): number | ShadowNodeWrapper | null;
-};
+export type AnimatedRefOnRN = AnimatedRef<InternalHostInstance>;
+export type AnimatedRefOnUI = ShareableHost<ShadowNodeWrapper | null>;
 type ReanimatedPayload = {
     eventName: string;
 };

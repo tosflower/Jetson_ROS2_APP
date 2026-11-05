@@ -1,9 +1,7 @@
 'use strict';
 
 import { silenceHMRWarnings } from '../bundleMode/metroOverrides';
-import { initializeNetworking } from '../bundleMode/network';
 import { registerReportFatalRemoteError } from '../debug/errors';
-import { getStaticFeatureFlag } from '../featureFlags/featureFlags';
 import { bundleValueUnpacker } from '../memory/bundleUnpacker';
 import { installCustomSerializableUnpacker } from '../memory/customSerializableUnpacker';
 import { installRemoteFunctionUnpacker } from '../memory/remoteFunctionUnpacker';
@@ -12,12 +10,14 @@ import { installShareableGuestUnpacker } from '../memory/shareableGuestUnpacker'
 import { installShareableHostUnpacker } from '../memory/shareableHostUnpacker';
 import { installSynchronizableUnpacker } from '../memory/synchronizableUnpacker';
 import { installValueUnpacker } from '../memory/valueUnpacker';
+import { installNetworking } from "../networking/install.js";
+import { setupQueueMicrotask } from "../runLoop/common/queueMicrotaskPolyfill.js";
 import { setupSetImmediate } from "../runLoop/common/setImmediatePolyfill.js";
 import { setupSetInterval } from "../runLoop/common/setIntervalPolyfill.js";
 import { setupRequestAnimationFrame } from "../runLoop/uiRuntime/requestAnimationFrame.js";
 import { setupSetTimeout } from "../runLoop/uiRuntime/setTimeoutPolyfill.js";
 import { RuntimeKind } from "../runtimeKind.js";
-import { runOnUISync, scheduleOnRN, setupMicrotasks } from '../threads';
+import { runOnUISync, scheduleOnRN } from '../threads';
 import { isWorkletFunction } from "../workletFunction.js";
 import { WorkletsModule } from '../WorkletsModule/NativeWorklets';
 if (globalThis.__RUNTIME_KIND === undefined) {
@@ -156,9 +156,7 @@ function initializeWorkletRuntime() {
     if (__DEV__) {
       silenceHMRWarnings();
     }
-    if (getStaticFeatureFlag('FETCH_PREVIEW_ENABLED')) {
-      initializeNetworking();
-    }
+    installNetworking();
   }
 }
 
@@ -174,17 +172,12 @@ function installRNBindingsOnUIRuntime() {
   runOnUISync(() => {
     'worklet';
 
-    /**
-     * TODO: Move `setupMicrotasks` and `setupRequestAnimationFrame` to a
-     * separate function once we have a better way to distinguish between
-     * Worklet Runtimes.
-     */
     if (!globalThis._WORKLETS_BUNDLE_MODE_ENABLED) {
       setupConsole(runtimeBoundCapturableConsole);
     } else if (__DEV__) {
       setupConsoleForwarding(runtimeBoundCapturableConsole);
     }
-    setupMicrotasks();
+    setupQueueMicrotask();
     setupRequestAnimationFrame();
     setupSetTimeout();
     setupSetImmediate();

@@ -1,7 +1,7 @@
 'use strict';
 
 import { scheduleOnUI } from 'react-native-worklets';
-import { IS_JEST, SHOULD_BE_USE_WEB } from "./common/index.js";
+import { IS_JEST } from "./common/index.js";
 import { isSharedValue } from "./isSharedValue.js";
 function createMapperRegistry() {
   'worklet';
@@ -99,17 +99,10 @@ function createMapperRegistry() {
       }
     }
   }
-  const schedulingFunction = SHOULD_BE_USE_WEB ? requestAnimationFrame : globalThis.requestAnimationFrameFinalizer;
+  const schedulingFunction = requestAnimationFrame;
   function scheduledMapperRun() {
     runRequested = false;
     mapperRun();
-    if (!SHOULD_BE_USE_WEB) {
-      // We always run mappers on native.
-      schedulingFunction(scheduledMapperRun);
-    }
-  }
-  if (!SHOULD_BE_USE_WEB) {
-    schedulingFunction(scheduledMapperRun);
   }
   global.__mapperRun = mapperRun;
   function maybeRequestUpdates() {
@@ -178,14 +171,10 @@ function createMapperRegistry() {
         sv.addListener(mapper.id, () => {
           mapper.dirty = true;
           isAnyMapperDirty = true;
-          if (SHOULD_BE_USE_WEB) {
-            maybeRequestUpdates();
-          }
+          maybeRequestUpdates();
         });
       }
-      if (SHOULD_BE_USE_WEB) {
-        maybeRequestUpdates();
-      }
+      maybeRequestUpdates();
     },
     stop: mapperID => {
       const mapper = mappers.get(mapperID);

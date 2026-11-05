@@ -1,7 +1,9 @@
 'use strict';
 
+import { splitByComma, splitByWhitespace } from "../../common/index.js";
 import { MILLISECONDS_REGEX, PERCENTAGE_REGEX, SECONDS_REGEX } from "../constants/index.js";
 import { isTimeUnit, smellsLikeTimingFunction } from "./guards.js";
+export { splitByComma, splitByWhitespace };
 export const offsetOf = selector => {
   if (selector === 'from') {
     return 0;
@@ -14,30 +16,6 @@ export const offsetOf = selector => {
   }
   return PERCENTAGE_REGEX.test(`${selector}`) ? parseFloat(`${selector}`) / 100 : null;
 };
-export function splitByComma(str) {
-  // split by comma not enclosed in parentheses
-  const parts = [];
-  let current = '';
-  let depth = 0;
-  for (const char of str) {
-    if (char === '(') {
-      depth++;
-    } else if (char === ')') {
-      depth--;
-    } else if (char === ',' && depth === 0) {
-      parts.push(current.trim());
-      current = '';
-      continue;
-    }
-    current += char;
-  }
-  parts.push(current.trim());
-  return parts;
-}
-export function splitByWhitespace(str) {
-  // split by whitespace not enclosed in parentheses
-  return str.split(/\s+(?![^()]*\))/);
-}
 export function parseSingleTransitionShorthand(value) {
   const result = {};
   const parts = splitByWhitespace(value);
@@ -75,9 +53,11 @@ export function parseSingleTransitionShorthand(value) {
 }
 export function normalizeTimeUnit(timeUnit) {
   if (typeof timeUnit === 'number') {
-    return timeUnit;
+    // A non-finite value would reach the C++ timing math and make every
+    // progress it computes NaN, which lands on the view as a NaN style value.
+    return Number.isFinite(timeUnit) ? timeUnit : null;
   } else if (MILLISECONDS_REGEX.test(timeUnit)) {
-    return parseInt(timeUnit, 10);
+    return parseFloat(timeUnit);
   } else if (SECONDS_REGEX.test(timeUnit)) {
     return parseFloat(timeUnit) * 1000;
   }

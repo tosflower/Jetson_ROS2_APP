@@ -5,5 +5,4 @@ export declare const IS_JEST: boolean;
 /** @knipIgnore */
 export declare const IS_WINDOWS: boolean;
 export declare const IS_WINDOW_AVAILABLE: boolean;
-export declare const SHOULD_BE_USE_WEB: boolean;
 //# sourceMappingURL=platform.d.ts.map

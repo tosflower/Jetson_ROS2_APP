@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<e0f212b1e687fef985215d8c152e7c04>>
+ * @generated SignedSource<<ef005a5d7bd6441bfdc817946ab7b6cb>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/lib/parseCustomResolverOptions.js
@@ -17,7 +17,5 @@
 
 import type {CustomResolverOptions} from 'metro-resolver';
 
-declare function parseCustomResolverOptions(
-  searchParams: URLSearchParams,
-): CustomResolverOptions;
+declare function parseCustomResolverOptions(searchParams: URLSearchParams): CustomResolverOptions;
 export default parseCustomResolverOptions;

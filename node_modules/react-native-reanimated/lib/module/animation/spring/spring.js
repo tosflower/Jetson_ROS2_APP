@@ -1,6 +1,6 @@
 'use strict';
 
-import { defineAnimation, getReduceMotionForAnimation } from "../util.js";
+import { defineAnimation, getReduceMotionForAnimation } from '../util';
 import { GentleSpringConfig, GentleSpringConfigWithDuration } from "./springConfigs.js";
 import { calculateNewStiffnessToMatchDuration, checkIfConfigIsValid, criticallyDampedSpringCalculations, getEnergy, initialCalculations, isAnimationTerminatingCalculation, safeMergeConfigs, scaleZetaToMatchClamps, underDampedSpringCalculations } from "./springUtils.js";
 

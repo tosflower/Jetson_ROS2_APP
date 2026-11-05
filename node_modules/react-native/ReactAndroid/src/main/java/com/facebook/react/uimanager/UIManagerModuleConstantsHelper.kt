@@ -10,7 +10,6 @@ package com.facebook.react.uimanager
 import androidx.annotation.VisibleForTesting
 import com.facebook.common.logging.FLog
 import com.facebook.react.common.build.ReactBuildConfig
-import com.facebook.react.internal.featureflags.ReactNativeNewArchitectureFeatureFlags.enableFabricRenderer
 import com.facebook.react.internal.featureflags.ReactNativeNewArchitectureFeatureFlags.useFabricInterop
 import java.util.Locale
 
@@ -37,16 +36,15 @@ internal object UIManagerModuleConstantsHelper {
           mapOf(
               "ViewManagerNames" to ArrayList<String?>(resolver.getViewManagerNames()),
               "LazyViewManagersEnabled" to true,
-          )
+          ),
       )
 
   @JvmStatic
   val defaultExportableEventTypes: Map<String, Any>
-    get() =
-        mapOf(
-            BUBBLING_EVENTS_KEY to UIManagerModuleConstants.bubblingEventTypeConstants,
-            DIRECT_EVENTS_KEY to UIManagerModuleConstants.directEventTypeConstants,
-        )
+    get() = mapOf(
+        BUBBLING_EVENTS_KEY to UIManagerModuleConstants.bubblingEventTypeConstants,
+        DIRECT_EVENTS_KEY to UIManagerModuleConstants.directEventTypeConstants,
+    )
 
   private fun validateDirectEventNames(
       viewManagerName: String,
@@ -112,14 +110,13 @@ internal object UIManagerModuleConstantsHelper {
     for (viewManager in viewManagers) {
       val viewManagerName = viewManager.getName()
 
-      val viewManagerConstants: MutableMap<*, *> =
-          createConstantsForViewManager(
-              viewManager,
-              null,
-              null,
-              allBubblingEventTypes,
-              allDirectEventTypes,
-          )
+      val viewManagerConstants: MutableMap<*, *> = createConstantsForViewManager(
+          viewManager,
+          null,
+          null,
+          allBubblingEventTypes,
+          allDirectEventTypes,
+      )
       if (!viewManagerConstants.isEmpty()) {
         constants[viewManagerName] = viewManagerConstants
       }
@@ -144,7 +141,7 @@ internal object UIManagerModuleConstantsHelper {
     var viewManagerBubblingEvents: MutableMap<String, Any>? =
         viewManager.exportedCustomBubblingEventTypeConstants
     if (viewManagerBubblingEvents != null) {
-      if (enableFabricRenderer() && useFabricInterop()) {
+      if (!ReactBuildConfig.UNSTABLE_REMOVE_LEGACY_COMPONENT_INTEROP && useFabricInterop()) {
         // For Fabric, events needs to be fired with a "top" prefix.
         // For the sake of Fabric Interop, here we normalize events adding "top" in their
         // name if the user hasn't provided it.
@@ -161,7 +158,7 @@ internal object UIManagerModuleConstantsHelper {
         viewManager.exportedCustomDirectEventTypeConstants
     validateDirectEventNames(viewManager.getName(), viewManagerDirectEvents)
     if (viewManagerDirectEvents != null) {
-      if (enableFabricRenderer() && useFabricInterop()) {
+      if (!ReactBuildConfig.UNSTABLE_REMOVE_LEGACY_COMPONENT_INTEROP && useFabricInterop()) {
         // For Fabric, events needs to be fired with a "top" prefix.
         // For the sake of Fabric Interop, here we normalize events adding "top" in their
         // name if the user hasn't provided it.
@@ -192,7 +189,7 @@ internal object UIManagerModuleConstantsHelper {
 
   @VisibleForTesting
   internal fun normalizeEventTypes(
-      eventsToNormalize: MutableMap<String, Any>
+      eventsToNormalize: MutableMap<String, Any>,
   ): MutableMap<String, Any> {
     var events = eventsToNormalize
     val keysToNormalize: MutableSet<String> = hashSetOf()

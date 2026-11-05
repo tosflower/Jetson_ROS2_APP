@@ -44,7 +44,8 @@ const darkColors: ThemeColors = {
   input: '#0D1014',
 };
 
-export function getThemeColors(scheme: ColorSchemeName): ThemeColors {
+// 新版 useColorScheme 在系统未指定外观时可能返回 null，沿用深色配色。
+export function getThemeColors(scheme: ColorSchemeName | null): ThemeColors {
   return scheme === 'light' ? lightColors : darkColors;
 }
 

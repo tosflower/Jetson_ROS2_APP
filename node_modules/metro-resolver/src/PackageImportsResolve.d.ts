@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<e23956477d8d1e5fef52de8eea8f091f>>
+ * @generated SignedSource<<cbfd95f897a43fc2120bb9eeea9c7334>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-resolver/src/PackageImportsResolve.js
@@ -27,10 +27,4 @@ import type {ExportsLikeMap, FileResolution, ResolutionContext} from './types';
  * @throws {InvalidPackageConfigurationError} Raised if configuration specified
  *   by `importsMap` is invalid.
  */
-export declare function resolvePackageTargetFromImports(
-  context: ResolutionContext,
-  packagePath: string,
-  importPath: string,
-  importsMap: ExportsLikeMap,
-  platform: string | null,
-): FileResolution;
+export declare function resolvePackageTargetFromImports(context: ResolutionContext, packagePath: string, importPath: string, importsMap: ExportsLikeMap, platform: string | null): FileResolution;

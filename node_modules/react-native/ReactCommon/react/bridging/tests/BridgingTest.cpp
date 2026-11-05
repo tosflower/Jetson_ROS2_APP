@@ -5,6 +5,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <chrono>
+#include <span>
+#include <utility>
+
 #include "BridgingTest.h"
 
 namespace facebook::react {
@@ -17,6 +21,7 @@ TEST_F(BridgingTest, jsiTest) {
   jsi::Value object = jsi::Object(rt);
   jsi::Value array = jsi::Array::createWithElements(rt, value, object);
   jsi::Value func = function("() => {}");
+  jsi::Value arrayBuffer = eval("new ArrayBuffer(0)");
 
   // The bridging mechanism needs to know how to copy and downcast values.
   EXPECT_NO_THROW(bridging::fromJs<jsi::Value>(rt, value, invoker));
@@ -24,6 +29,7 @@ TEST_F(BridgingTest, jsiTest) {
   EXPECT_NO_THROW(bridging::fromJs<jsi::Object>(rt, object, invoker));
   EXPECT_NO_THROW(bridging::fromJs<jsi::Array>(rt, array, invoker));
   EXPECT_NO_THROW(bridging::fromJs<jsi::Function>(rt, func, invoker));
+  EXPECT_NO_THROW(bridging::fromJs<jsi::ArrayBuffer>(rt, arrayBuffer, invoker));
 
   // Should throw when attempting an invalid cast.
   EXPECT_JSI_THROW(bridging::fromJs<jsi::Object>(rt, value, invoker));
@@ -31,6 +37,7 @@ TEST_F(BridgingTest, jsiTest) {
   EXPECT_JSI_THROW(bridging::fromJs<jsi::Array>(rt, object, invoker));
   EXPECT_JSI_THROW(bridging::fromJs<jsi::Array>(rt, string, invoker));
   EXPECT_JSI_THROW(bridging::fromJs<jsi::Array>(rt, func, invoker));
+  EXPECT_JSI_THROW(bridging::fromJs<jsi::ArrayBuffer>(rt, value, invoker));
 
   // Should be able to generically no-op convert JSI.
   EXPECT_NO_THROW(bridging::toJs(rt, value, invoker));
@@ -68,11 +75,6 @@ TEST_F(BridgingTest, numberTest) {
   EXPECT_EQ(
       -42,
       static_cast<uint32_t>(
-          bridging::toJs(rt, static_cast<uint32_t>(-42)).asNumber()));
-
-  EXPECT_FALSE(
-      -42 ==
-      static_cast<int32_t>(
           bridging::toJs(rt, static_cast<uint32_t>(-42)).asNumber()));
 }
 
@@ -200,9 +202,8 @@ TEST_F(BridgingTest, functionTest) {
   auto object = jsi::Object(rt);
   object.setProperty(rt, "foo", "bar");
 
-  auto lambda = [](std::map<std::string, std::string> map, std::string key) {
-    return map[key];
-  };
+  auto lambda = [](std::map<std::string, std::string> map,
+                   const std::string& key) { return map[key]; };
 
   auto func = bridging::toJs(rt, lambda, invoker);
 
@@ -285,7 +286,8 @@ TEST_F(BridgingTest, syncCallbackImplicitBridgingTest) {
 TEST_F(BridgingTest, asyncCallbackTest) {
   std::string output;
 
-  auto func = std::function<void(std::string)>([&](auto str) { output = str; });
+  auto func = std::function<void(std::string)>(
+      [&](auto str) { output = std::move(str); });
 
   auto cb = bridging::fromJs<AsyncCallback<decltype(func), std::string>>(
       rt, function("(func, str) => func(str)"), invoker);
@@ -309,7 +311,9 @@ TEST_F(BridgingTest, asyncCallbackTest) {
 
 TEST_F(BridgingTest, asyncCallbackInvalidation) {
   std::string output;
-  std::function<void(std::string)> func = [&](auto str) { output = str; };
+  std::function<void(std::string)> func = [&](auto str) {
+    output = std::move(str);
+  };
 
   auto jsCallback = bridging::fromJs<AsyncCallback<>>(
       rt, bridging::toJs(rt, func, invoker), invoker);
@@ -327,7 +331,8 @@ TEST_F(BridgingTest, asyncCallbackInvalidation) {
 
 TEST_F(BridgingTest, asyncCallbackImplicitBridgingTest) {
   std::string output;
-  auto func = std::function<void(std::string)>([&](auto str) { output = str; });
+  auto func = std::function<void(std::string)>(
+      [&](auto str) { output = std::move(str); });
   { // Value
     auto cb = bridging::fromJs<AsyncCallback<decltype(func), jsi::Value, int>>(
         rt, function("(func, a, b) => func(a + b)"), invoker);
@@ -536,6 +541,59 @@ TEST_F(BridgingTest, eventEmitterTest) {
     EXPECT_EQ("eight", lastEvent->at(1));
     EXPECT_EQ("nine", lastEvent->at(2));
   }
+}
+
+TEST_F(BridgingTest, eventEmitterMapLookupTest) {
+  // Mirrors the lookup the codegen'd setEventEmitterCallback lambda performs:
+  // an unknown event name must not insert an entry, and a null emitter must not
+  // be dereferenced.
+  std::unordered_map<std::string, std::shared_ptr<IAsyncEventEmitter>>
+      eventEmitterMap;
+  eventEmitterMap["onEvent"] = std::make_shared<AsyncEventEmitter<EventType>>();
+  eventEmitterMap["onNullEvent"] = nullptr;
+
+  // Subscribe to the valid emitter so the emit("onEvent") case can be verified
+  // by an observable side effect, not merely EXPECT_NO_THROW.
+  EventSubscriptionsWithLastEvent eventSubscriptionsWithListener;
+  addEventSubscription<EventType>(
+      rt,
+      static_cast<AsyncEventEmitter<EventType>&>(*eventEmitterMap["onEvent"]),
+      eventSubscriptionsWithListener,
+      invoker);
+
+  auto emit = [&eventEmitterMap](const std::string& name) {
+    auto it = eventEmitterMap.find(name);
+    if (it == eventEmitterMap.end() || !it->second) {
+      return;
+    }
+    static_cast<AsyncEventEmitter<EventType>&>(*it->second)
+        .emit({"one", "two", "three"});
+  };
+
+  EXPECT_NO_THROW(emit("onUnknownEvent"));
+  EXPECT_NO_THROW(emit("onNullEvent"));
+  EXPECT_NO_THROW(emit("onEvent"));
+
+  // The valid emit must actually reach the subscribed listener.
+  flushQueue();
+  ASSERT_EQ(1, eventSubscriptionsWithListener.size());
+  const auto& lastEvent = eventSubscriptionsWithListener[0].second;
+  ASSERT_EQ(3, lastEvent->size());
+  EXPECT_EQ("one", lastEvent->at(0));
+  EXPECT_EQ("two", lastEvent->at(1));
+  EXPECT_EQ("three", lastEvent->at(2));
+
+  // The miss must not have grown the map, which operator[] would have done.
+  EXPECT_EQ(2, eventEmitterMap.size());
+  EXPECT_FALSE(eventEmitterMap.contains("onUnknownEvent"));
+
+  // Clean up the subscription so the LongLivedObjectCollection leak check in
+  // TearDown passes.
+  for (const auto& [eventSubscription, _] : eventSubscriptionsWithListener) {
+    eventSubscription.getPropertyAsFunction(rt, "remove")
+        .callWithThis(rt, eventSubscription);
+  }
+  flushQueue();
 }
 
 TEST_F(BridgingTest, optionalTest) {
@@ -780,18 +838,200 @@ TEST_F(BridgingTest, dynamicTest) {
   EXPECT_TRUE(undefinedFromJsResult.isNull());
 }
 
-TEST_F(BridgingTest, highResTimeStampTest) {
-  HighResTimeStamp timestamp = HighResTimeStamp::now();
-  EXPECT_EQ(
-      timestamp,
-      bridging::fromJs<HighResTimeStamp>(
-          rt, bridging::toJs(rt, timestamp), invoker));
+TEST_F(BridgingTest, arrayBufferTest) {
+  auto rawBuf = eval("new ArrayBuffer(7)");
+  auto buf = bridging::fromJs<jsi::ArrayBuffer>(rt, rawBuf, invoker);
+  EXPECT_EQ(7, buf.size(rt));
 
-  auto duration = HighResDuration::fromNanoseconds(1);
-  EXPECT_EQ(
-      duration,
-      bridging::fromJs<HighResDuration>(
-          rt, bridging::toJs(rt, duration), invoker));
+  auto typedArrayBuf = eval("new Uint8Array([1, 2, 3]).buffer");
+  auto fromTa = bridging::fromJs<jsi::ArrayBuffer>(rt, typedArrayBuf, invoker);
+  EXPECT_EQ(3, fromTa.size(rt));
+
+  auto jsVal = bridging::toJs(rt, std::move(buf), invoker);
+  EXPECT_TRUE(jsVal.isArrayBuffer(rt));
+  auto roundTrip = bridging::fromJs<jsi::ArrayBuffer>(rt, jsVal, invoker);
+  EXPECT_EQ(7, roundTrip.size(rt));
+
+  EXPECT_JSI_THROW(
+      bridging::fromJs<jsi::ArrayBuffer>(rt, jsi::Value(1), invoker));
+}
+
+TEST_F(BridgingTest, asyncArrayBufferConstructorTest) {
+  // JS-heap-allocated buffer: acquire() copies into an internal buffer.
+  {
+    auto jsBuf = eval("new Uint8Array([10, 20, 30]).buffer")
+                     .asObject(rt)
+                     .getArrayBuffer(rt);
+    auto safe = AsyncArrayBuffer::acquire(rt, jsBuf);
+    EXPECT_EQ(3, safe.size());
+    auto data = std::span(safe.data(), safe.size());
+    EXPECT_EQ(10, data[0]);
+    EXPECT_EQ(20, data[1]);
+    EXPECT_EQ(30, data[2]);
+  }
+
+  // ArrayBuffer created from a native MutableBuffer: acquire() returns the
+  // same bytes. Whether it's zero-copy depends on whether the runtime
+  // implements tryGetMutableBuffer (e.g. Hermes does not, so acquire falls
+  // back to a copy).
+  {
+    auto nativeBuf = std::make_shared<detail::OwnedBytesBuffer>(
+        std::vector<uint8_t>{1, 2, 3, 4});
+    auto* rawPtr = nativeBuf.get();
+    auto jsBuf = jsi::ArrayBuffer(rt, nativeBuf);
+    auto safe = AsyncArrayBuffer::acquire(rt, jsBuf);
+    EXPECT_EQ(4, safe.size());
+    auto data = std::span(safe.data(), safe.size());
+    EXPECT_EQ(1, data[0]);
+    EXPECT_EQ(4, data[3]);
+    if (jsBuf.tryGetMutableBuffer(rt) != nullptr) {
+      EXPECT_EQ(rawPtr, safe.getMutableBuffer().get());
+    }
+  }
+}
+
+TEST_F(BridgingTest, asyncArrayBufferBorrowThrowsOnJsHeapTest) {
+  // JS-heap-allocated buffer: borrow throws.
+  auto jsBuf = eval("new ArrayBuffer(4)").asObject(rt).getArrayBuffer(rt);
+  EXPECT_JSI_THROW(AsyncArrayBuffer::borrow(rt, jsBuf));
+}
+
+TEST_F(BridgingTest, asyncArrayBufferBorrowNativeBackedTest) {
+  // Native-backed buffer: borrow succeeds zero-copy on runtimes that implement
+  // tryGetMutableBuffer; otherwise borrow throws (since there is no native
+  // MutableBuffer to hand back).
+  auto nativeBuf =
+      std::make_shared<detail::OwnedBytesBuffer>(std::vector<uint8_t>{5, 6, 7});
+  auto* rawPtr = nativeBuf.get();
+  auto jsBuf = jsi::ArrayBuffer(rt, nativeBuf);
+  if (jsBuf.tryGetMutableBuffer(rt) == nullptr) {
+    EXPECT_JSI_THROW(AsyncArrayBuffer::borrow(rt, jsBuf));
+    return;
+  }
+  auto safe = AsyncArrayBuffer::borrow(rt, jsBuf);
+  EXPECT_EQ(3, safe.size());
+  auto data = std::span(safe.data(), safe.size());
+  EXPECT_EQ(5, data[0]);
+  EXPECT_EQ(rawPtr, safe.getMutableBuffer().get());
+}
+
+TEST_F(BridgingTest, asyncArrayBufferCopyTest) {
+  // JS-heap-allocated buffer: copy succeeds.
+  {
+    auto jsBuf = eval("new Uint8Array([100, 200]).buffer")
+                     .asObject(rt)
+                     .getArrayBuffer(rt);
+    auto safe = AsyncArrayBuffer::copy(rt, jsBuf);
+    EXPECT_EQ(2, safe.size());
+    auto data = std::span(safe.data(), safe.size());
+    EXPECT_EQ(100, data[0]);
+    EXPECT_EQ(200, data[1]);
+  }
+
+  // Native-backed buffer: copy() still copies into an internal buffer.
+  {
+    auto nativeBuf = std::make_shared<detail::OwnedBytesBuffer>(
+        std::vector<uint8_t>{9, 8, 7});
+    auto* rawPtr = nativeBuf.get();
+    auto jsBuf = jsi::ArrayBuffer(rt, nativeBuf);
+    auto safe = AsyncArrayBuffer::copy(rt, jsBuf);
+    EXPECT_EQ(3, safe.size());
+    auto data = std::span(safe.data(), safe.size());
+    EXPECT_EQ(9, data[0]);
+    EXPECT_NE(rawPtr, safe.getMutableBuffer().get());
+  }
+}
+
+TEST_F(BridgingTest, asyncArrayBufferMoveTest) {
+  auto jsBuf =
+      eval("new Uint8Array([1, 2, 3]).buffer").asObject(rt).getArrayBuffer(rt);
+  auto safe = AsyncArrayBuffer::acquire(rt, jsBuf);
+  EXPECT_EQ(3, safe.size());
+
+  auto moved = std::move(safe);
+  EXPECT_EQ(3, moved.size());
+  auto data = std::span(moved.data(), moved.size());
+  EXPECT_EQ(1, data[0]);
+}
+
+TEST_F(BridgingTest, asyncArrayBufferWrapTest) {
+  // wrap(shared_ptr<MutableBuffer>): zero-copy, same underlying buffer.
+  {
+    auto nativeBuf = std::make_shared<detail::OwnedBytesBuffer>(
+        std::vector<uint8_t>{1, 2, 3});
+    auto* rawPtr = nativeBuf.get();
+    auto safe = AsyncArrayBuffer::wrap(nativeBuf);
+    EXPECT_EQ(3, safe.size());
+    auto data = std::span(safe.data(), safe.size());
+    EXPECT_EQ(1, data[0]);
+    EXPECT_EQ(3, data[2]);
+    EXPECT_EQ(rawPtr, safe.getMutableBuffer().get());
+  }
+
+  // wrap(vector<uint8_t>): bytes are owned by an internal MutableBuffer.
+  {
+    auto safe = AsyncArrayBuffer::wrap(std::vector<uint8_t>{10, 20, 30, 40});
+    EXPECT_EQ(4, safe.size());
+    auto data = std::span(safe.data(), safe.size());
+    EXPECT_EQ(10, data[0]);
+    EXPECT_EQ(40, data[3]);
+    EXPECT_NE(nullptr, safe.getMutableBuffer());
+  }
+}
+
+TEST_F(BridgingTest, asyncArrayBufferBridgingTest) {
+  // toJs with native-backed buffer: JS ArrayBuffer backed by the same
+  // MutableBuffer.
+  {
+    auto nativeBuf = std::make_shared<detail::OwnedBytesBuffer>(
+        std::vector<uint8_t>{5, 6, 7});
+    auto safe = AsyncArrayBuffer::wrap(nativeBuf);
+    auto jsVal = bridging::toJs(rt, std::move(safe), invoker);
+    EXPECT_TRUE(jsVal.asObject(rt).isArrayBuffer(rt));
+    auto jsBuf = jsVal.asObject(rt).getArrayBuffer(rt);
+    EXPECT_EQ(3, jsBuf.size(rt));
+    auto data = std::span(jsBuf.data(rt), jsBuf.size(rt));
+    EXPECT_EQ(5, data[0]);
+    EXPECT_EQ(7, data[2]);
+  }
+
+  // toJs with owned bytes: JS ArrayBuffer contains the correct data.
+  {
+    auto safe = AsyncArrayBuffer::wrap(std::vector<uint8_t>{100, 200});
+    auto jsVal = bridging::toJs(rt, std::move(safe), invoker);
+    EXPECT_TRUE(jsVal.asObject(rt).isArrayBuffer(rt));
+    auto jsBuf = jsVal.asObject(rt).getArrayBuffer(rt);
+    EXPECT_EQ(2, jsBuf.size(rt));
+    auto data = std::span(jsBuf.data(rt), jsBuf.size(rt));
+    EXPECT_EQ(100, data[0]);
+    EXPECT_EQ(200, data[1]);
+  }
+}
+
+TEST_F(BridgingTest, highResTimeStampTest) {
+  // Nanosecond counts that are not a whole number of milliseconds, spanning the
+  // magnitudes a monotonic clock reports (seconds to weeks since boot). Fixed
+  // values are used instead of `HighResTimeStamp::now()` so that the precision
+  // of the round trip does not depend on the uptime of the host running this
+  // test.
+  for (int64_t nanoseconds :
+       {1LL, 999'999LL, 1'000'001LL, 12'345'678'901LL, 537'648'854'729'250LL}) {
+    auto timestamp = HighResTimeStamp::fromChronoSteadyClockTimePoint(
+        std::chrono::steady_clock::time_point(
+            std::chrono::nanoseconds(nanoseconds)));
+    EXPECT_EQ(
+        timestamp,
+        bridging::fromJs<HighResTimeStamp>(
+            rt, bridging::toJs(rt, timestamp), invoker))
+        << "timestamp of " << nanoseconds << "ns did not round trip";
+
+    auto duration = HighResDuration::fromNanoseconds(nanoseconds);
+    EXPECT_EQ(
+        duration,
+        bridging::fromJs<HighResDuration>(
+            rt, bridging::toJs(rt, duration), invoker))
+        << "duration of " << nanoseconds << "ns did not round trip";
+  }
 
   EXPECT_EQ(1.0, bridging::toJs(rt, HighResDuration::fromNanoseconds(1e6)));
   EXPECT_EQ(

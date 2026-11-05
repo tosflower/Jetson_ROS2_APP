@@ -20,6 +20,7 @@ import processBoxShadow from '../../StyleSheet/processBoxShadow';
 import processColor from '../../StyleSheet/processColor';
 import processFilter from '../../StyleSheet/processFilter';
 import processFontVariant from '../../StyleSheet/processFontVariant';
+import processFontVariationSettings from '../../StyleSheet/processFontVariationSettings';
 import processTransform from '../../StyleSheet/processTransform';
 import processTransformOrigin from '../../StyleSheet/processTransformOrigin';
 import sizesDiffer from '../../Utilities/differ/sizesDiffer';
@@ -70,6 +71,10 @@ export const transformOriginAttribute: AnyAttributeType = nativeCSSParsing
 export const fontVariantAttribute: AnyAttributeType = nativeCSSParsing
   ? true
   : {process: processFontVariant};
+
+export const fontVariationSettingsAttribute: AnyAttributeType = {
+  process: processFontVariationSettings,
+};
 
 export const aspectRatioAttribute: AnyAttributeType = nativeCSSParsing
   ? true
@@ -194,21 +199,28 @@ const ReactNativeStyleAttributes: {[string]: AnyAttributeType, ...} = {
   /**
    * BackgroundImage
    */
+  backgroundImage: backgroundImageAttribute,
   experimental_backgroundImage: backgroundImageAttribute,
 
   /**
    * BackgroundSize
    */
+  backgroundSize: backgroundSizeAttribute,
+  /** @deprecated Use `backgroundSize` instead. */
   experimental_backgroundSize: backgroundSizeAttribute,
 
   /**
    * BackgroundPosition
    */
+  backgroundPosition: backgroundPositionAttribute,
+  /** @deprecated Use `backgroundPosition` instead. */
   experimental_backgroundPosition: backgroundPositionAttribute,
 
   /**
    * BackgroundRepeat
    */
+  backgroundRepeat: backgroundRepeatAttribute,
+  /** @deprecated Use `backgroundRepeat` instead. */
   experimental_backgroundRepeat: backgroundRepeatAttribute,
 
   /**
@@ -257,6 +269,7 @@ const ReactNativeStyleAttributes: {[string]: AnyAttributeType, ...} = {
   fontSize: true,
   fontStyle: true,
   fontVariant: fontVariantAttribute,
+  fontVariationSettings: fontVariationSettingsAttribute,
   fontWeight: true,
   includeFontPadding: true,
   letterSpacing: true,

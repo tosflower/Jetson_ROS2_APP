@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<bf83602f3e958b1e38787cb0c322993f>>
+ * @generated SignedSource<<d4d842118d3e36826266b8b940ba14d7>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-source-map/src/composeSourceMaps.js
@@ -17,7 +17,5 @@
 
 import type {MixedSourceMap} from './source-map';
 
-declare function composeSourceMaps(
-  maps: ReadonlyArray<MixedSourceMap>,
-): MixedSourceMap;
+declare function composeSourceMaps(maps: ReadonlyArray<MixedSourceMap>): MixedSourceMap;
 export default composeSourceMaps;

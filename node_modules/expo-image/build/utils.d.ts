@@ -21,4 +21,3 @@ export declare function resolveTransition(transition?: ImageProps['transition'],
  * Checks whether the given value is an instance of the `SharedRef<'image'>` class.
  */
 export declare function isImageRef(value: any): value is SharedRefType<'image'>;
-//# sourceMappingURL=utils.d.ts.map

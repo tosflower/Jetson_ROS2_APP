@@ -4,7 +4,11 @@ import type { SerializableRef, WorkletFunction } from 'react-native-worklets';
 import type { Maybe, MutuallyExclusiveUnion } from './common';
 import type { CSSStyle } from './css';
 import type { EasingFunctionFactory } from './Easing';
-import type { AnimatedStyleHandle } from './hook/commonTypes';
+import type { AnimatedStyleHandle, Descriptor } from './hook/commonTypes';
+import type { ReanimatedKeyframe } from './layoutReanimation/animationBuilder/Keyframe';
+export interface ViewDescriptorsWrapper {
+    value: Readonly<Descriptor[]>;
+}
 type LayoutAnimationOptions = 'originX' | 'originY' | 'width' | 'height' | 'borderRadius' | 'globalOriginX' | 'globalOriginY';
 type CurrentLayoutAnimationValues = {
     [K in LayoutAnimationOptions as `current${Capitalize<string & K>}`]: number;
@@ -65,6 +69,10 @@ export declare enum LayoutAnimationType {
 }
 export type LayoutAnimationFunction = (targetValues: LayoutAnimationValues) => LayoutAnimation;
 export type LayoutAnimationStartFunction = (tag: number, type: LayoutAnimationType, yogaValues: Partial<LayoutAnimationValues>, config: (arg: Partial<LayoutAnimationValues>) => LayoutAnimation) => void;
+export type LayoutAnimationsManager = {
+    start: LayoutAnimationStartFunction;
+    stop: (tag: number) => void;
+};
 export interface ILayoutAnimationBuilder {
     build: () => LayoutAnimationFunction;
 }
@@ -107,7 +115,7 @@ export type StylePropsWithArrayTransform = StyleProps & {
 export interface LayoutAnimationBatchItem {
     viewTag: number;
     type: LayoutAnimationType;
-    config: SerializableRef<Keyframe | LayoutAnimationFunction> | undefined;
+    config: SerializableRef<ReanimatedKeyframe | LayoutAnimationFunction> | undefined;
     sharedTransitionTag?: string;
 }
 export type RequiredKeys<T, K extends keyof T> = T & Required<Pick<T, K>>;
@@ -140,7 +148,7 @@ export interface SharedValue<Value = unknown> {
  * Instead of refactoring the code with small chances of success, we just
  * disable contravariance for `SharedValue` in this problematic case.
  */
-type SharedValueDisableContravariance<Value = unknown> = Omit<SharedValue<Value>, 'set' | 'modify'>;
+export type SharedValueDisableContravariance<Value = unknown> = Omit<SharedValue<Value>, 'set' | 'modify'>;
 export interface Mutable<Value = unknown> extends SharedValue<Value> {
     _isReanimatedSharedValue: true;
     _animation?: AnimationObject<Value> | null;
@@ -153,13 +161,21 @@ export interface Mutable<Value = unknown> extends SharedValue<Value> {
      */
     _value: Value;
     /**
-     * Defined only when enabled with a feature flag
-     * `USE_SYNCHRONIZABLE_FOR_MUTABLES`.
+     * Defined on the UI Runtime host mutable and as a no-op on web and Guest
+     * mutables.
      */
-    setDirty?: (dirty: boolean) => void;
+    setDirtyFlag: (dirty: boolean) => void;
 }
 export type MapperRawInputs = unknown[];
 export type MapperOutputs = SharedValue[];
+export type MapperExtractedInputs = SharedValue[];
+export type Mapper = {
+    id: number;
+    dirty: boolean;
+    worklet: () => void;
+    inputs: MapperExtractedInputs;
+    outputs?: MapperOutputs;
+};
 export type MapperRegistry = {
     start: (mapperID: number, worklet: (forceUpdate?: boolean) => void, inputs: MapperRawInputs, outputs?: MapperOutputs) => void;
     stop: (mapperID: number) => void;

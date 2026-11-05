@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<354fde3c81b3278d772c9279758d6b13>>
+ * @generated SignedSource<<0a622ada969fd83885fa4d354724adc3>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-core/src/errors/PackageResolutionError.js
@@ -21,10 +21,6 @@ declare class PackageResolutionError extends Error {
   originModulePath: string;
   packageError: InvalidPackageError;
   targetModuleName: string;
-  constructor(opts: {
-    readonly originModulePath: string;
-    readonly packageError: InvalidPackageError;
-    readonly targetModuleName: string;
-  });
+  constructor(opts: {readonly originModulePath: string; readonly packageError: InvalidPackageError; readonly targetModuleName: string});
 }
 export default PackageResolutionError;

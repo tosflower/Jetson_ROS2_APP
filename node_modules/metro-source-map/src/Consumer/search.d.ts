@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<c44d93a454a950171d9456512714303b>>
+ * @generated SignedSource<<a6bd4b614aecf588b1b4d062ec3f920b>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-source-map/src/Consumer/search.js
@@ -15,8 +15,4 @@
  *   yarn run build-ts-defs (OSS) 
  */
 
-export declare function greatestLowerBound<T, U>(
-  elements: ReadonlyArray<T>,
-  target: U,
-  comparator: ($$PARAM_0$$: U, $$PARAM_1$$: T) => number,
-): null | undefined | number;
+export declare function greatestLowerBound<T, U>(elements: ReadonlyArray<T>, target: U, comparator: ($$PARAM_0$$: U, $$PARAM_1$$: T) => number): null | undefined | number;

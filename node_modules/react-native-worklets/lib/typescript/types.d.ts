@@ -45,28 +45,29 @@ export type WorkletStackDetails = [
     lineOffset: number,
     columnOffset: number
 ];
-type WorkletClosure = Record<string, unknown>;
+type WorkletClosure = unknown[];
 interface WorkletInitData {
-    code: string;
+    /** Only when bytecode isn't toggled. */
+    code?: string;
+    /** Only in production builds and explicitly toggled. */
+    bytecode?: ArrayBuffer;
     /** Only in dev builds. */
     location?: string;
     /** Only in dev builds. */
     sourceMap?: string;
 }
 interface WorkletProps {
-    __closure: WorkletClosure;
+    __closure?: WorkletClosure;
     __workletHash: number;
     /** Only in Legacy Eval Mode. */
     __initData?: WorkletInitData;
-    /** Only for Handles. */
-    __init?: () => unknown;
     /** `__stackDetails` is removed after parsing. */
     __stackDetails?: WorkletStackDetails;
     /** Only in dev builds. */
     __pluginVersion?: string;
 }
 export type WorkletFunction<TArgs extends unknown[] = unknown[], TReturn = unknown> = ((...args: TArgs) => TReturn) & WorkletProps;
-export interface WorkletFactory<TArgs extends unknown[] = unknown[], TReturn = unknown, TClosureVariables extends Record<string, unknown> = Record<string, unknown>> {
+export interface WorkletFactory<TArgs extends unknown[] = unknown[], TReturn = unknown, TClosureVariables extends unknown[] = unknown[]> {
     (closureVariables: TClosureVariables): WorkletFunction<TArgs, TReturn>;
 }
 export type ValueUnpacker = WorkletFunction<[
@@ -95,16 +96,52 @@ type WorkletRuntimeConfigBase = {
      */
     animationQueuePollingRate?: number;
     /**
-     * Determines whether to enable the default Event Loop or not. The Event Loop
-     * provides implementations for `setTimeout`, `setImmediate`, `setInterval`,
-     * `requestAnimationFrame`, `queueMicrotask`, `clearTimeout`, `clearInterval`,
-     * `clearImmediate`, and `cancelAnimationFrame` methods. If not specified, it
-     * defaults to `true`.
+     * Determines whether the networking API (`fetch`, `XMLHttpRequest` and
+     * their supporting globals) is installed on the runtime. Effective only in
+     * Bundle Mode. If not specified, it defaults to `true`.
      */
-    enableEventLoop?: true;
+    enableNetworking?: boolean;
 };
 /** Configuration object for creating a worklet runtime. */
 export type WorkletRuntimeConfig = WorkletRuntimeConfigBase & ({
+    /**
+     * Determines whether to enable the default Event Loop, which provides
+     * `setTimeout`, `setInterval`, `requestAnimationFrame` and other
+     * scheduling APIs. If not specified, it defaults to `true`. Cannot be
+     * enabled when {@link enableLocking} is set to `false`.
+     */
+    enableEventLoop?: boolean;
+    /**
+     * Determines whether access to the underlying JS runtime is
+     * synchronized with a mutex around every JSI operation. If not
+     * specified, it defaults to `true`. Can be disabled only together
+     * with the Event Loop.
+     *
+     * Runtime without locking doesn't receive HMR updates
+     * and new Custom Serializable registrations.
+     *
+     * Disable only when you can guarantee thread safety of all access to the runtime.
+     */
+    enableLocking?: true;
+} | {
+    /**
+     * The Event Loop cannot be enabled on a runtime with
+     * {@link enableLocking} set to `false`.
+     */
+    enableEventLoop?: false;
+    /**
+     * Determines whether access to the underlying JS runtime is
+     * synchronized with a mutex around every JSI operation. If not
+     * specified, it defaults to `true`. Can be disabled only together
+     * with the Event Loop.
+     *
+     * Runtime without locking doesn't receive HMR updates
+     * and new Custom Serializable registrations.
+     *
+     * Disable only when you can guarantee thread safety of all access to the runtime.
+     */
+    enableLocking: false;
+}) & ({
     /**
      * The queue used for scheduling worklets on this runtime.
      *

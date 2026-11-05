@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<f6c99d0a7ab049bae081532d7fb7cb13>>
+ * @generated SignedSource<<dba9b76c371d4ecd1b07726f83f119fb>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-config/src/defaults/defaults.js
@@ -31,7 +31,6 @@ export declare type moduleSystem = typeof moduleSystem;
 export declare const platforms: Array<string>;
 export declare type platforms = typeof platforms;
 export declare const DEFAULT_METRO_MINIFIER_PATH: 'metro-minify-terser';
-export declare type DEFAULT_METRO_MINIFIER_PATH =
-  typeof DEFAULT_METRO_MINIFIER_PATH;
+export declare type DEFAULT_METRO_MINIFIER_PATH = typeof DEFAULT_METRO_MINIFIER_PATH;
 export declare const noopPerfLoggerFactory: () => RootPerfLogger;
 export declare type noopPerfLoggerFactory = typeof noopPerfLoggerFactory;

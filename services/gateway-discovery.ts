@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import { discoverJetsonAsync, getWifiGatewayAddressAsync } from '@/modules/jetson-discovery';
 
 const GATEWAY_PORT = 8080;
-const PROBE_TIMEOUT_MS = 1400;
+const PROBE_TIMEOUT_MS = 3000;
 
 function isPrivateIpv4(address: string): boolean {
   const parts = address.split('.').map(Number);
@@ -58,6 +58,11 @@ export async function probeGateway(candidate: string): Promise<string | null> {
 /** 热点通过 DHCP 网关发现；同路由器通过网关发布的 mDNS 服务发现。 */
 export async function discoverGateway(previousAddress?: string): Promise<string | null> {
   if (Platform.OS === 'web') return previousAddress ? probeGateway(previousAddress) : null;
+  // 唤醒时网络状态可能晚于实际 Wi-Fi 恢复；已知地址优先于系统状态和热点 .1 猜测。
+  if (previousAddress) {
+    const previous = await probeGateway(previousAddress);
+    if (previous) return previous;
+  }
   const network = await Network.getNetworkStateAsync();
   // 热点没有互联网时 Android 可能把蜂窝网络标为 active，仍继续读取 Wi-Fi 网关。
   if (network.type === Network.NetworkStateType.NONE) return null;
@@ -71,9 +76,8 @@ export async function discoverGateway(previousAddress?: string): Promise<string 
   const candidates = [
     gatewayIp ? `${gatewayIp}:${GATEWAY_PORT}` : null,
     hotspotGatewayCandidate(phoneIp),
-    previousAddress ?? null,
   ];
-  for (const candidate of candidates) {
+  for (const candidate of new Set(candidates)) {
     if (!candidate) continue;
     const found = await probeGateway(candidate);
     if (found) return found;

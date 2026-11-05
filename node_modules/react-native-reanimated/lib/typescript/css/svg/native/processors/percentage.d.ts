@@ -1,4 +1,3 @@
 import type { NumberProp } from 'react-native-svg';
-import type { ValueProcessor } from '../../../../common';
-export declare const processPercentage: ValueProcessor<NumberProp, number>;
+export declare const processPercentage: (percentage: NumberProp) => number;
 //# sourceMappingURL=percentage.d.ts.map

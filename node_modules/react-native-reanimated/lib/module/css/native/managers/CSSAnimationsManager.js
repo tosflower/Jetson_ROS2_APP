@@ -5,12 +5,16 @@ import { createSingleCSSAnimationProperties, getAnimationSettingsUpdates, normal
 import { applyCSSAnimations, unregisterCSSAnimations } from "../proxy.js";
 export default class CSSAnimationsManager {
   attachedAnimations = [];
+  appliedEventMask = 0;
   constructor(shadowNodeWrapper, viewTag, compoundComponentName) {
     this.shadowNodeWrapper = shadowNodeWrapper;
     this.viewTag = viewTag;
     this.compoundComponentName = compoundComponentName;
   }
-  update(animationProperties) {
+  hasAttachedAnimations() {
+    return this.attachedAnimations.length > 0;
+  }
+  update(animationProperties, eventMask = 0) {
     if (!animationProperties) {
       this.detach();
       return;
@@ -18,23 +22,34 @@ export default class CSSAnimationsManager {
     const processedAnimations = this.processAnimations(animationProperties);
     this.registerKeyframesUsage(processedAnimations);
     const animationUpdates = this.getAnimationUpdates(processedAnimations);
-    this.attachedAnimations = processedAnimations;
     if (animationUpdates) {
       if (animationUpdates.animationNames && animationUpdates.animationNames.length === 0) {
         this.detach();
         return;
       }
-      applyCSSAnimations(this.shadowNodeWrapper, this.compoundComponentName, animationUpdates);
+      this.attachedAnimations = processedAnimations;
+      this.apply(animationUpdates, eventMask);
+    } else if (eventMask !== this.appliedEventMask) {
+      // Only the mask changed, but the native side still has to learn about it.
+      this.apply({}, eventMask);
     }
   }
   unmountCleanup() {
     this.unregisterKeyframesUsage();
   }
+  apply(animationUpdates, eventMask) {
+    this.appliedEventMask = eventMask;
+    applyCSSAnimations(this.shadowNodeWrapper, this.compoundComponentName, {
+      ...animationUpdates,
+      eventMask
+    });
+  }
   detach() {
-    if (this.attachedAnimations.length > 0) {
+    if (this.hasAttachedAnimations()) {
       unregisterCSSAnimations(this.viewTag);
       this.unregisterKeyframesUsage();
       this.attachedAnimations = [];
+      this.appliedEventMask = 0;
     }
   }
   registerKeyframesUsage(processedAnimations) {

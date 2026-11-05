@@ -1,4 +1,3 @@
-import '../layoutReanimation/animationsManager';
 import type React from 'react';
 import type { StyleProps } from '../commonTypes';
 import { LayoutAnimationType } from '../commonTypes';
@@ -13,7 +12,8 @@ export type Options<P> = {
     jsProps?: string[];
 };
 export default class AnimatedComponent extends ReanimatedAnimatedComponent<AnimatedComponentProps<InitialComponentProps>, {
-    settledProps: StyleProps;
+    settledProps?: StyleProps;
+    settledStyle?: StyleProps;
 }> implements IAnimatedComponentInternal {
     _options?: Options<InitialComponentProps>;
     _displayName: string;
@@ -41,16 +41,16 @@ export default class AnimatedComponent extends ReanimatedAnimatedComponent<Anima
     constructor(ChildComponent: AnyComponent, props: AnimatedComponentProps<InitialComponentProps>, displayName: string, options?: Options<InitialComponentProps>);
     componentDidMount(): void;
     componentWillUnmount(): void;
-    _syncStylePropsBackToReact(props: StyleProps): void;
+    _syncStylePropsBackToReact(_props: StyleProps): void;
     _detachStyles(): void;
     setNativeProps(props: StyleProps): void;
-    _handleAnimatedStylesUpdate(prevStyles: StyleProps[], currentStyles: StyleProps[], jestAnimatedStyleOrProps: {
+    _handleAnimatedStylesUpdate(prevStyles: StyleProps[], currentStyles: StyleProps[], _jestAnimatedStyleOrProps: {
         value: StyleProps;
     }): void;
     _updateAnimatedStylesAndProps(): void;
     componentDidUpdate(prevProps: AnimatedComponentProps<InitialComponentProps>, _prevState: Readonly<unknown>, snapshot: DOMRect | null): void;
     _updateStyles(props: AnimatedComponentProps<InitialComponentProps>): void;
-    _configureLayoutAnimation(type: LayoutAnimationType, currentConfig: LayoutAnimationOrBuilder | undefined, previousConfig?: LayoutAnimationOrBuilder): void;
+    _configureLayoutAnimation(_type: LayoutAnimationType, _currentConfig: LayoutAnimationOrBuilder | undefined, _previousConfig?: LayoutAnimationOrBuilder): void;
     _configureSharedTransition(useNativeId?: boolean): void;
     getSnapshotBeforeUpdate(): DOMRect | null;
     render(): React.JSX.Element;

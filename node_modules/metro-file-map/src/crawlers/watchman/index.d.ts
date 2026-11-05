@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<bcfb58810773510450845bc00a93beae>>
+ * @generated SignedSource<<36c7ca94fe2070530db89e9169f0b6a8>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-file-map/src/crawlers/watchman/index.js
@@ -17,7 +17,5 @@
 
 import type {CrawlerOptions, CrawlResult} from '../../flow-types';
 
-declare function watchmanCrawl(
-  $$PARAM_0$$: CrawlerOptions,
-): Promise<CrawlResult>;
+declare function watchmanCrawl($$PARAM_0$$: CrawlerOptions): Promise<CrawlResult>;
 export default watchmanCrawl;

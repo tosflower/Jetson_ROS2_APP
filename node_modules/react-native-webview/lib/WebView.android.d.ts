@@ -1,6 +1,6 @@
 import React from 'react';
 import { AndroidWebViewProps } from './WebViewTypes';
-declare const WebView: React.ForwardRefExoticComponent<AndroidWebViewProps & React.RefAttributes<{}>> & {
+declare const WebView: React.ForwardRefExoticComponent<AndroidWebViewProps & React.RefAttributes<unknown>> & {
     isFileUploadSupported: () => Promise<boolean>;
 };
 export default WebView;

@@ -1,7 +1,7 @@
 'use strict';
 
 import "./publicGlobals.js";
-import { initializeReanimatedModule } from "./initializers.js";
+import { initializeReanimatedModule } from './initializers';
 import { ReanimatedModule } from './ReanimatedModule';
 
 // TODO: Specify the initialization pipeline since now there's no
@@ -14,7 +14,7 @@ import * as Animated from "./Animated.js";
 export default Animated;
 export { createAnimatedComponent } from "./Animated.js";
 export { cancelAnimation, defineAnimation, GentleSpringConfig, GentleSpringConfigWithDuration, Reanimated3DefaultSpringConfig, Reanimated3DefaultSpringConfigWithDuration, SnappySpringConfig, SnappySpringConfigWithDuration, WigglySpringConfig, WigglySpringConfigWithDuration, withClamp, withDecay, withDelay, withRepeat, withSequence, withSpring, withTiming } from "./animation/index.js";
-export { convertToRGBA, isColor } from "./Colors.js";
+export { contrastColor, convertToRGBA, isColor } from "./Colors.js";
 export { ReanimatedLogLevel } from "./common/index.js";
 export { DynamicColorIOS, PlatformColor, processColor } from "./common/index.js";
 export { InterfaceOrientation, IOSReferenceFrame, KeyboardState, ReduceMotion, SensorType } from "./commonTypes.js";
@@ -22,7 +22,7 @@ export { LayoutAnimationConfig } from "./component/LayoutAnimationConfig.js";
 export { PerformanceMonitor } from "./component/PerformanceMonitor.js";
 export { ReducedMotionConfig } from "./component/ReducedMotionConfig.js";
 export { SharedTransitionBoundary } from "./component/SharedTransitionBoundary.js";
-export { configureReanimatedLogger } from "./ConfigHelper.js";
+export { configureReanimatedLogger } from './ConfigHelper';
 export { enableLayoutAnimations, getViewProp, isConfigured, isReanimated3, makeMutable } from "./core.js";
 export { NativeEventsManager } from "./createAnimatedComponent/index.js";
 export * from "./css/index.js";
@@ -58,7 +58,7 @@ SlideInRight, SlideInUp, SlideOutDown, SlideOutLeft, SlideOutRight, SlideOutUp,
 StretchInX, StretchInY, StretchOutX, StretchOutY,
 // Zoom
 ZoomIn, ZoomInDown, ZoomInEasyDown, ZoomInEasyUp, ZoomInLeft, ZoomInRight, ZoomInRotate, ZoomInUp, ZoomOut, ZoomOutDown, ZoomOutEasyDown, ZoomOutEasyUp, ZoomOutLeft, ZoomOutRight, ZoomOutRotate, ZoomOutUp } from "./layoutReanimation/index.js";
-export { startMapper, stopMapper } from "./mappers.js";
+export { startMapper, stopMapper } from './mappers';
 export { jsVersion as reanimatedVersion } from "./platform-specific/jsVersion.js";
 export { dispatchCommand, getRelativeCoords, measure, scrollTo, setGestureState, setNativeProps } from "./platformFunctions/index.js";
 export { getUseOfValueInStyleWarning } from "./pluginUtils.js";

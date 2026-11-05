@@ -9,7 +9,6 @@
 #import <React/RCTBundleManager.h>
 #import <React/RCTColorSpaceUtils.h>
 #import <React/RCTDevMenu.h>
-#import <React/RCTLog.h>
 #import <React/RCTRootView.h>
 #import <React/RCTSurfacePresenterBridgeAdapter.h>
 #import <React/RCTUtils.h>
@@ -40,7 +39,35 @@ using namespace facebook::react;
     RCTHostDelegate,
     RCTJSRuntimeConfiguratorProtocol,
     RCTTurboModuleManagerDelegate>
+
 @end
+
+static NSDictionary *RCTConvertConnectionOptionsToLaunchOptions(UISceneConnectionOptions *connectionOptions)
+{
+  NSMutableDictionary *launchOptions = [NSMutableDictionary dictionary];
+
+  if (connectionOptions.URLContexts.count > 0) {
+    UIOpenURLContext *urlContext = connectionOptions.URLContexts.allObjects.firstObject;
+
+    if (urlContext.URL != nil) {
+      launchOptions[UIApplicationLaunchOptionsURLKey] = urlContext.URL;
+    }
+  }
+
+  if (connectionOptions.userActivities.count > 0) {
+    NSUserActivity *activity = connectionOptions.userActivities.allObjects.firstObject;
+
+    if (activity != nil) {
+      NSMutableDictionary *userActivityDict = [NSMutableDictionary dictionary];
+      userActivityDict[UIApplicationLaunchOptionsUserActivityTypeKey] = activity.activityType;
+      userActivityDict[@"UIApplicationLaunchOptionsUserActivityKey"] = activity;
+
+      launchOptions[UIApplicationLaunchOptionsUserActivityDictionaryKey] = userActivityDict;
+    }
+  }
+
+  return launchOptions;
+}
 
 @implementation RCTReactNativeFactory
 
@@ -58,7 +85,6 @@ using namespace facebook::react;
     [self _setUpFeatureFlags:releaseLevel];
 
     [RCTColorSpaceUtils applyDefaultColorSpace:[self defaultColorSpace]];
-    RCTEnableTurboModule(YES);
 
     self.rootViewFactory = [self createRCTRootViewFactory];
 
@@ -96,6 +122,29 @@ using namespace facebook::react;
   [window makeKeyAndVisible];
 }
 
+#pragma mark - UIScene.ConnectionOptions
+
+- (void)startReactNativeWithModuleName:(NSString *)moduleName
+                              inWindow:(UIWindow *_Nullable)window
+                     connectionOptions:(UISceneConnectionOptions *_Nullable)connectionOptions
+{
+  [self startReactNativeWithModuleName:moduleName
+                              inWindow:window
+                     initialProperties:nil
+                         launchOptions:RCTConvertConnectionOptionsToLaunchOptions(connectionOptions)];
+}
+
+- (void)startReactNativeWithModuleName:(NSString *)moduleName
+                              inWindow:(UIWindow *_Nullable)window
+                     initialProperties:(NSDictionary *_Nullable)initialProperties
+                     connectionOptions:(UISceneConnectionOptions *_Nullable)connectionOptions
+{
+  [self startReactNativeWithModuleName:moduleName
+                              inWindow:window
+                     initialProperties:initialProperties
+                         launchOptions:RCTConvertConnectionOptionsToLaunchOptions(connectionOptions)];
+}
+
 #pragma mark - RCTUIConfiguratorProtocol
 
 - (RCTColorSpace)defaultColorSpace
@@ -130,28 +179,6 @@ using namespace facebook::react;
 - (JSRuntimeFactoryRef)createJSRuntimeFactory
 {
   return [_delegate createJSRuntimeFactory];
-}
-
-#pragma mark - RCTArchConfiguratorProtocol
-
-- (BOOL)newArchEnabled
-{
-  return YES;
-}
-
-- (BOOL)fabricEnabled
-{
-  return YES;
-}
-
-- (BOOL)turboModuleEnabled
-{
-  return YES;
-}
-
-- (BOOL)bridgelessEnabled
-{
-  return YES;
 }
 
 #pragma mark - RCTTurboModuleManagerDelegate
@@ -235,6 +262,13 @@ using namespace facebook::react;
   }
 }
 
+- (void)host:(RCTHost *)host didInitializeRuntime:(facebook::jsi::Runtime &)runtime
+{
+  if ([_delegate respondsToSelector:@selector(host:didInitializeRuntime:)]) {
+    [_delegate host:host didInitializeRuntime:runtime];
+  }
+}
+
 - (NSArray<NSString *> *)unstableModulesRequiringMainQueueSetup
 {
 #if RN_DISABLE_OSS_PLUGIN_HEADER
@@ -260,26 +294,13 @@ using namespace facebook::react;
                                                    turboModuleEnabled:YES
                                                     bridgelessEnabled:YES];
 
-  configuration.createRootViewWithBridge = ^UIView *(RCTBridge *bridge, NSString *moduleName, NSDictionary *initProps) {
-    return [weakSelf.delegate createRootViewWithBridge:bridge moduleName:moduleName initProps:initProps];
-  };
-
-  configuration.createBridgeWithDelegate = ^RCTBridge *(id<RCTBridgeDelegate> delegate, NSDictionary *launchOptions) {
-    return [weakSelf.delegate createBridgeWithDelegate:delegate launchOptions:launchOptions];
-  };
-
   configuration.customizeRootView = ^(UIView *_Nonnull rootView) {
     [weakSelf.delegate customizeRootView:(RCTRootView *)rootView];
   };
 
   configuration.sourceURLForBridge = ^NSURL *_Nullable(RCTBridge *_Nonnull bridge)
   {
-#ifndef RCT_REMOVE_LEGACY_ARCH
-    return [weakSelf.delegate sourceURLForBridge:bridge];
-#else
-    // When the Legacy Arch is removed, the Delegate does not have a sourceURLForBridge method
     return [weakSelf.delegate bundleURL];
-#endif
   };
 
   if ([self.delegate respondsToSelector:@selector(extraModulesForBridge:)]) {
@@ -288,52 +309,6 @@ using namespace facebook::react;
       return [weakSelf.delegate extraModulesForBridge:bridge];
     };
   }
-
-#ifndef RCT_REMOVE_LEGACY_ARCH
-  // When the Legacy Arch is removed, the Delegate does not have a extraLazyModuleClassesForBridge method
-  if ([self.delegate respondsToSelector:@selector(extraLazyModuleClassesForBridge:)]) {
-    configuration.extraLazyModuleClassesForBridge =
-        ^NSDictionary<NSString *, Class> *_Nonnull(RCTBridge *_Nonnull bridge)
-    {
-      return [weakSelf.delegate extraLazyModuleClassesForBridge:bridge];
-    };
-  }
-#endif
-
-#ifndef RCT_REMOVE_LEGACY_ARCH
-  // When the Legacy Arch is removed, the Delegate does not have a bridge:didNotFindModule method
-  // We return NO, because if we have invoked this method is unlikely that the module will be actually registered
-  if ([self.delegate respondsToSelector:@selector(bridge:didNotFindModule:)]) {
-    configuration.bridgeDidNotFindModule = ^BOOL(RCTBridge *_Nonnull bridge, NSString *_Nonnull moduleName) {
-      return [weakSelf.delegate bridge:bridge didNotFindModule:moduleName];
-    };
-  }
-#endif
-
-#ifndef RCT_REMOVE_LEGACY_ARCH
-  // When the Legacy Arch is removed, the Delegate does not have a
-  // loadSourceForBridge:onProgress:onComplete: method
-  // We then call the loadBundleAtURL:onProgress:onComplete: instead
-  if ([self.delegate respondsToSelector:@selector(loadSourceForBridge:onProgress:onComplete:)]) {
-    configuration.loadSourceForBridgeWithProgress =
-        ^(RCTBridge *_Nonnull bridge,
-          RCTSourceLoadProgressBlock _Nonnull onProgress,
-          RCTSourceLoadBlock _Nonnull loadCallback) {
-          [weakSelf.delegate loadSourceForBridge:bridge onProgress:onProgress onComplete:loadCallback];
-        };
-  }
-#endif
-
-#ifndef RCT_REMOVE_LEGACY_ARCH
-  // When the Legacy Arch is removed, the Delegate does not have a
-  // loadSourceForBridge:withBlock: method
-  // We then call the loadBundleAtURL:onProgress:onComplete: instead
-  if ([self.delegate respondsToSelector:@selector(loadSourceForBridge:withBlock:)]) {
-    configuration.loadSourceForBridge = ^(RCTBridge *_Nonnull bridge, RCTSourceLoadBlock _Nonnull loadCallback) {
-      [weakSelf.delegate loadSourceForBridge:bridge withBlock:loadCallback];
-    };
-  }
-#endif
 
   configuration.jsRuntimeConfiguratorDelegate = self;
 

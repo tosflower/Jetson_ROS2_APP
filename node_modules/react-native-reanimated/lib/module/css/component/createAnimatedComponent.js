@@ -1,6 +1,6 @@
 'use strict';
 
-import AnimatedComponentImpl from "./AnimatedComponent.js";
+import AnimatedComponentImpl from './AnimatedComponent';
 
 /**
  * @deprecated Please use `Animated.FlatList` component instead of calling

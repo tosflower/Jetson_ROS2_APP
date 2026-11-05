@@ -72,16 +72,25 @@ public object ViewProps {
   // Props that affect more than just layout
   public const val ENABLED: String = "enabled"
   public const val BACKGROUND_COLOR: String = "backgroundColor"
-  public const val BACKGROUND_IMAGE: String = "experimental_backgroundImage"
-  public const val BACKGROUND_SIZE: String = "experimental_backgroundSize"
-  public const val BACKGROUND_POSITION: String = "experimental_backgroundPosition"
-  public const val BACKGROUND_REPEAT: String = "experimental_backgroundRepeat"
+  public const val BACKGROUND_IMAGE: String = "backgroundImage"
+  // Backwards-compatible alias for the original experimental_ prefixed prop name.
+  public const val EXPERIMENTAL_BACKGROUND_IMAGE: String = "experimental_backgroundImage"
+  public const val BACKGROUND_SIZE: String = "backgroundSize"
+  // Backwards-compatible alias for the original experimental_ prefixed prop name.
+  public const val EXPERIMENTAL_BACKGROUND_SIZE: String = "experimental_backgroundSize"
+  public const val BACKGROUND_POSITION: String = "backgroundPosition"
+  // Backwards-compatible alias for the original experimental_ prefixed prop name.
+  public const val EXPERIMENTAL_BACKGROUND_POSITION: String = "experimental_backgroundPosition"
+  public const val BACKGROUND_REPEAT: String = "backgroundRepeat"
+  // Backwards-compatible alias for the original experimental_ prefixed prop name.
+  public const val EXPERIMENTAL_BACKGROUND_REPEAT: String = "experimental_backgroundRepeat"
   public const val FOREGROUND_COLOR: String = "foregroundColor"
   public const val COLOR: String = "color"
   public const val FONT_SIZE: String = "fontSize"
   public const val FONT_WEIGHT: String = "fontWeight"
   public const val FONT_STYLE: String = "fontStyle"
   public const val FONT_VARIANT: String = "fontVariant"
+  public const val FONT_VARIATION_SETTINGS: String = "fontVariationSettings"
   public const val FONT_FAMILY: String = "fontFamily"
   public const val LINE_HEIGHT: String = "lineHeight"
   public const val LETTER_SPACING: String = "letterSpacing"
@@ -185,80 +194,77 @@ public object ViewProps {
   internal const val ON_CLICK: String = "onClick"
   internal const val ON_CLICK_CAPTURE: String = "onClickCapture"
   @JvmField
-  public val BORDER_SPACING_TYPES: IntArray =
-      intArrayOf(
-          Spacing.ALL,
-          Spacing.START,
-          Spacing.END,
-          Spacing.TOP,
-          Spacing.BOTTOM,
-          Spacing.LEFT,
-          Spacing.RIGHT,
-      )
+  public val BORDER_SPACING_TYPES: IntArray = intArrayOf(
+      Spacing.ALL,
+      Spacing.START,
+      Spacing.END,
+      Spacing.TOP,
+      Spacing.BOTTOM,
+      Spacing.LEFT,
+      Spacing.RIGHT,
+  )
   @JvmField
-  public val PADDING_MARGIN_SPACING_TYPES: IntArray =
-      intArrayOf(
-          Spacing.ALL,
-          Spacing.VERTICAL,
-          Spacing.HORIZONTAL,
-          Spacing.START,
-          Spacing.END,
-          Spacing.TOP,
-          Spacing.BOTTOM,
-          Spacing.LEFT,
-          Spacing.RIGHT,
-      )
-  private val LAYOUT_ONLY_PROPS: HashSet<String> =
-      HashSet(
-          listOf(
-              ALIGN_SELF,
-              ALIGN_ITEMS,
-              COLLAPSABLE,
-              FLEX,
-              FLEX_BASIS,
-              FLEX_DIRECTION,
-              FLEX_GROW,
-              ROW_GAP,
-              COLUMN_GAP,
-              GAP,
-              FLEX_SHRINK,
-              FLEX_WRAP,
-              JUSTIFY_CONTENT,
-              ALIGN_CONTENT,
-              DISPLAY, /* position */
-              POSITION,
-              RIGHT,
-              TOP,
-              BOTTOM,
-              LEFT,
-              START,
-              END, /* dimensions */
-              WIDTH,
-              HEIGHT,
-              MIN_WIDTH,
-              MAX_WIDTH,
-              MIN_HEIGHT,
-              MAX_HEIGHT, /* margins */
-              MARGIN,
-              MARGIN_VERTICAL,
-              MARGIN_HORIZONTAL,
-              MARGIN_LEFT,
-              MARGIN_RIGHT,
-              MARGIN_TOP,
-              MARGIN_BOTTOM,
-              MARGIN_START,
-              MARGIN_END, /* paddings */
-              PADDING,
-              PADDING_VERTICAL,
-              PADDING_HORIZONTAL,
-              PADDING_LEFT,
-              PADDING_RIGHT,
-              PADDING_TOP,
-              PADDING_BOTTOM,
-              PADDING_START,
-              PADDING_END,
-          )
-      )
+  public val PADDING_MARGIN_SPACING_TYPES: IntArray = intArrayOf(
+      Spacing.ALL,
+      Spacing.VERTICAL,
+      Spacing.HORIZONTAL,
+      Spacing.START,
+      Spacing.END,
+      Spacing.TOP,
+      Spacing.BOTTOM,
+      Spacing.LEFT,
+      Spacing.RIGHT,
+  )
+  private val LAYOUT_ONLY_PROPS: HashSet<String> = HashSet(
+      listOf(
+          ALIGN_SELF,
+          ALIGN_ITEMS,
+          COLLAPSABLE,
+          FLEX,
+          FLEX_BASIS,
+          FLEX_DIRECTION,
+          FLEX_GROW,
+          ROW_GAP,
+          COLUMN_GAP,
+          GAP,
+          FLEX_SHRINK,
+          FLEX_WRAP,
+          JUSTIFY_CONTENT,
+          ALIGN_CONTENT,
+          DISPLAY, /* position */
+          POSITION,
+          RIGHT,
+          TOP,
+          BOTTOM,
+          LEFT,
+          START,
+          END, /* dimensions */
+          WIDTH,
+          HEIGHT,
+          MIN_WIDTH,
+          MAX_WIDTH,
+          MIN_HEIGHT,
+          MAX_HEIGHT, /* margins */
+          MARGIN,
+          MARGIN_VERTICAL,
+          MARGIN_HORIZONTAL,
+          MARGIN_LEFT,
+          MARGIN_RIGHT,
+          MARGIN_TOP,
+          MARGIN_BOTTOM,
+          MARGIN_START,
+          MARGIN_END, /* paddings */
+          PADDING,
+          PADDING_VERTICAL,
+          PADDING_HORIZONTAL,
+          PADDING_LEFT,
+          PADDING_RIGHT,
+          PADDING_TOP,
+          PADDING_BOTTOM,
+          PADDING_START,
+          PADDING_END,
+      ),
+  )
 
   @JvmStatic
   public fun isLayoutOnly(map: ReadableMap, prop: String): Boolean {

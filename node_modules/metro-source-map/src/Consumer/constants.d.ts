@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<bcbe0a1f886534ee2f99a12da9c16270>>
+ * @generated SignedSource<<8d70c30794360bf4eff569fa46f26fb9>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-source-map/src/Consumer/constants.js
@@ -33,14 +33,4 @@ declare const EMPTY_POSITION: Readonly<{
 }>;
 declare function iterationOrderToString(x: IterationOrder): string;
 declare function lookupBiasToString(x: LookupBias): string;
-export {
-  FIRST_COLUMN,
-  FIRST_LINE,
-  GENERATED_ORDER,
-  ORIGINAL_ORDER,
-  GREATEST_LOWER_BOUND,
-  LEAST_UPPER_BOUND,
-  EMPTY_POSITION,
-  iterationOrderToString,
-  lookupBiasToString,
-};
+export {FIRST_COLUMN, FIRST_LINE, GENERATED_ORDER, ORIGINAL_ORDER, GREATEST_LOWER_BOUND, LEAST_UPPER_BOUND, EMPTY_POSITION, iterationOrderToString, lookupBiasToString};

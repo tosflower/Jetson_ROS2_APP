@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<ef11437df6220e26b38eae0d8fb2c3d1>>
+ * @generated SignedSource<<f56fe1cbb77a4e842d8e6d48a904d6a8>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-resolver/src/utils/isAssetFile.js
@@ -19,8 +19,5 @@
  * Determine if a file path should be considered an asset file based on the
  * given `assetExts`.
  */
-declare function isAssetFile(
-  filePath: string,
-  assetExts: ReadonlySet<string>,
-): boolean;
+declare function isAssetFile(filePath: string, assetExts: ReadonlySet<string>): boolean;
 export default isAssetFile;

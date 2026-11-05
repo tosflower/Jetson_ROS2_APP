@@ -113,14 +113,6 @@ public class ReactHostImpl(
               applicationContext = context.applicationContext,
               reactInstanceManagerHelper = reactHostImplDevHelper,
               packagerPathForJSBundleName = reactHostDelegate.jsMainModulePath,
-              enableOnCreate = true,
-              redBoxHandler = null,
-              devBundleDownloadListener = null,
-              minNumShakes = 2,
-              customPackagerCommandHandlers = null,
-              surfaceDelegateFactory = null,
-              devLoadingViewManager = null,
-              pausedInDebuggerOverlayManager = null,
               useDevSupport = useDevSupport,
           )
           .also { devSupportManager ->
@@ -156,12 +148,14 @@ public class ReactHostImpl(
 
   @Volatile private var hostInvalidated = false
 
+  @JvmOverloads
   public constructor(
       context: Context,
       delegate: ReactHostDelegate,
       componentFactory: ComponentFactory,
       allowPackagerServerAccess: Boolean,
       useDevSupport: Boolean,
+      devSupportManagerFactory: DevSupportManagerFactory? = null,
   ) : this(
       context,
       delegate,
@@ -170,6 +164,7 @@ public class ReactHostImpl(
       Task.UI_THREAD_EXECUTOR,
       allowPackagerServerAccess,
       useDevSupport,
+      devSupportManagerFactory,
   )
 
   public override val lifecycleState: LifecycleState
@@ -522,11 +517,13 @@ public class ReactHostImpl(
       onDestroyFinished: (instanceDestroyedSuccessfully: Boolean) -> Unit,
   ): TaskInterface<Void> {
     val destroyTask = destroy(reason, ex) as Task<Void>
-    return destroyTask.continueWith({ task: Task<Void> ->
-      val instanceDestroyedSuccessfully = task.isCompleted() && !task.isFaulted()
-      onDestroyFinished(instanceDestroyedSuccessfully)
-      null
-    })
+    return destroyTask.continueWith(
+        { task: Task<Void> ->
+          val instanceDestroyedSuccessfully = task.isCompleted() && !task.isFaulted()
+          onDestroyFinished(instanceDestroyedSuccessfully)
+          null
+        },
+    )
   }
 
   /**
@@ -611,7 +608,7 @@ public class ReactHostImpl(
       ReactSoftExceptionLogger.logSoftExceptionVerbose(
           TAG,
           ReactNoCrashSoftException(
-              "getNativeModule(UIManagerModule.class) cannot be called when the bridge is disabled"
+              "getNativeModule(UIManagerModule.class) cannot be called when the bridge is disabled",
           ),
       )
     }
@@ -806,7 +803,7 @@ public class ReactHostImpl(
   internal fun callFunctionOnModule(
       moduleName: String,
       methodName: String,
-      args: NativeArray,
+      args: NativeArray?,
   ): Task<Boolean> {
     val method = "callFunctionOnModule(\"$moduleName\", \"$methodName\")"
     return callWithExistingReactInstance(method) { reactInstance: ReactInstance ->
@@ -855,16 +852,6 @@ public class ReactHostImpl(
       Assertions.assertCondition(
           ReactNativeNewArchitectureFeatureFlags.enableBridgelessArchitecture(),
           "enableBridgelessArchitecture FeatureFlag must be set to start ReactNative.",
-      )
-
-      Assertions.assertCondition(
-          ReactNativeNewArchitectureFeatureFlags.enableFabricRenderer(),
-          "enableFabricRenderer FeatureFlag must be set to start ReactNative.",
-      )
-
-      Assertions.assertCondition(
-          ReactNativeNewArchitectureFeatureFlags.useTurboModules(),
-          "useTurboModules FeatureFlag must be set to start ReactNative.",
       )
     }
     if (ReactBuildConfig.UNSTABLE_ENABLE_MINIFY_LEGACY_ARCHITECTURE) {
@@ -1048,16 +1035,15 @@ public class ReactHostImpl(
                 reactContext.jsExceptionHandler = devSupportManager
 
                 stateTracker.enterState(method, "Creating ReactInstance")
-                val instance =
-                    ReactInstance(
-                        reactContext,
-                        reactHostDelegate,
-                        componentFactory,
-                        devSupportManager,
-                        { e: Exception -> this.handleHostException(e) },
-                        useDevSupport,
-                        getOrCreateReactHostInspectorTarget(),
-                    )
+                val instance = ReactInstance(
+                    reactContext,
+                    reactHostDelegate,
+                    componentFactory,
+                    devSupportManager,
+                    { e: Exception -> this.handleHostException(e) },
+                    useDevSupport,
+                    getOrCreateReactHostInspectorTarget(),
+                )
                 reactInstance = instance
 
                 val memoryPressureListener = createMemoryPressureListener(instance)
@@ -1149,7 +1135,7 @@ public class ReactHostImpl(
       if (devSupportManager.bundleFilePath != null) {
         return try {
           Task.forResult(
-              JSBundleLoader.createFileLoader(checkNotNull(devSupportManager.bundleFilePath))
+              JSBundleLoader.createFileLoader(checkNotNull(devSupportManager.bundleFilePath)),
           )
         } catch (e: Exception) {
           Task.forError(e)
@@ -1214,7 +1200,7 @@ public class ReactHostImpl(
     val asyncDevSupportManager = devSupportManager as DevSupportManagerBase
     val bundleURL =
         asyncDevSupportManager.devServerHelper.getDevServerBundleURL(
-            checkNotNull(asyncDevSupportManager.jsAppBundleName)
+            checkNotNull(asyncDevSupportManager.jsAppBundleName),
         )
 
     asyncDevSupportManager.reloadJSFromServer(
@@ -1580,23 +1566,25 @@ public class ReactHostImpl(
             },
             bgExecutor,
         )
-        .continueWith<Void>({ task: Task<ReactInstance> ->
-          if (task.isFaulted()) {
-            val fault = checkNotNull(task.getError())
-            raiseSoftException(
-                method,
-                ("React destruction failed. ReactInstance task faulted. Fault reason: ${fault.message}. Destroy reason: $reason"),
-                task.getError(),
-            )
-          }
-          if (task.isCancelled()) {
-            raiseSoftException(
-                method,
-                "React destruction failed. ReactInstance task cancelled. Destroy reason: $reason",
-            )
-          }
-          null
-        })
+        .continueWith<Void>(
+            { task: Task<ReactInstance> ->
+              if (task.isFaulted()) {
+                val fault = checkNotNull(task.getError())
+                raiseSoftException(
+                    method,
+                    ("React destruction failed. ReactInstance task faulted. Fault reason: ${fault.message}. Destroy reason: $reason"),
+                    task.getError(),
+                )
+              }
+              if (task.isCancelled()) {
+                raiseSoftException(
+                    method,
+                    "React destruction failed. ReactInstance task cancelled. Destroy reason: $reason",
+                )
+              }
+              null
+            },
+        )
         .also { destroyTask = it }
   }
 
@@ -1617,13 +1605,12 @@ public class ReactHostImpl(
             TracingState.ENABLED_IN_BACKGROUND_MODE,
             TracingState.ENABLED_IN_CDP_MODE -> {
               if (InspectorFlags.getFrameRecordingEnabled()) {
-                val observer =
-                    FrameTimingsObserver(
-                        _screenshotsEnabled,
-                        { frameTimingsSequence ->
-                          inspectorTarget.recordFrameTimings(frameTimingsSequence)
-                        },
-                    )
+                val observer = FrameTimingsObserver(
+                    _screenshotsEnabled,
+                    { frameTimingsSequence ->
+                      inspectorTarget.recordFrameTimings(frameTimingsSequence)
+                    },
+                )
                 observer.setCurrentWindow(currentActivity?.window)
                 observer.start()
                 frameTimingsObserver = observer
@@ -1634,7 +1621,7 @@ public class ReactHostImpl(
               frameTimingsObserver = null
             }
           }
-        }
+        },
     )
 
     return inspectorTarget

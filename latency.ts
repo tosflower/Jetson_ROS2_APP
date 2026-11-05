@@ -2,6 +2,9 @@
 export type LatencyValues = Record<string, number>;
 export type FrameMetadata = {
   frame_id?: number;
+  /** 世代与会话共同限定帧号，防止重连后的迟到回执混入新流。 */
+  subscription_epoch?: string;
+  stream_session?: string;
   send_mono_ms?: number;
   latency_ms?: LatencyValues;
 };

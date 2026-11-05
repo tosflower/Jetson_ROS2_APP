@@ -46,6 +46,7 @@ import type { EasingFunction } from './commonTypes';
  */
 export type EasingFunctionFactory = {
     factory: () => EasingFunction;
+    bezier?: [number, number, number, number];
 };
 /**
  * A linear function, `f(t) = t`. Position correlates to elapsed time one to

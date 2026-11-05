@@ -11,7 +11,5 @@ import type { AnimatedRef } from './commonTypes';
  *   scrollable component.
  * @see https://docs.swmansion.com/react-native-reanimated/docs/scroll/useScrollOffset
  */
-export declare const useScrollOffset: typeof useScrollOffsetWeb;
-declare function useScrollOffsetWeb<TRef extends InstanceOrElement>(animatedRef: Maybe<AnimatedRef<TRef>>, providedOffset?: SharedValue<number>): SharedValue<number>;
-export {};
+export declare function useScrollOffset<TRef extends InstanceOrElement>(animatedRef: Maybe<AnimatedRef<TRef>>, providedOffset?: SharedValue<number>): SharedValue<number>;
 //# sourceMappingURL=useScrollOffset.d.ts.map

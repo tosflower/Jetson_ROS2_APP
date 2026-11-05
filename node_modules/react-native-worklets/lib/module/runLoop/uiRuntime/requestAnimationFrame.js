@@ -3,7 +3,6 @@
 export function setupRequestAnimationFrame() {
   'worklet';
 
-  const callMicrotasks = globalThis.__callMicrotasks;
   let queuedCallbacks = [];
   let queuedCallbacksBegin = 0;
   let queuedCallbacksEnd = 0;
@@ -17,11 +16,15 @@ export function setupRequestAnimationFrame() {
     flushedCallbacksBegin = queuedCallbacksBegin;
     flushedCallbacksEnd = queuedCallbacksEnd;
     queuedCallbacksBegin = queuedCallbacksEnd;
-    for (const callback of flushedCallbacks) {
-      callback(timestamp);
+    if (flushedCallbacks.length > 0) {
+      for (const callback of flushedCallbacks) {
+        callback(timestamp);
+        globalThis.__drainMicrotasks();
+      }
+    } else {
+      globalThis.__drainMicrotasks();
     }
     flushedCallbacksBegin = flushedCallbacksEnd;
-    callMicrotasks();
     const finalizers = queuedFinalizers;
     queuedFinalizers = [];
     for (const finalizer of finalizers) {

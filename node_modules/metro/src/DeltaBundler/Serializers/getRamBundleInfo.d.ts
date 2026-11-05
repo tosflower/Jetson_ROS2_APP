@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<b01899b6156596978e6b8e7ba93e97a4>>
+ * @generated SignedSource<<bcd308a7c5f1b890724eca3d2db068e9>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/DeltaBundler/Serializers/getRamBundleInfo.js
@@ -21,21 +21,8 @@ import type {SourceMapGeneratorOptions} from './sourceMapGenerator';
 import type {GetTransformOptions} from 'metro-config';
 
 type Options = Readonly<
-  Omit<
-    SerializerOptions,
-    | keyof SourceMapGeneratorOptions
-    | keyof {
-        getTransformOptions: null | undefined | GetTransformOptions;
-        platform: null | undefined | string;
-      }
-  > &
-    Omit<
-      SourceMapGeneratorOptions,
-      keyof {
-        getTransformOptions: null | undefined | GetTransformOptions;
-        platform: null | undefined | string;
-      }
-    > & {
+  Omit<SerializerOptions, keyof SourceMapGeneratorOptions | 'getTransformOptions' | 'platform'> &
+    Omit<SourceMapGeneratorOptions, 'getTransformOptions' | 'platform'> & {
       getTransformOptions: null | undefined | GetTransformOptions;
       platform: null | undefined | string;
     }
@@ -46,10 +33,5 @@ export type RamBundleInfo = {
   lazyModules: ReadonlyArray<ModuleTransportLike>;
   groups: Map<number, Set<number>>;
 };
-declare function getRamBundleInfo(
-  entryPoint: string,
-  pre: ReadonlyArray<Module>,
-  graph: ReadOnlyGraph,
-  options: Options,
-): Promise<RamBundleInfo>;
+declare function getRamBundleInfo(entryPoint: string, pre: ReadonlyArray<Module>, graph: ReadOnlyGraph, options: Options): Promise<RamBundleInfo>;
 export default getRamBundleInfo;

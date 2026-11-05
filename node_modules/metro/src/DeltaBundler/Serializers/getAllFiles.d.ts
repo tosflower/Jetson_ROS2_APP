@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<1d044a890d1eebbef947f78609d7c58f>>
+ * @generated SignedSource<<9e6c348147d0d26f6c920a9ff53b4157>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/DeltaBundler/Serializers/getAllFiles.js
@@ -21,9 +21,5 @@ type Options = {
   platform: null | undefined | string;
   readonly processModuleFilter: (module: Module) => boolean;
 };
-declare function getAllFiles(
-  pre: ReadonlyArray<Module>,
-  graph: ReadOnlyGraph,
-  options: Options,
-): Promise<ReadonlyArray<string>>;
+declare function getAllFiles(pre: ReadonlyArray<Module>, graph: ReadOnlyGraph, options: Options): Promise<ReadonlyArray<string>>;
 export default getAllFiles;

@@ -11,7 +11,6 @@
 #include <jsinspector-modern/tracing/PerformanceTracerSection.h>
 #include <react/debug/react_native_assert.h>
 #include <react/renderer/components/root/RootComponentDescriptor.h>
-#include <react/renderer/components/view/ViewShadowNode.h>
 #include <react/renderer/core/LayoutContext.h>
 #include <react/renderer/core/LayoutPrimitives.h>
 #include <react/renderer/mounting/ShadowTreeRevision.h>
@@ -37,6 +36,14 @@ std::string getShadowTreeCommitSourceName(ShadowTreeCommitSource source) {
     case ShadowTreeCommitSource::ReactRevisionMerge:
       return "ReactRevisionMerge";
   }
+}
+
+inline bool isPropsUpdatesAccumulationGuaranteed() {
+#ifdef __ANDROID__
+  return ReactNativeFeatureFlags::enableAccumulatedUpdatesInRawPropsAndroid();
+#else
+  return true;
+#endif
 }
 } // namespace
 
@@ -339,7 +346,8 @@ CommitStatus ShadowTree::tryCommit(
       getShadowTreeCommitSourceName(commitOptions.source));
 
   auto isReactBranch = ReactNativeFeatureFlags::enableFabricCommitBranching() &&
-      commitOptions.source == CommitSource::React;
+      (commitOptions.source == CommitSource::React ||
+       commitOptions.source == CommitSource::AnimationEndSync);
 
   // Commits on the JS branch are never synchronous.
   react_native_assert(!isReactBranch || !commitOptions.mountSynchronously);
@@ -420,7 +428,9 @@ CommitStatus ShadowTree::tryCommit(
       return CommitStatus::Failed;
     }
 
-    auto newRevisionNumber = currentRevision_.number + 1;
+    auto newRevisionNumber = isReactBranch
+        ? oldRevisionForStateProgression.number + 1
+        : currentRevision_.number + 1;
 
     {
       std::scoped_lock dispatchLock(EventEmitter::DispatchMutex());
@@ -452,7 +462,8 @@ CommitStatus ShadowTree::tryCommit(
     }
   }
 
-  emitLayoutEvents(affectedLayoutableNodes);
+  delegate_.shadowTreeDidCommit(
+      *this, newRevision.rootShadowNode, affectedLayoutableNodes);
 
   if (isReactBranch) {
     scheduleReactRevisionPromotion();
@@ -482,31 +493,66 @@ void ShadowTree::mount(ShadowTreeRevision revision, bool mountSynchronously)
 
 void ShadowTree::mergeReactRevision() const {
   ShadowTreeRevision promotedRevision;
+  std::vector<ShadowTreeRevision> promotedRevisions;
+  // If props updates accumulation is guaranteed, we can merge the promoted
+  // react revision, otherwise we need to merge all queued revisions.
 
   {
     UniqueLock lock = uniqueRevisionLock(false);
 
-    if (!reactRevisionToBePromoted_.has_value()) {
-      return;
-    }
+    if (isPropsUpdatesAccumulationGuaranteed()) {
+      if (!reactRevisionToBePromoted_.has_value()) {
+        return;
+      }
 
-    promotedRevision =
-        std::exchange(reactRevisionToBePromoted_, std::nullopt).value();
+      promotedRevision =
+          std::exchange(reactRevisionToBePromoted_, std::nullopt).value();
+    } else {
+      if (promotedReactRevisions_.empty()) {
+        return;
+      }
+
+      promotedReactRevisions_.swap(promotedRevisions);
+    }
   }
 
-  const auto mergedRevisionNumber = promotedRevision.number;
+  RootShadowNode::Shared lastMergedRootShadowNode;
+  bool lastMergeSucceeded = false;
 
-  this->commit(
-      [revision = std::move(promotedRevision)](
-          const RootShadowNode& /*oldRootShadowNode*/) {
-        return std::make_shared<RootShadowNode>(
-            *revision.rootShadowNode, ShadowNodeFragment{});
-      },
-      {
-          .enableStateReconciliation = true,
-          .mountSynchronously = true,
-          .source = CommitSource::ReactRevisionMerge,
-      });
+  if (isPropsUpdatesAccumulationGuaranteed()) {
+    lastMergedRootShadowNode = promotedRevision.rootShadowNode;
+    auto status = this->commit(
+        [revision = std::move(promotedRevision)](
+            const RootShadowNode& /*oldRootShadowNode*/) {
+          return std::make_shared<RootShadowNode>(
+              *revision.rootShadowNode, ShadowNodeFragment{});
+        },
+        {
+            .enableStateReconciliation = true,
+            .mountSynchronously = true,
+            .source = CommitSource::ReactRevisionMerge,
+        });
+    lastMergeSucceeded = status == CommitStatus::Succeeded;
+  } else {
+    for (size_t i = 0; i < promotedRevisions.size(); ++i) {
+      auto& revision = promotedRevisions[i];
+      bool isLast = i == promotedRevisions.size() - 1;
+      lastMergedRootShadowNode = revision.rootShadowNode;
+
+      auto status = this->commit(
+          [revision = std::move(revision)](
+              const RootShadowNode& /*oldRootShadowNode*/) {
+            return std::make_shared<RootShadowNode>(
+                *revision.rootShadowNode, ShadowNodeFragment{});
+          },
+          {
+              .enableStateReconciliation = isLast,
+              .mountSynchronously = true,
+              .source = CommitSource::ReactRevisionMerge,
+          });
+      lastMergeSucceeded = status == CommitStatus::Succeeded;
+    }
+  }
 
   {
     UniqueLock commitLock = uniqueRevisionLock(
@@ -514,35 +560,62 @@ void ShadowTree::mergeReactRevision() const {
 
     // If the current react revision is the same as the one that was just
     // merged, clear it.
-    if (currentReactRevision_.has_value() &&
-        mergedRevisionNumber == currentReactRevision_.value().number) {
+    if (lastMergeSucceeded && currentReactRevision_.has_value() &&
+        currentReactRevision_.value().rootShadowNode ==
+            lastMergedRootShadowNode) {
       currentReactRevision_.reset();
     }
   }
 }
 
 void ShadowTree::promoteReactRevision() const {
-  ShadowTreeRevision currentReactRevision;
-  {
-    SharedLock lock = sharedRevisionLock();
-    // Promotion happens at the end of the event loop tick, it's possible to
-    // have more than one promotion in a row. In this case, all but the first
-    // one should no-op.
-    if (!currentReactRevision_.has_value()) {
+  // Promote only when props updates accumulation is guaranteed. Otherwise,
+  // queuedReactRevisions_ will be used instead.
+  if (isPropsUpdatesAccumulationGuaranteed()) {
+    ShadowTreeRevision currentReactRevision;
+    {
+      SharedLock lock = sharedRevisionLock();
+      // Promotion happens at the end of the event loop tick, it's possible to
+      // have more than one promotion in a row. In this case, all but the first
+      // one should no-op.
+      if (!currentReactRevision_.has_value()) {
+        return;
+      }
+      currentReactRevision = currentReactRevision_.value();
+    }
+
+    {
+      UniqueLock lock = uniqueRevisionLock(false);
+      reactRevisionToBePromoted_ = std::move(currentReactRevision);
+    }
+  } else {
+    UniqueLock lock = uniqueRevisionLock(false);
+
+    if (queuedReactRevisions_.empty()) {
       return;
     }
-    currentReactRevision = currentReactRevision_.value();
-  }
 
-  {
-    UniqueLock lock = uniqueRevisionLock(false);
-    reactRevisionToBePromoted_ = std::move(currentReactRevision);
+    // Move all queued revisions to the promoted revisions.
+    promotedReactRevisions_.insert(
+        promotedReactRevisions_.end(),
+        std::make_move_iterator(queuedReactRevisions_.begin()),
+        std::make_move_iterator(queuedReactRevisions_.end()));
+    queuedReactRevisions_.clear();
   }
 
   delegate_.shadowTreeDidPromoteReactRevision(*this);
 }
 
 void ShadowTree::scheduleReactRevisionPromotion() const {
+  if (!isPropsUpdatesAccumulationGuaranteed()) {
+    // If props updates accumulation is not guaranteed, we need to store each
+    // revision to be merged separately.
+    UniqueLock lock = uniqueRevisionLock(false);
+    if (currentReactRevision_.has_value()) {
+      queuedReactRevisions_.push_back(currentReactRevision_.value());
+    }
+  }
+
   delegate_.shadowTreeDidFinishReactCommit(*this);
 }
 
@@ -559,25 +632,6 @@ void ShadowTree::commitEmptyTree() const {
             });
       },
       {/* default commit options */});
-}
-
-void ShadowTree::emitLayoutEvents(
-    std::vector<const LayoutableShadowNode*>& affectedLayoutableNodes) const {
-  TraceSection s(
-      "ShadowTree::emitLayoutEvents",
-      "affectedLayoutableNodes",
-      affectedLayoutableNodes.size());
-
-  for (const auto* layoutableNode : affectedLayoutableNodes) {
-    if (auto viewProps =
-            dynamic_cast<const ViewProps*>(layoutableNode->getProps().get())) {
-      if (viewProps->onLayout) {
-        static_cast<const BaseViewEventEmitter&>(
-            *layoutableNode->getEventEmitter())
-            .onLayout(layoutableNode->getLayoutMetrics());
-      }
-    }
-  }
 }
 
 void ShadowTree::notifyDelegatesOfUpdates() const {

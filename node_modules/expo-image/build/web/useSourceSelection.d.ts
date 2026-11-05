@@ -8,4 +8,3 @@ export interface SrcSetSource extends ImageSource {
     type: 'srcset';
 }
 export default function useSourceSelection(sources: ImageSource[] | SharedRefType<'image'> | undefined, responsivePolicy: ImageProps['responsivePolicy'], containerRef: React.RefObject<HTMLDivElement | null>, measurementCallback?: ((target: HTMLElement, size: DOMRect) => void) | null): ImageSource | SrcSetSource | SharedRefType<'image'> | null;
-//# sourceMappingURL=useSourceSelection.d.ts.map

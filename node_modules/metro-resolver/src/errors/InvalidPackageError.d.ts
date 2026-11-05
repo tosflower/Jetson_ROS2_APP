@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<47b272bf4a763f5c68eed66346ee74e9>>
+ * @generated SignedSource<<825756b37d6e2cda175c6b8b7e4ae664>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-resolver/src/errors/InvalidPackageError.js
@@ -39,11 +39,6 @@ declare class InvalidPackageError extends Error {
    * Ex. `/js/foo/package.json`.
    */
   packageJsonPath: string;
-  constructor(opts: {
-    readonly fileCandidates: FileCandidates;
-    readonly indexCandidates: FileCandidates;
-    readonly mainModulePath: string;
-    readonly packageJsonPath: string;
-  });
+  constructor(opts: {readonly fileCandidates: FileCandidates; readonly indexCandidates: FileCandidates; readonly mainModulePath: string; readonly packageJsonPath: string});
 }
 export default InvalidPackageError;

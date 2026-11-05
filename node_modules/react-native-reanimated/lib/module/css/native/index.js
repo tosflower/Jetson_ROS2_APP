@@ -1,5 +1,6 @@
 'use strict';
 
+export * from "./events/index.js";
 export * from "./keyframes/index.js";
 export * from "./managers/index.js";
 export * from "./normalization/index.js";

@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<1a82c2238a94514c16e7bb93bf49d8c9>>
+ * @generated SignedSource<<b7da21b3224401d12e9b2e75211ca486>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/DeltaBundler/getTransformCacheKey.js
@@ -17,9 +17,5 @@
 
 import type {TransformerConfig} from './Worker';
 
-declare function getTransformCacheKey(opts: {
-  readonly cacheVersion: string;
-  readonly projectRoot: string;
-  readonly transformerConfig: TransformerConfig;
-}): string;
+declare function getTransformCacheKey(opts: {readonly cacheVersion: string; readonly projectRoot: string; readonly transformerConfig: TransformerConfig}): string;
 export default getTransformCacheKey;

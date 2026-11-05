@@ -11,6 +11,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  type ScrollViewInstance,
   StatusBar,
   StyleSheet,
   Text,
@@ -119,7 +120,8 @@ function GatewayApp(): React.JSX.Element {
   const pageHistoryRef = useRef<Page[]>([]);
   const pageScrollOffsetsRef = useRef<Partial<Record<Page, number>>>({});
   const navigationGuardRef = useRef<NavigationGuard | undefined>(undefined);
-  const scrollRef = useRef<ScrollView>(null);
+  // React Native 0.88 将组件类型与滚动实例类型分开。
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const [sessionReady, setSessionReady] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState<ImageTopic>();
   const [topics, setTopics] = useState<ImageTopic[]>([]);

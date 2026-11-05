@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<bef82861a3de459220bf62515fd5900c>>
+ * @generated SignedSource<<ef8e268e98b3cf3a6d1b4f0564ababa0>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/shared/output/RamBundle.js
@@ -20,14 +20,7 @@ import type {OutputOptions, RequestOptions} from '../types';
 
 import Server from '../../Server';
 
-export declare function build(
-  packagerClient: Server,
-  requestOptions: RequestOptions,
-): Promise<RamBundleInfo>;
-export declare function save(
-  bundle: RamBundleInfo,
-  options: OutputOptions,
-  log: (x: string) => void,
-): Promise<unknown>;
+export declare function build(packagerClient: Server, requestOptions: RequestOptions): Promise<RamBundleInfo>;
+export declare function save(bundle: RamBundleInfo, options: OutputOptions, log: (x: string) => void): Promise<unknown>;
 export declare const formatName: 'bundle';
 export declare type formatName = typeof formatName;

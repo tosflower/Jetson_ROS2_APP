@@ -7,6 +7,10 @@
 
 #pragma once
 
+#include <react/cxxstableapi/PrivateGuard.h>
+
+#ifndef RCT_REMOVE_LEGACY_COMPONENT_INTEROP
+
 #include <react/renderer/components/legacyviewmanagerinterop/LegacyViewManagerInteropState.h>
 #include <react/renderer/components/legacyviewmanagerinterop/LegacyViewManagerInteropViewProps.h>
 #include <react/renderer/components/view/ConcreteViewShadowNode.h>
@@ -22,3 +26,5 @@ using LegacyViewManagerInteropShadowNode = ConcreteViewShadowNode<
     LegacyViewManagerInteropState>;
 
 } // namespace facebook::react
+
+#endif // RCT_REMOVE_LEGACY_COMPONENT_INTEROP

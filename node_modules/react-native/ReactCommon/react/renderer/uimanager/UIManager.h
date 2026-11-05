@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <react/cxxstableapi/FrameworksGuard.h>
+
 #include <folly/dynamic.h>
 #include <jsi/jsi.h>
 
@@ -116,17 +118,14 @@ class UIManager final : public ShadowTreeDelegate {
 
   void startSurface(
       ShadowTree::Unique &&shadowTree,
-      const std::string &moduleName,
-      const folly::dynamic &props,
+      std::string moduleName,
+      folly::dynamic props,
       DisplayMode displayMode) const noexcept;
 
   void startEmptySurface(ShadowTree::Unique &&shadowTree) const noexcept;
 
-  void setSurfaceProps(
-      SurfaceId surfaceId,
-      const std::string &moduleName,
-      const folly::dynamic &props,
-      DisplayMode displayMode) const noexcept;
+  void setSurfaceProps(SurfaceId surfaceId, std::string moduleName, folly::dynamic props, DisplayMode displayMode)
+      const noexcept;
 
   ShadowTree::Unique stopSurface(SurfaceId surfaceId) const;
 
@@ -145,6 +144,11 @@ class UIManager final : public ShadowTreeDelegate {
   void shadowTreeDidFinishReactCommit(const ShadowTree &shadowTree) const override;
 
   void shadowTreeDidPromoteReactRevision(const ShadowTree &shadowTree) const override;
+
+  void shadowTreeDidCommit(
+      const ShadowTree &shadowTree,
+      const RootShadowNode::Shared &rootShadowNode,
+      const std::vector<const LayoutableShadowNode *> &affectedLayoutableNodes) const noexcept override;
 
   std::shared_ptr<ShadowNode> createNode(
       Tag tag,
@@ -223,8 +227,8 @@ class UIManager final : public ShadowTreeDelegate {
 
   void removeEventListener(const std::shared_ptr<const EventListener> &listener);
 
-#pragma mark - Set on surface start callback
-  void setOnSurfaceStartCallback(UIManagerDelegate::OnSurfaceStartCallback &&callback);
+#pragma mark - Add on surface start callback
+  void addOnSurfaceStartCallback(UIManagerDelegate::OnSurfaceStartCallback &&callback);
 
  private:
   friend class UIManagerBinding;

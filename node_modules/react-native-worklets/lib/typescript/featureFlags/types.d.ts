@@ -12,7 +12,6 @@ export type DynamicFlagName = keyof Omit<Omit<DynamicFlagsType, 'setFlag' | 'get
  */
 declare const DefaultStaticFeatureFlags: {
     readonly RUNTIME_TEST_FLAG: false;
-    readonly FETCH_PREVIEW_ENABLED: false;
     readonly IOS_DYNAMIC_FRAMERATE_ENABLED: true;
     readonly ENABLE_CROSS_RUNTIME_STACK_TRACES: true;
 };

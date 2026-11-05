@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  *
  * @noformat
- * @generated SignedSource<<f72d8f0c4d8f513383584a02f36795ef>>
+ * @generated SignedSource<<b8a438aa4b6e49e821982fcddda8f924>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-file-map/src/lib/checkWatchmanCapabilities.js
@@ -14,7 +14,5 @@
  *   yarn run build-ts-defs (OSS) 
  */
 
-declare function checkWatchmanCapabilities(
-  requiredCapabilities: ReadonlyArray<string>,
-): Promise<{version: string}>;
+declare function checkWatchmanCapabilities(requiredCapabilities: ReadonlyArray<string>): Promise<{version: string}>;
 export default checkWatchmanCapabilities;

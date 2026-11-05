@@ -4,27 +4,34 @@
 # LICENSE file in the root directory of this source tree.
 
 require 'digest'
-require 'net/http'
-require 'rexml/document'
 
 HERMES_GITHUB_URL = "https://github.com/facebook/hermes.git"
 ENV_BUILD_FROM_SOURCE = "RCT_BUILD_HERMES_FROM_SOURCE"
+MAVEN_CENTRAL_REPOSITORY = "https://repo1.maven.org/maven2"
+REACT_NATIVE_MAVEN_MIRROR_REPOSITORY = "https://repo.reactnative.dev/maven2"
+
+# Memoized results of requests to the Maven repositories (mirror or central).
+# hermes-engine.podspec is evaluated several times during a single
+# `pod install`, and every evaluation re-resolves the artifact source from
+# scratch; without memoization that re-issues identical artifact existence
+# probes. The answers should not change within one install, so each request
+# is issued at most once per process.
+HERMES_ARTIFACT_EXISTS_CACHE = {}
 
 module HermesEngineSourceType
     LOCAL_PREBUILT_TARBALL = :local_prebuilt_tarball
     DOWNLOAD_PREBUILD_RELEASE_TARBALL = :download_prebuild_release_tarball
-    DOWNLOAD_PREBUILT_NIGHTLY_TARBALL = :download_prebuilt_nightly_tarball
     BUILD_FROM_GITHUB_COMMIT = :build_from_github_commit
     BUILD_FROM_GITHUB_TAG = :build_from_github_tag
-    BUILD_FROM_GITHUB_MAIN = :build_from_github_main
+    BUILD_FROM_GITHUB_STABLE_BRANCH = :build_from_github_stable_branch
     BUILD_FROM_LOCAL_SOURCE_DIR = :build_from_local_source_dir
 
     def HermesEngineSourceType.isPrebuilt(source_type)
-        return source_type == LOCAL_PREBUILT_TARBALL || source_type == DOWNLOAD_PREBUILD_RELEASE_TARBALL || source_type == DOWNLOAD_PREBUILT_NIGHTLY_TARBALL
+        return source_type == LOCAL_PREBUILT_TARBALL || source_type == DOWNLOAD_PREBUILD_RELEASE_TARBALL
     end
 
     def HermesEngineSourceType.isFromSource(source_type)
-        return source_type == BUILD_FROM_GITHUB_COMMIT || source_type == BUILD_FROM_GITHUB_TAG || source_type == BUILD_FROM_GITHUB_MAIN || source_type == BUILD_FROM_LOCAL_SOURCE_DIR
+        return source_type == BUILD_FROM_GITHUB_COMMIT || source_type == BUILD_FROM_GITHUB_TAG || source_type == BUILD_FROM_GITHUB_STABLE_BRANCH || source_type == BUILD_FROM_LOCAL_SOURCE_DIR
     end
 end
 
@@ -33,8 +40,9 @@ end
 # `HERMES_ENGINE_TARBALL_PATH=<path_to_tarball> bundle exec pod install`
 # - To force a build from source, install the dependencies with:
 # `RCT_BUILD_HERMES_FROM_SOURCE=true bundle exec pod install`
-# If none of the two are provided, Cocoapods will check whether there is a tarball for the current version
-# (either release or nightly). If not, it will fall back to building from source (the latest commit on main).
+# If none of the two are provided, Cocoapods will check whether there is a
+# release tarball for the current version on Maven. If not, it will fall back
+# to building from the stable Hermes branch.
 #
 # Parameters:
 # - version: current version of the pod
@@ -59,19 +67,15 @@ def hermes_source_type(version, react_native_path)
         return HermesEngineSourceType::BUILD_FROM_GITHUB_TAG
     end
 
-    if force_build_from_main(react_native_path)
-        return HermesEngineSourceType::BUILD_FROM_GITHUB_MAIN
+    if force_build_from_stable_branch(react_native_path)
+        return HermesEngineSourceType::BUILD_FROM_GITHUB_STABLE_BRANCH
     end
 
     if release_artifact_exists(version)
         return HermesEngineSourceType::DOWNLOAD_PREBUILD_RELEASE_TARBALL
     end
 
-    if nightly_artifact_exists(version)
-        return HermesEngineSourceType::DOWNLOAD_PREBUILT_NIGHTLY_TARBALL
-    end
-
-    return HermesEngineSourceType::BUILD_FROM_GITHUB_MAIN
+    return HermesEngineSourceType::BUILD_FROM_GITHUB_STABLE_BRANCH
 end
 
 def override_hermes_dir_envvar_defined()
@@ -86,24 +90,16 @@ def hermes_commit_envvar_defined()
     return ENV.has_key?('HERMES_COMMIT')
 end
 
-def hermes_v1_enabled()
-    return ENV['RCT_HERMES_V1_ENABLED'] != "0"
-end
-
 def force_build_from_tag(react_native_path)
     return ENV[ENV_BUILD_FROM_SOURCE] === 'true' && File.exist?(hermestag_file(react_native_path))
 end
 
-def force_build_from_main(react_native_path)
+def force_build_from_stable_branch(react_native_path)
     return ENV[ENV_BUILD_FROM_SOURCE] === 'true' && !File.exist?(hermestag_file(react_native_path))
 end
 
 def release_artifact_exists(version)
-    return hermes_artifact_exists(release_tarball_url(version, :debug))
-end
-
-def nightly_artifact_exists(version)
-    return hermes_artifact_exists(nightly_tarball_url(version).gsub("\\", ""))
+    return release_tarball_urls(version, :debug).any? { |url| hermes_artifact_exists(url) }
 end
 
 def podspec_source(source_type, version, react_native_path)
@@ -116,12 +112,10 @@ def podspec_source(source_type, version, react_native_path)
         return podspec_source_build_from_github_commit()
     when HermesEngineSourceType::BUILD_FROM_GITHUB_TAG
         return podspec_source_build_from_github_tag(react_native_path)
-    when HermesEngineSourceType::BUILD_FROM_GITHUB_MAIN
-        return podspec_source_build_from_github_main()
+    when HermesEngineSourceType::BUILD_FROM_GITHUB_STABLE_BRANCH
+        return podspec_source_build_from_github_stable_branch()
     when HermesEngineSourceType::DOWNLOAD_PREBUILD_RELEASE_TARBALL
         return podspec_source_download_prebuild_release_tarball(react_native_path, version)
-    when HermesEngineSourceType::DOWNLOAD_PREBUILT_NIGHTLY_TARBALL
-        return podspec_source_download_prebuilt_nightly_tarball(version)
     else
         abort "[Hermes] Unsupported or invalid source type provided: #{source_type}"
     end
@@ -176,18 +170,15 @@ end
 def podspec_source_build_from_github_tag(react_native_path)
     tag = File.read(hermestag_file(react_native_path)).strip
 
-    if hermes_v1_enabled()
-        hermes_log("Using tag defined in sdks/.hermesv1version: #{tag}")
-    else
-        hermes_log("Using tag defined in sdks/.hermesversion: #{tag}")
-    end
+    hermes_log("Using tag defined in sdks/.hermesv1version: #{tag}")
     return {:git => HERMES_GITHUB_URL, :tag => tag}
 end
 
-def podspec_source_build_from_github_main()
-    branch = hermes_v1_enabled() ? "250829098.0.0-stable" : "main"
-    hermes_log("Using the latest commit from #{branch}.")
-    return {:git => HERMES_GITHUB_URL, :commit => `git ls-remote #{HERMES_GITHUB_URL} #{branch} | cut -f 1`.strip}
+HERMES_STABLE_BRANCH = "250829098.0.0-stable"
+
+def podspec_source_build_from_github_stable_branch()
+    hermes_log("Using the latest commit from #{HERMES_STABLE_BRANCH}.")
+    return {:git => HERMES_GITHUB_URL, :commit => `git ls-remote #{HERMES_GITHUB_URL} #{HERMES_STABLE_BRANCH} | cut -f 1`.strip}
 end
 
 def podspec_source_download_prebuild_release_tarball(react_native_path, version)
@@ -198,12 +189,6 @@ def podspec_source_download_prebuild_release_tarball(react_native_path, version)
     return {:http => url}
 end
 
-def podspec_source_download_prebuilt_nightly_tarball(version)
-    url = nightly_tarball_url(version)
-    hermes_log("Using nightly tarball from URL: #{url}")
-    return {:http => url}
-end
-
 # HELPERS
 
 def artifacts_dir()
@@ -211,25 +196,45 @@ def artifacts_dir()
 end
 
 def hermestag_file(react_native_path)
-    if hermes_v1_enabled()
-        return File.join(react_native_path, "sdks", ".hermesv1version")
-    else
-        return File.join(react_native_path, "sdks", ".hermesversion")
-    end
+    return File.join(react_native_path, "sdks", ".hermesv1version")
 end
 
 def release_tarball_url(version, build_type)
+    candidates = release_tarball_urls(version, build_type)
+    return candidates.find { |url| hermes_artifact_exists(url) } || candidates.first
+end
+
+def release_tarball_urls(version, build_type)
+    namespace = "com/facebook/hermes"
+    return maven_repository_urls().map { |maven_repo_url|
+        # Sample url from Maven:
+        # https://repo1.maven.org/maven2/com/facebook/hermes/hermes-ios/0.14.0/hermes-ios-0.14.0-hermes-ios-debug.tar.gz
+
+        # Sample url from mirror server:
+        # https://repo.reactnative.dev/maven2/com/facebook/hermes/hermes-ios/0.14.0/hermes-ios-0.14.0-hermes-ios-debug.tar.gz
+        "#{maven_repo_url}/#{namespace}/hermes-ios/#{version}/hermes-ios-#{version}-hermes-ios-#{build_type.to_s}.tar.gz"
+    }
+end
+
+def maven_repository_urls()
     ## You can use the `ENTERPRISE_REPOSITORY` variable to customise the base url from which artifacts will be downloaded.
     ## The mirror's structure must be the same of the Maven repo the react-native core team publishes on Maven Central.
-    maven_repo_url =
-        ENV['ENTERPRISE_REPOSITORY'] != nil && ENV['ENTERPRISE_REPOSITORY'] != "" ?
-        ENV['ENTERPRISE_REPOSITORY'] :
-        "https://repo1.maven.org/maven2"
+    if ENV['ENTERPRISE_REPOSITORY'] != nil && ENV['ENTERPRISE_REPOSITORY'] != ""
+        return [ENV['ENTERPRISE_REPOSITORY'].sub(/\/+$/, "")]
+    end
 
-    namespace = "com/facebook/hermes"
-    # Sample url from Maven:
-    # https://repo1.maven.org/maven2/com/facebook/hermes/hermes-ios/0.14.0/hermes-ios-0.14.0-hermes-ios-debug.tar.gz
-    return "#{maven_repo_url}/#{namespace}/hermes-ios/#{version}/hermes-ios-#{version}-hermes-ios-#{build_type.to_s}.tar.gz"
+    # Keep the React Native Maven mirror before Maven Central so cached artifacts are tried first
+    # and Maven Central remains the fallback.
+    return react_native_maven_mirror_enabled? ?
+        [REACT_NATIVE_MAVEN_MIRROR_REPOSITORY, MAVEN_CENTRAL_REPOSITORY] :
+        [MAVEN_CENTRAL_REPOSITORY]
+end
+
+def react_native_maven_mirror_enabled?()
+    value = ENV['RCT_REACT_NATIVE_MAVEN_MIRROR_ENABLED']
+    return true if value == nil || value == ""
+
+    value.downcase != "false" && value != "0"
 end
 
 def download_stable_hermes(react_native_path, version, configuration)
@@ -336,45 +341,29 @@ def download_hermes_tarball(react_native_path, tarball_url, version, configurati
     return destination_path
 end
 
-def nightly_tarball_url(version)
-  artifact_coordinate = "hermes-ios"
-  artifact_name = "hermes-ios-debug.tar.gz"
-  namespace = "com/facebook/hermes"
-
-  xml_url = "https://central.sonatype.com/repository/maven-snapshots/#{namespace}/#{artifact_coordinate}/#{version}-SNAPSHOT/maven-metadata.xml"
-
-  begin
-    response = Net::HTTP.get_response(URI(xml_url))
-    if response.is_a?(Net::HTTPSuccess)
-      xml = REXML::Document.new(response.body)
-      timestamp = xml.elements['metadata/versioning/snapshot/timestamp'].text
-      build_number = xml.elements['metadata/versioning/snapshot/buildNumber'].text
-      full_version = "#{version}-#{timestamp}-#{build_number}"
-      final_url = "https://central.sonatype.com/repository/maven-snapshots/#{namespace}/#{artifact_coordinate}/#{version}-SNAPSHOT/#{artifact_coordinate}-#{full_version}-#{artifact_name}"
-
-      return final_url
-    else
-      return ""
-    end
-  rescue => e
-    return ""
-  end
-end
-
 def resolve_url_redirects(url)
     return (`curl -Ls -o /dev/null -w %{url_effective} \"#{url}\"`)
 end
 
 # This function checks that Hermes artifact exists.
 # As of now it should check it on the Maven repo.
+# The probe is memoized, so repeated podspec evaluations in one `pod install`
+# don't re-request the same URL. Only conclusive answers are cached: if curl
+# never got an HTTP status (DNS failure, no route, ...) the probe is left
+# uncached so a transient hiccup doesn't permanently mark the artifact as
+# missing.
 #
 # Parameters
-# - version: the version of React Native
-# - build_type: debug or release
+# - tarball_url: the URL of the Hermes artifact to probe
 def hermes_artifact_exists(tarball_url)
-    # -L is used to follow redirects, useful for the nightlies
-    # I also needed to wrap the url in quotes to avoid escaping & and ?.
-    return (`curl -o /dev/null --silent -Iw '%{http_code}' -L "#{tarball_url}"` == "200")
+    unless HERMES_ARTIFACT_EXISTS_CACHE.key?(tarball_url)
+        # -L is used to follow redirects, useful for the nightlies
+        # I also needed to wrap the url in quotes to avoid escaping & and ?.
+        http_code = `curl -o /dev/null --silent -Iw '%{http_code}' -L "#{tarball_url}"`
+        return false if !$?.success? || http_code == "000"
+        HERMES_ARTIFACT_EXISTS_CACHE[tarball_url] = (http_code == "200")
+    end
+    return HERMES_ARTIFACT_EXISTS_CACHE[tarball_url]
 end
 
 def hermes_log(message, level = :warning)

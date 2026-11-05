@@ -1,6 +1,8 @@
 """将 Jetson 网关通过 mDNS 发布到同一 Wi-Fi 中，供 Android APP 自动发现。"""
 
+import asyncio
 import fcntl
+import inspect
 import logging
 import socket
 import struct
@@ -42,22 +44,18 @@ class GatewayAdvertiser:
         self._info = None
         self._addresses: Tuple[str, ...] = ()
 
-    def refresh(self) -> None:
+    async def refresh(self) -> None:
         """网络切换后更新服务记录，手机无需记住上次 DHCP 地址。"""
         addresses = tuple(local_ipv4_addresses())
         if addresses == self._addresses:
             return
         try:
-            from zeroconf import IPVersion, ServiceInfo, Zeroconf
-            if self._info is not None:
-                self._zeroconf.unregister_service(self._info)
-                self._info = None
-            if self._zeroconf is not None:
-                # 重建多播套接字，以便切换热点/路由器后加入新的网卡。
-                self._zeroconf.close()
-                self._zeroconf = None
+            from zeroconf import IPVersion, ServiceInfo
+            from zeroconf.asyncio import AsyncZeroconf
+            await self.close()
             if addresses:
-                self._zeroconf = Zeroconf(ip_version=IPVersion.V4Only)
+                # 只在公告的实际网卡上打开套接字，不加入 Docker/回环等无关接口。
+                self._zeroconf = AsyncZeroconf(interfaces=list(addresses), ip_version=IPVersion.V4Only)
                 info = ServiceInfo(
                     SERVICE_TYPE,
                     "Jetson ROS2 Gateway." + SERVICE_TYPE,
@@ -66,25 +64,27 @@ class GatewayAdvertiser:
                     properties={"app": "jetson-ros2-mobile-test"},
                     server="jetson-ros2-gateway.local.",
                 )
-                self._zeroconf.register_service(info, allow_name_change=True)
+                announcement = await self._zeroconf.async_register_service(info, allow_name_change=True)
+                if inspect.isawaitable(announcement):
+                    await announcement
                 self._info = info
             self._addresses = addresses
+        except asyncio.CancelledError:
+            await self.close()
+            raise
         except Exception as error:
-            LOGGER.warning("网关 mDNS 公告失败，仍可手动输入 IP：%s", error)
+            LOGGER.warning("网关 mDNS 公告失败，仍可手动输入 IP：%s: %s", type(error).__name__, error)
             try:
-                self.close()
+                await self.close()
             except Exception:
                 LOGGER.exception("关闭失败的 mDNS 公告时出错")
             self._addresses = ()
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """停止服务公告并释放 mDNS 套接字。"""
-        if self._zeroconf is None:
-            return
-        try:
-            if self._info is not None:
-                self._zeroconf.unregister_service(self._info)
-        finally:
-            self._zeroconf.close()
-            self._zeroconf = None
-            self._info = None
+        zeroconf = self._zeroconf
+        self._zeroconf = None
+        self._info = None
+        self._addresses = ()
+        if zeroconf is not None:
+            await zeroconf.async_close()

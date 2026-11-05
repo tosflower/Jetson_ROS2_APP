@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<2c991103bc4a71a81ef04de0884de576>>
+ * @generated SignedSource<<39b0bdca3fd1821355f45b19b1dce6d8>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-file-map/src/plugins/haste/DuplicateHasteCandidatesError.js
@@ -22,10 +22,5 @@ export declare class DuplicateHasteCandidatesError extends Error {
   platform: string | null;
   supportsNativePlatform: boolean;
   duplicatesSet: DuplicatesSet;
-  constructor(
-    name: string,
-    platform: string,
-    supportsNativePlatform: boolean,
-    duplicatesSet: DuplicatesSet,
-  );
+  constructor(name: string, platform: string, supportsNativePlatform: boolean, duplicatesSet: DuplicatesSet);
 }

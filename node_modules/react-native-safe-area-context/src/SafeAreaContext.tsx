@@ -1,5 +1,10 @@
 import * as React from 'react';
-import { Dimensions, StyleSheet, type ViewProps } from 'react-native';
+import {
+  Dimensions,
+  StyleSheet,
+  type View,
+  type ViewProps,
+} from 'react-native';
 import { NativeSafeAreaProvider } from './NativeSafeAreaProvider';
 import type {
   EdgeInsets,
@@ -23,6 +28,7 @@ if (isDev) {
 }
 
 export interface SafeAreaProviderProps extends ViewProps {
+  ref?: React.Ref<View>;
   children?: React.ReactNode;
   initialMetrics?: Metrics | null;
   /**
@@ -36,6 +42,7 @@ export function SafeAreaProvider({
   initialMetrics,
   initialSafeAreaInsets,
   style,
+  ref,
   ...others
 }: SafeAreaProviderProps) {
   const parentInsets = useParentSafeAreaInsets();
@@ -90,6 +97,7 @@ export function SafeAreaProvider({
 
   return (
     <NativeSafeAreaProvider
+      ref={ref}
       style={[styles.fill, style]}
       onInsetsChange={onInsetsChange}
       {...others}

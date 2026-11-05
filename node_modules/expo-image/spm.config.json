@@ -1,12 +1,11 @@
 {
   "$schema": "../../tools/src/prebuilds/schemas/spm.config.schema.json",
+  "publishPrebuilds": true,
   "products": [
     {
       "name": "ExpoImage",
       "podName": "ExpoImage",
-      "platforms": [
-        "iOS(\"16.4\")"
-      ],
+      "platforms": ["iOS(\"16.4\")"],
       "externalDependencies": [
         "ReactNativeDependencies",
         "React",
@@ -67,13 +66,8 @@
             "SDWebImageWebPCoder",
             "libavif"
           ],
-          "linkedFrameworks": [
-            "Foundation",
-            "UIKit"
-          ],
-          "exclude": [
-            "Tests/**"
-          ]
+          "linkedFrameworks": ["Foundation", "UIKit"],
+          "exclude": ["Tests/**"]
         }
       ]
     }

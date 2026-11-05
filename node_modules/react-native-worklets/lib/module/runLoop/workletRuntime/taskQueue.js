@@ -4,7 +4,6 @@ export function setupTaskQueue() {
   'worklet';
 
   const queue = {
-    microtasks: [],
     timeoutCallbacks: new Map()
   };
   globalThis._taskQueue = queue;
@@ -12,20 +11,7 @@ export function setupTaskQueue() {
     const task = queue.timeoutCallbacks.get(handlerId);
     task?.();
     queue.timeoutCallbacks.delete(handlerId);
-    globalThis.__callMicrotasks();
   };
-  globalThis.__callMicrotasks = function callMicrotasks() {
-    for (let i = 0; i < queue.microtasks.length; i++) {
-      queue.microtasks[i]();
-    }
-    queue.microtasks = [];
-  };
-}
-export function pushMicrotask(callback) {
-  'worklet';
-
-  const queue = globalThis._taskQueue;
-  queue.microtasks.push(callback);
 }
 export function pushTask(callback, handlerId, delay) {
   'worklet';

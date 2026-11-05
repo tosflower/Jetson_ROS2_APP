@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<cb3371e2f23da9cd30e08ed76ec4f7db>>
+ * @generated SignedSource<<0902bf54a355f11f0f04cdaa5b0588d9>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/shared/output/RamBundle/util.js
@@ -20,29 +20,14 @@ import type {BasicSourceMap, IndexMap} from 'metro-source-map';
 
 import countLines from '../../../lib/countLines';
 
-declare function lineToLineSourceMap(
-  source: string,
-  filename?: string,
-): BasicSourceMap;
+declare function lineToLineSourceMap(source: string, filename?: string): BasicSourceMap;
 type CombineOptions = {fixWrapperOffset: boolean};
-declare function combineSourceMaps(
-  modules: ReadonlyArray<ModuleTransportLike>,
-  moduleGroups?: ModuleGroups,
-  options?: null | undefined | CombineOptions,
-): IndexMap;
+declare function combineSourceMaps(modules: ReadonlyArray<ModuleTransportLike>, moduleGroups?: ModuleGroups, options?: null | undefined | CombineOptions): IndexMap;
 declare function combineSourceMapsAddingOffsets(
   modules: ReadonlyArray<ModuleTransportLike>,
   x_metro_module_paths: Array<string>,
   moduleGroups?: null | undefined | ModuleGroups,
   options?: null | undefined | CombineOptions,
 ): IndexMap;
-declare const joinModules: (
-  modules: ReadonlyArray<{readonly code: string}>,
-) => string;
-export {
-  combineSourceMaps,
-  combineSourceMapsAddingOffsets,
-  countLines,
-  joinModules,
-  lineToLineSourceMap,
-};
+declare const joinModules: (modules: ReadonlyArray<{readonly code: string}>) => string;
+export {combineSourceMaps, combineSourceMapsAddingOffsets, countLines, joinModules, lineToLineSourceMap};

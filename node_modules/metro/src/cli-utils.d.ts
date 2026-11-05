@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<b5035a5d26a55e608aca030ee9ee6afa>>
+ * @generated SignedSource<<0e9cc643ba84fba1cffc77c6f9931b27>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/cli-utils.js
@@ -15,12 +15,7 @@
  *   yarn run build-ts-defs (OSS) 
  */
 
-export declare const watchFile: (
-  filename: string,
-  callback: () => unknown,
-) => Promise<void>;
+export declare const watchFile: (filename: string, callback: () => unknown) => Promise<void>;
 export declare type watchFile = typeof watchFile;
-export declare const makeAsyncCommand: <T>(
-  command: (argv: T) => Promise<void>,
-) => (argv: T) => void;
+export declare const makeAsyncCommand: <T>(command: (argv: T) => Promise<void>) => (argv: T) => void;
 export declare type makeAsyncCommand = typeof makeAsyncCommand;

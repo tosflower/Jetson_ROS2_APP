@@ -1,8 +1,10 @@
 'use strict';
 
-import { Children, Component, createContext, useEffect, useRef } from 'react';
+import { Children, cloneElement, Component, createContext, Fragment, isValidElement, useEffect, useRef } from 'react';
 import { setShouldAnimateExitingForTag } from "../core.js";
+import { getViewTagFromInstance } from "../createAnimatedComponent/getViewInfo.js";
 import { findNodeHandle } from '../platformFunctions/findNodeHandle';
+import { mergeRefs } from "../reactUtils.js";
 import { jsx as _jsx } from "react/jsx-runtime";
 export const SkipEnteringContext = /*#__PURE__*/createContext(null);
 
@@ -37,15 +39,40 @@ function SkipEntering(props) {
  * @see https://docs.swmansion.com/react-native-reanimated/docs/layout-animations/layout-animation-config/
  */
 export class LayoutAnimationConfig extends Component {
+  _childInstance = null;
+  _setChildInstance = instance => {
+    this._childInstance = instance;
+  };
+  _getMergedRef(childRef) {
+    if (!this._mergedRef || this._mergedRefSource !== childRef) {
+      this._mergedRefSource = childRef;
+      this._mergedRef = mergeRefs(childRef, this._setChildInstance);
+    }
+    return this._mergedRef;
+  }
+  getComponentViewTag() {
+    return getViewTagFromInstance(this._childInstance) ?? -1;
+  }
   getMaybeWrappedChildren() {
     return Children.count(this.props.children) > 1 && this.props.skipExiting ? Children.map(this.props.children, child => /*#__PURE__*/_jsx(LayoutAnimationConfig, {
       skipExiting: true,
       children: child
-    })) : this.props.children;
+    })) : this.getMaybeRefTrackedChild();
+  }
+  getMaybeRefTrackedChild() {
+    const {
+      children
+    } = this.props;
+    if (this.props.skipExiting === undefined || ! /*#__PURE__*/isValidElement(children) || children.type === Fragment) {
+      return children;
+    }
+    return /*#__PURE__*/cloneElement(children, {
+      ref: this._getMergedRef(children.props.ref)
+    });
   }
   setShouldAnimateExiting() {
     if (Children.count(this.props.children) === 1) {
-      const tag = findNodeHandle(this);
+      const tag = getViewTagFromInstance(this._childInstance) ?? findNodeHandle(this);
       if (tag) {
         setShouldAnimateExitingForTag(tag, !this.props.skipExiting);
       }

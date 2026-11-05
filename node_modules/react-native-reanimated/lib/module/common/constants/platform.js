@@ -13,7 +13,6 @@ export const IS_IOS = /* @__PURE__ */(() => Platform?.OS === 'ios')();
 export const IS_WEB = Platform?.OS === 'web';
 export const IS_JEST = typeof globalThis.jest !== 'undefined' || process.env.NODE_ENV === 'test';
 /** @knipIgnore */
-export const IS_WINDOWS = Platform?.OS === 'windows';
+export const IS_WINDOWS = /* @__PURE__ */(() => Platform?.OS === 'windows')();
 export const IS_WINDOW_AVAILABLE = isWindowAvailable();
-export const SHOULD_BE_USE_WEB = IS_JEST || IS_WEB || IS_WINDOWS;
 //# sourceMappingURL=platform.js.map

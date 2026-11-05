@@ -59,6 +59,9 @@ export type GatewayContextValue = {
 declare const process: { env: { EXPO_PUBLIC_GATEWAY_ADDRESS?: string } };
 
 const LAST_GATEWAY_STORAGE_KEY = 'last-jetson-gateway-address';
+const GATEWAY_OFFLINE_GRACE_MS = 60000;
+const RECONNECT_DELAYS_MS = [1000, 2000, 4000, 8000] as const;
+type ReconnectTarget = { address: string; token: string; topic?: ImageTopic };
 
 function websocketUrl(httpBase: string, topic?: ImageTopic): string {
   const query = topic
@@ -101,6 +104,13 @@ export function GatewayProvider({ children }: React.PropsWithChildren): React.JS
   sessionReadyRef.current = sessionReady;
   const socketCleanup = useRef<() => void>(() => {});
   const socketRef = useRef<WebSocket | null>(null);
+  const reconnectTargetRef = useRef<ReconnectTarget | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectAttemptRef = useRef(0);
+  const offlineSinceRef = useRef<number | null>(null);
+  const lastConfirmedAtRef = useRef<number | null>(null);
+  const offlineTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectRef = useRef<(target: ReconnectTarget) => void>(() => {});
   const trackerRef = useRef(new LatencyTracker());
   const sequenceRef = useRef(0);
   const loadedAtRef = useRef<number | undefined>(undefined);
@@ -125,7 +135,7 @@ export function GatewayProvider({ children }: React.PropsWithChildren): React.JS
     setLastLatencyAt(undefined);
   }, []);
 
-  const disconnect = useCallback((): void => {
+  const closeSocket = useCallback((): void => {
     connectionEpoch.current += 1;
     socketCleanup.current();
     const socket = socketRef.current;
@@ -133,8 +143,49 @@ export function GatewayProvider({ children }: React.PropsWithChildren): React.JS
     socket?.close();
   }, []);
 
-  const connectToGateway = useCallback((address: string, token: string, topic?: ImageTopic): void => {
-    disconnect();
+  const disconnect = useCallback((): void => {
+    reconnectTargetRef.current = null;
+    reconnectAttemptRef.current = 0;
+    if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+    reconnectTimerRef.current = null;
+    if (offlineTimerRef.current) clearTimeout(offlineTimerRef.current);
+    offlineTimerRef.current = null;
+    offlineSinceRef.current = null;
+    lastConfirmedAtRef.current = null;
+    closeSocket();
+  }, [closeSocket]);
+
+  const scheduleReconnect = useCallback((): void => {
+    if (!reconnectTargetRef.current) return;
+    // 传输重试与登录状态分开：连续 60 秒确实未恢复，才把业务会话标记为离线。
+    // 重试本身不能重置这个计时，也不能因为一次网络异常销毁仍有效的令牌。
+    if (offlineSinceRef.current === null) offlineSinceRef.current = lastConfirmedAtRef.current ?? performance.now();
+    if (!offlineTimerRef.current && sessionReadyRef.current) {
+      const remaining = Math.max(0, GATEWAY_OFFLINE_GRACE_MS - (performance.now() - offlineSinceRef.current));
+      offlineTimerRef.current = setTimeout(() => {
+        offlineTimerRef.current = null;
+        if (!reconnectTargetRef.current || offlineSinceRef.current === null) return;
+        sessionReadyRef.current = false;
+        setSessionReady(false);
+        setGatewayState('未连接');
+        setLastMessage('已连续 60 秒无法确认网关在线；保留登录令牌并继续自动重连');
+      }, remaining);
+    }
+    if (reconnectTimerRef.current) return;
+    const delay = RECONNECT_DELAYS_MS[Math.min(reconnectAttemptRef.current++, RECONNECT_DELAYS_MS.length - 1)];
+    if (sessionReadyRef.current) setLastMessage('网关连接暂时中断，正在自动重连；60 秒内保留连接状态');
+    if (reconnectTargetRef.current.topic) setTopicMessage('图像流暂时中断，正在恢复原话题');
+    reconnectTimerRef.current = setTimeout(() => {
+      reconnectTimerRef.current = null;
+      const target = reconnectTargetRef.current;
+      if (target) reconnectRef.current(target);
+    }, delay);
+  }, []);
+
+  const connectToGateway = useCallback((address: string, token: string, topic?: ImageTopic, retry = false): void => {
+    if (retry) closeSocket();
+    else disconnect();
+    reconnectTargetRef.current = { address, token, topic };
     resetRunLatency();
     setImageFrame(undefined);
     setFps(0);
@@ -144,7 +195,7 @@ export function GatewayProvider({ children }: React.PropsWithChildren): React.JS
     if (surface === 'image') {
       setTopicMessage(`正在连接图像话题 ${topic!.name}`);
     } else {
-      setGatewayState('连接中');
+      if (!retry || !sessionReadyRef.current) setGatewayState('连接中');
       setLastMessage(`正在连接 ${websocketUrl(base, topic)}`);
     }
 
@@ -157,13 +208,14 @@ export function GatewayProvider({ children }: React.PropsWithChildren): React.JS
       let pingTimer: ReturnType<typeof setInterval> | undefined;
       let reading = false;
       let connectionError = false;
+      let lastReceivedAt = performance.now();
       const connectionTimer = setTimeout(() => {
         if (socketRef.current !== socket) return;
         connectionError = true;
         if (surface === 'image') {
           setTopicMessage('图像流连接超时，终端日志仍可查看');
         } else {
-          setGatewayState('错误');
+          if (!sessionReadyRef.current) setGatewayState('错误');
           setLastMessage('连接超时，请检查网关地址和服务版本');
         }
         socket.close();
@@ -206,6 +258,11 @@ export function GatewayProvider({ children }: React.PropsWithChildren): React.JS
         const ping = (): void => {
           if (socketRef.current !== socket || socket.readyState !== WebSocket.OPEN) return;
           const clientMs = performance.now();
+          // OPEN 只表示本地套接字状态；长时间没有任何回包时主动重建传输。
+          if (clientMs - lastReceivedAt > 10000) {
+            socket.close();
+            return;
+          }
           trackerRef.current.probe(clientMs);
           socket.send(JSON.stringify({ type: 'clock_ping', client_ms: clientMs }));
         };
@@ -215,6 +272,8 @@ export function GatewayProvider({ children }: React.PropsWithChildren): React.JS
       socket.onmessage = (event: MessageEvent<string | Blob>) => {
         if (socketRef.current !== socket) return;
         const received = performance.now();
+        lastReceivedAt = received;
+        lastConfirmedAtRef.current = received;
         if (event.data instanceof Blob) {
           const meta = nextMetadata;
           nextMetadata = {};
@@ -222,7 +281,16 @@ export function GatewayProvider({ children }: React.PropsWithChildren): React.JS
           trackerRef.current.add(meta.latency_ms ?? {});
           if (network !== undefined) trackerRef.current.add({ network_estimate_ms: network });
           if (meta.frame_id !== undefined && socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({ type: 'frame_ack', frame_id: meta.frame_id, stage: 'received' }));
+            socket.send(JSON.stringify({ type: 'frame_ack', frame_id: meta.frame_id, stage: 'received',
+              subscription_epoch: meta.subscription_epoch, stream_session: meta.stream_session }));
+            // 只报告尚未进入 FileReader 的真实槽位覆盖；原生加载缺回调不能据此推断为替换。
+            if (pendingFrame?.meta.frame_id !== undefined
+              && pendingFrame.meta.subscription_epoch === meta.subscription_epoch
+              && pendingFrame.meta.stream_session === meta.stream_session) {
+              socket.send(JSON.stringify({ type: 'frame_ack', frame_id: pendingFrame.meta.frame_id,
+                stage: 'superseded', reason: 'pending_decode_replaced', replacement_frame_id: meta.frame_id,
+                subscription_epoch: meta.subscription_epoch, stream_session: meta.stream_session }));
+            }
           }
           pendingFrame = { blob: event.data, meta, received, network };
           decodeLatestFrame();
@@ -232,12 +300,17 @@ export function GatewayProvider({ children }: React.PropsWithChildren): React.JS
           const data = JSON.parse(event.data) as GatewayEvent;
           if (data.connection_ready) {
             clearTimeout(connectionTimer);
+            reconnectAttemptRef.current = 0;
+            offlineSinceRef.current = null;
+            if (offlineTimerRef.current) clearTimeout(offlineTimerRef.current);
+            offlineTimerRef.current = null;
+            sessionReadyRef.current = true;
+            setSessionReady(true);
+            setGatewayState('已连接');
             if (surface === 'image') {
               setTopicMessage(`图像流已连接：${topic!.name}`);
             } else {
-              setGatewayState('已连接');
               setLastMessage('连接成功');
-              setSessionReady(true);
             }
           }
           if (data.type === 'clock_pong') trackerRef.current.pong(data.client_ms!, data.server_receive_ms!, data.server_send_ms!, received);
@@ -265,35 +338,49 @@ export function GatewayProvider({ children }: React.PropsWithChildren): React.JS
         if (surface === 'image') {
           setTopicMessage('图像流连接失败，终端日志仍可查看');
         } else {
-          setGatewayState('错误');
+          if (!sessionReadyRef.current) setGatewayState('错误');
           setLastMessage('无法连接网关，请检查热点、IP 地址和端口');
         }
       };
-      socket.onclose = () => {
+      socket.onclose = (event) => {
         clearTimeout(connectionTimer);
         if (pingTimer) clearInterval(pingTimer);
         pendingFrame = null;
         if (socketRef.current === socket) {
           socketRef.current = null;
+          // 只有服务端明确拒绝认证才要求重新登录；认证超时仍按网络故障重试。
+          if (event.code === 1008 && event.reason?.includes('登录') && !event.reason.includes('超时')) {
+            disconnect();
+            sessionReadyRef.current = false;
+            setSessionReady(false);
+            setAuthToken(undefined);
+            setGatewayState('错误');
+            setLastMessage('网关登录会话已失效，请重新输入 Ubuntu 密码');
+            return;
+          }
           if (!connectionError) {
             if (closeStatusTarget(surface) === 'image') {
               setTopicMessage('图像流连接已断开，终端日志仍可查看');
             } else {
-              setGatewayState('未连接');
+              if (!sessionReadyRef.current) setGatewayState('未连接');
               setLastMessage('网关连接已断开');
             }
           }
+          scheduleReconnect();
         }
       };
     } catch {
       if (surface === 'image') {
         setTopicMessage('图像流地址格式错误');
       } else {
-        setGatewayState('错误');
+        if (!sessionReadyRef.current) setGatewayState('错误');
         setLastMessage('网关地址格式错误');
       }
+      scheduleReconnect();
     }
-  }, [disconnect, resetRunLatency]);
+  }, [closeSocket, disconnect, resetRunLatency, scheduleReconnect]);
+
+  reconnectRef.current = ({ address, token, topic }) => connectToGateway(address, token, topic, true);
 
   useEffect(() => disconnect, [disconnect]);
 
@@ -305,11 +392,14 @@ export function GatewayProvider({ children }: React.PropsWithChildren): React.JS
     disconnect();
     setAuthToken(undefined);
     setGatewayAddressState(value);
+    sessionReadyRef.current = false;
     setSessionReady(false);
     setGatewayState('未连接');
   }, [disconnect]);
 
   const findGateway = useCallback(async (force = false): Promise<void> => {
+    // 已登录时只恢复原网关；网络变化或一次发现失败不能替换开发板或清除认证。
+    if (!force && (sessionReadyRef.current || reconnectTargetRef.current)) return;
     if (manualAddressRef.current && !force) return;
     if (discoveryInFlight.current) return;
     const epoch = ++discoveryEpoch.current;
@@ -319,29 +409,28 @@ export function GatewayProvider({ children }: React.PropsWithChildren): React.JS
     if (!sessionReadyRef.current) setLastMessage('正在查找同一 Wi-Fi 中的 Jetson 网关…');
     try {
       const saved = await SecureStore.getItemAsync(LAST_GATEWAY_STORAGE_KEY).catch(() => null);
-      const found = await discoverGateway(saved || configuredAddress);
+      const found = await discoverGateway(saved || gatewayAddressRef.current || configuredAddress);
       if (epoch !== discoveryEpoch.current || manualAddressRef.current) return;
       if (!found) {
-        if (sessionReadyRef.current) {
-          disconnect();
-          setAuthToken(undefined);
-          setSessionReady(false);
-          setGatewayState('未连接');
-        }
         setDiscoveryState('manual');
-        setLastMessage('未自动找到 Jetson；请确认网关已启动，或手动填写地址');
+        setLastMessage(reconnectTargetRef.current
+          ? '本次未自动发现网关；保留原地址和登录会话，继续检查连接'
+          : '未自动找到 Jetson；请确认网关已启动，或手动填写地址');
         return;
       }
       if (found !== gatewayAddressRef.current) {
         disconnect();
         setAuthToken(undefined);
+        sessionReadyRef.current = false;
         setSessionReady(false);
         setGatewayState('未连接');
         gatewayAddressRef.current = found;
         setGatewayAddressState(found);
       }
       setDiscoveryState('found');
-      if (!sessionReadyRef.current) setLastMessage(`已发现 Jetson 网关 ${found}，请输入 Ubuntu 密码`);
+      if (!sessionReadyRef.current) setLastMessage(reconnectTargetRef.current
+        ? `已发现 Jetson 网关 ${found}，正在恢复原登录连接`
+        : `已发现 Jetson 网关 ${found}，请输入 Ubuntu 密码`);
     } catch {
       if (epoch === discoveryEpoch.current && !manualAddressRef.current) {
         setDiscoveryState('manual');
@@ -355,19 +444,37 @@ export function GatewayProvider({ children }: React.PropsWithChildren): React.JS
   const rediscoverGateway = useCallback((): Promise<void> => findGateway(true), [findGateway]);
 
   useEffect(() => {
-    void findGateway();
-    const networkSubscription = Network.addNetworkStateListener(() => { void findGateway(); });
+    let disposed = false;
+    const resume = (): void => {
+      const target = reconnectTargetRef.current;
+      if (target) {
+        if (!socketRef.current || socketRef.current.readyState === WebSocket.CLOSED) {
+          if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+          reconnectTimerRef.current = null;
+          reconnectRef.current(target);
+        }
+        return;
+      }
+      void findGateway();
+    };
+    // 延后初次探测，避免在 effect 安装订阅的同一调用栈同步更新界面。
+    void Promise.resolve().then(() => { if (!disposed) return findGateway(); });
+    const networkSubscription = Network.addNetworkStateListener(resume);
     const appSubscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void findGateway();
+      // 锁屏时不主动断开；系统允许执行期间持续保活，唤醒时优先恢复原连接。
+      if (state === 'active') resume();
     });
     return () => {
+      disposed = true;
       networkSubscription.remove();
       appSubscription.remove();
     };
   }, [findGateway]);
 
   const checkGateway = useCallback(async (password: string): Promise<void> => {
+    discoveryEpoch.current += 1;
     disconnect();
+    sessionReadyRef.current = false;
     setSessionReady(false);
     setAuthToken(undefined);
     setSelectedTopic(undefined);
@@ -470,7 +577,8 @@ export function GatewayProvider({ children }: React.PropsWithChildren): React.JS
     }
     trackerRef.current.add(values);
     if (frame.meta.frame_id !== undefined && frame.socket.readyState === WebSocket.OPEN) {
-      frame.socket.send(JSON.stringify({ type: 'frame_ack', frame_id: frame.meta.frame_id, stage: 'loaded' }));
+      frame.socket.send(JSON.stringify({ type: 'frame_ack', frame_id: frame.meta.frame_id, stage: 'loaded',
+        subscription_epoch: frame.meta.subscription_epoch, stream_session: frame.meta.stream_session }));
     }
   }, []);
 

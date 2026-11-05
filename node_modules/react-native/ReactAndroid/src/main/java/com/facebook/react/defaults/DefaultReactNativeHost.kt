@@ -43,7 +43,7 @@ protected constructor(
         DefaultTurboModuleManagerDelegate.Builder()
       } else {
         error(
-            "Overriding isNewArchEnabled to false is not supported anymore since React Native 0.82. Please check your MainApplication.kt file, and remove the override for `isNewArchEnabled`."
+            "Overriding isNewArchEnabled to false is not supported anymore since React Native 0.82. Please check your MainApplication.kt file, and remove the override for `isNewArchEnabled`.",
         )
       }
 
@@ -54,18 +54,18 @@ protected constructor(
           DefaultComponentsRegistry.register(componentFactory)
 
           val viewManagerRegistry =
-              if (lazyViewManagersEnabled) {
+              if (getLazyViewManagersEnabled()) {
                 ViewManagerRegistry(
                     object : ViewManagerResolver {
                       override fun getViewManager(viewManagerName: String) =
                           reactInstanceManager.createViewManager(viewManagerName)
 
                       override fun getViewManagerNames() = reactInstanceManager.viewManagerNames
-                    }
+                    },
                 )
               } else {
                 ViewManagerRegistry(
-                    reactInstanceManager.getOrCreateViewManagers(reactApplicationContext)
+                    reactInstanceManager.getOrCreateViewManagers(reactApplicationContext),
                 )
               }
 
@@ -74,7 +74,7 @@ protected constructor(
         }
       } else {
         error(
-            "Overriding isNewArchEnabled to false is not supported anymore since React Native 0.82. Please check your MainApplication.kt file, and remove the override for `isNewArchEnabled`."
+            "Overriding isNewArchEnabled to false is not supported anymore since React Native 0.82. Please check your MainApplication.kt file, and remove the override for `isNewArchEnabled`.",
         )
       }
 
@@ -120,12 +120,12 @@ protected constructor(
     val concreteJSRuntimeFactory = jsRuntimeFactory ?: HermesInstance()
     return DefaultReactHost.getDefaultReactHost(
         context,
-        packages,
-        jsMainModuleName,
-        bundleAssetName ?: "index.android.bundle",
-        jsBundleFile,
+        getPackages(),
+        getJSMainModuleName(),
+        getBundleAssetName() ?: "index.android.bundle",
+        getJSBundleFile(),
         concreteJSRuntimeFactory,
-        useDeveloperSupport,
+        getUseDeveloperSupport(),
     )
   }
 }

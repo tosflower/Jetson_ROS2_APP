@@ -33,7 +33,7 @@ export type ProcessedDynamicColorObjectIOS = {
         highContrastDark?: number;
     };
 };
-type ProcessedColor = number | PlatformColorObject | ProcessedDynamicColorObjectIOS;
+export type ProcessedColor = number | PlatformColorObject | ProcessedDynamicColorObjectIOS;
 /**
  * Processes a color value and returns a normalized color representation.
  *

@@ -208,6 +208,9 @@ class JSReanimated {
   setViewStyle(_viewTag, _style) {
     throw new Error('[Reanimated] setViewStyle is not available in JSReanimated.');
   }
+  setCSSEventHandler(_handler) {
+    throw new Error('[Reanimated] `setCSSEventHandler` is not available in JSReanimated.');
+  }
   markNodeAsRemovable(_shadowNodeWrapper) {
     throw new Error('[Reanimated] markNodeAsRemovable is not available in JSReanimated.');
   }
@@ -226,7 +229,7 @@ class JSReanimated {
   unregisterCSSAnimations(_viewTag) {
     throw new Error('[Reanimated] `unregisterCSSAnimations` is not available in JSReanimated.');
   }
-  runCSSTransition(_shadowNodeWrapper, _transitionConfig) {
+  runCSSTransition(_shadowNodeWrapper, _transitionConfig, _eventMask) {
     throw new Error('[Reanimated] `runCSSTransition` is not available in JSReanimated.');
   }
   unregisterCSSTransition(_viewTag) {

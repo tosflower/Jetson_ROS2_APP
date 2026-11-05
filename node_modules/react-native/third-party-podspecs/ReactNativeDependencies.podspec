@@ -28,7 +28,7 @@ Pod::Spec.new do |spec|
   spec.version              = version
   spec.summary              = 'React Native Dependencies'
   spec.description          = 'ReactNativeDependencies is a podspec that contains all the third-party dependencies of React Native.'
-  spec.homepage             = 'https://github.com/react/react-native'
+  spec.homepage             = 'https://github.com/facebook/react-native'
   spec.license              = package['license']
   spec.authors              = 'meta'
   spec.platforms            = min_supported_versions
@@ -53,13 +53,13 @@ Pod::Spec.new do |spec|
     # Check if XCFRAMEWORK_PATH is empty
     if [ -z "$XCFRAMEWORK_PATH" ]; then
       echo "ERROR: XCFRAMEWORK_PATH is empty."
-      exit 0
+      exit 1
     fi
 
     # Check if HEADERS_PATH is empty
     if [ -z "$HEADERS_PATH" ]; then
       echo "ERROR: HEADERS_PATH is empty."
-      exit 0
+      exit 1
     fi
 
     cp -R "$HEADERS_PATH/." Headers

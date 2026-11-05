@@ -2,6 +2,8 @@
 
 import { isLength } from "../utils/guards.js";
 const LENGTH_MAPPINGS = ['offsetX', 'offsetY', 'blurRadius', 'spreadDistance'];
+export const CSS_NUMBER_PATTERN = String.raw`[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?`;
+const ANGLE_UNIT_REGEX = new RegExp(`^(${CSS_NUMBER_PATTERN})(deg|grad|rad|turn)$`, 'i');
 const SHADOW_PARTS_REGEX = /(?:[^\s()]+|\([^()]*\))+/g;
 const SHADOW_SPLIT_REGEX = /(?:[^,()]+|\([^)]*\))+(?=\s*,|$)/g;
 export function parseBoxShadowString(value) {
@@ -29,5 +31,54 @@ export function parseBoxShadowString(value) {
     });
     return result;
   });
+}
+export function splitByComma(str) {
+  'worklet';
+
+  // split by comma not enclosed in parentheses
+  const parts = [];
+  let current = '';
+  let depth = 0;
+  for (const char of str) {
+    if (char === '(') {
+      depth++;
+    } else if (char === ')') {
+      depth--;
+    } else if (char === ',' && depth === 0) {
+      parts.push(current.trim());
+      current = '';
+      continue;
+    }
+    current += char;
+  }
+  parts.push(current.trim());
+  return parts;
+}
+export function splitByWhitespace(str) {
+  'worklet';
+
+  // split by whitespace not enclosed in parentheses
+  return str.split(/\s+(?![^()]*\))/);
+}
+export function getAngleInDegrees(angle) {
+  'worklet';
+
+  const match = angle.match(ANGLE_UNIT_REGEX);
+  if (!match) {
+    return null;
+  }
+  const numericValue = parseFloat(match[1]);
+  switch (match[2].toLowerCase()) {
+    case 'deg':
+      return numericValue;
+    case 'grad':
+      return numericValue * 0.9;
+    case 'rad':
+      return numericValue * 180 / Math.PI;
+    case 'turn':
+      return numericValue * 360;
+    default:
+      return null;
+  }
 }
 //# sourceMappingURL=parsers.js.map

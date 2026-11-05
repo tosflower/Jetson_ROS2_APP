@@ -84,6 +84,7 @@ type AmapLocationMapProps = {
   speedMps: number | null;
   rosConnected: boolean;
   onNavigationEvent: (event: NavigationEvent) => Promise<PublishReceipt>;
+  onPageReady: () => Promise<void>;
   headingDegrees: number | null;
   headingAccuracy: number | null;
   headingTimestamp: number | null;
@@ -134,8 +135,12 @@ function normalizeHeading(value: number): number {
 /** 高德地图与路线均使用 GCJ-02；原生 GPS 在 convertFrom 成功后才能作为路线起点。 */
 export default function AmapLocationMap({
   apiKey, securityJsCode, latitude, longitude, accuracy,
-  headingDegrees, headingAccuracy, headingTimestamp, headingSource, locationStatus, dark, gpsTimestamp, speedMps, rosConnected, onNavigationEvent,
+  headingDegrees, headingAccuracy, headingTimestamp, headingSource, locationStatus, dark, gpsTimestamp, speedMps, rosConnected, onNavigationEvent, onPageReady,
 }: AmapLocationMapProps): React.JSX.Element {
+  useEffect(() => {
+    // 控件挂载即通知原生层；无需等待高德请求、GPS 或 ROS 连接。
+    void onPageReady().catch(() => {});
+  }, [onPageReady]);
   const [sdkState, setSdkState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [mapMessage, setMapMessage] = useState('正在加载高德地图…');
   const [originReady, setOriginReady] = useState(false);
@@ -591,7 +596,9 @@ export default function AmapLocationMap({
       <style>{`
         * { box-sizing: border-box; }
         html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+        /* 保持手机横竖屏文字比例一致，输入框仍保留 16px，避免 iOS 聚焦时自动放大页面。 */
+        html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; line-height: 1.45; }
         button, input { font: inherit; cursor: pointer; touch-action: manipulation; }
         button:focus-visible, input:focus-visible { outline: 3px solid #66aaff; outline-offset: 3px; }
         button:disabled { opacity: .45; cursor: default; }
@@ -616,11 +623,13 @@ export default function AmapLocationMap({
         .navigating .map-message { margin-top: 6px; padding: 7px 9px; font-size: 11px; }
         .route-actions .stop-navigation { width: 100%; color: #fff; background: #ce354b; }
         .start-marker { background: #13875a; }
-        .map-hud { position: absolute; bottom: max(14px, env(safe-area-inset-bottom)); left: 14px; right: 14px; display: flex; justify-content: center; pointer-events: none; }
+        /* 原生层已留出安全区；底部控件按实际内容高度排布，信息换行时不会顶住定位按钮。 */
+        .map-controls { position: absolute; bottom: 14px; left: 14px; right: 14px; display: flex; flex-direction: column; gap: 12px; align-items: flex-end; pointer-events: none; }
+        .map-hud { width: 100%; display: flex; justify-content: center; }
         .map-hud-card { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 10px; align-items: center; padding: 9px 13px; border-radius: 22px; background: var(--panel); box-shadow: 0 4px 18px #0002; font-size: 13px; font-variant-numeric: tabular-nums; }
         .heading { color: ${dark ? '#72b0ff' : '#1265cf'}; font-size: 16px; font-weight: 700; }
-        .recenter { position: absolute; right: 14px; bottom: 72px; min-height: 48px; padding: 0 14px; border: 0; border-radius: 14px; background: var(--panel); color: var(--text); box-shadow: 0 3px 14px #0002; }
-        .route-panel { position: absolute; left: 14px; right: 14px; top: max(14px, env(safe-area-inset-top)); max-width: 420px; max-height: min(60%, calc(100% - 140px)); overflow-y: auto; padding: 16px; border-radius: 20px; background: var(--panel); box-shadow: 0 8px 30px #0003; }
+        .recenter { flex-shrink: 0; max-width: 100%; min-height: 48px; padding: 10px 14px; border: 0; border-radius: 14px; background: var(--panel); color: var(--text); box-shadow: 0 3px 14px #0002; pointer-events: auto; }
+        .route-panel { position: absolute; left: 14px; right: 14px; top: 14px; max-width: 420px; max-height: min(60%, calc(100% - 160px)); overflow-y: auto; padding: 16px; border-radius: 20px; background: var(--panel); box-shadow: 0 8px 30px #0003; }
         .route-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
         .route-header h2 { margin: 0; font-size: 18px; }
         .route-mode { font-size: 12px; padding: 5px 9px; border-radius: 12px; color: ${dark ? '#9dc7ff' : '#165da8'}; background: var(--subtle); }
@@ -650,21 +659,23 @@ export default function AmapLocationMap({
         .place-result small { margin-top: 4px; font-size: 12px; line-height: 1.4; color: var(--muted); }
         @media (min-width: 640px) {
           .route-panel { right: auto; width: min(360px, calc(100% - 28px)); max-height: calc(100% - 28px); padding: 14px; }
-          .map-hud { left: 398px; }
+          .map-controls { left: 398px; }
         }
       `}</style>
       <div id="amap-container" aria-label="地图，轻点选择路线终点" />
-      <div className="map-hud">
-        <div className="map-hud-card">
-          <span className="heading">{headingText}</span>
-          <span>{precisionText}</span>
-          {isEstimated ? <span>{sample && usableFix(sample, clockNow) ? '推算定位' : '推算已暂停，等待 GPS'}</span> : null}
-          {compassText ? <span>{compassText}</span> : null}
+      <div className="map-controls">
+        <button type="button" className="recenter" onClick={recenter} disabled={!hasOrigin} aria-pressed={following}>
+          {following ? '正在跟随定位' : '回到当前位置'}
+        </button>
+        <div className="map-hud">
+          <div className="map-hud-card">
+            <span className="heading">{headingText}</span>
+            <span>{precisionText}</span>
+            {isEstimated ? <span>{sample && usableFix(sample, clockNow) ? '推算定位' : '推算已暂停，等待 GPS'}</span> : null}
+            {compassText ? <span>{compassText}</span> : null}
+          </div>
         </div>
       </div>
-      <button type="button" className="recenter" onClick={recenter} disabled={!hasOrigin} aria-pressed={following}>
-        {following ? '正在跟随定位' : '回到当前位置'}
-      </button>
       <section className={`route-panel${navigationActive ? ' navigating' : ''}`} ref={panelRef} aria-label="骑行路线规划">
         {navigationActive ? <>
           <div className="route-header"><h2>导航中</h2><span className="route-mode">自行车</span></div>

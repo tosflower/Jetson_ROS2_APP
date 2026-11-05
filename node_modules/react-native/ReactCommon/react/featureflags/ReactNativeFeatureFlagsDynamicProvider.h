@@ -4,7 +4,7 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  *
- * @generated SignedSource<<23e79788b0820f61ba95288412367247>>
+ * @generated SignedSource<<be4cd3d7b411ca75071b032494819c99>>
  */
 
 /**
@@ -18,6 +18,8 @@
  */
 
 #pragma once
+
+#include <react/cxxstableapi/UmbrellaGuard.h>
 
 #include <folly/dynamic.h>
 #include <react/featureflags/ReactNativeFeatureFlagsDefaults.h>
@@ -171,6 +173,15 @@ class ReactNativeFeatureFlagsDynamicProvider : public ReactNativeFeatureFlagsDef
     return ReactNativeFeatureFlagsDefaults::enableBridgelessArchitecture();
   }
 
+  bool enableBufferedCallInvoker() override {
+    auto value = values_["enableBufferedCallInvoker"];
+    if (!value.isNull()) {
+      return value.getBool();
+    }
+
+    return ReactNativeFeatureFlagsDefaults::enableBufferedCallInvoker();
+  }
+
   bool enableCppPropsIteratorSetter() override {
     auto value = values_["enableCppPropsIteratorSetter"];
     if (!value.isNull()) {
@@ -198,15 +209,6 @@ class ReactNativeFeatureFlagsDynamicProvider : public ReactNativeFeatureFlagsDef
     return ReactNativeFeatureFlagsDefaults::enableDestroyShadowTreeRevisionAsync();
   }
 
-  bool enableDifferentiatorMutationVectorPreallocation() override {
-    auto value = values_["enableDifferentiatorMutationVectorPreallocation"];
-    if (!value.isNull()) {
-      return value.getBool();
-    }
-
-    return ReactNativeFeatureFlagsDefaults::enableDifferentiatorMutationVectorPreallocation();
-  }
-
   bool enableDoubleMeasurementFixAndroid() override {
     auto value = values_["enableDoubleMeasurementFixAndroid"];
     if (!value.isNull()) {
@@ -214,15 +216,6 @@ class ReactNativeFeatureFlagsDynamicProvider : public ReactNativeFeatureFlagsDef
     }
 
     return ReactNativeFeatureFlagsDefaults::enableDoubleMeasurementFixAndroid();
-  }
-
-  bool enableEagerMainQueueModulesOnIOS() override {
-    auto value = values_["enableEagerMainQueueModulesOnIOS"];
-    if (!value.isNull()) {
-      return value.getBool();
-    }
-
-    return ReactNativeFeatureFlagsDefaults::enableEagerMainQueueModulesOnIOS();
   }
 
   bool enableEagerRootViewAttachment() override {
@@ -261,13 +254,13 @@ class ReactNativeFeatureFlagsDynamicProvider : public ReactNativeFeatureFlagsDef
     return ReactNativeFeatureFlagsDefaults::enableFabricLogs();
   }
 
-  bool enableFabricRenderer() override {
-    auto value = values_["enableFabricRenderer"];
+  bool enableFlexboxAutoMinSizeInStrictMode() override {
+    auto value = values_["enableFlexboxAutoMinSizeInStrictMode"];
     if (!value.isNull()) {
       return value.getBool();
     }
 
-    return ReactNativeFeatureFlagsDefaults::enableFabricRenderer();
+    return ReactNativeFeatureFlagsDefaults::enableFlexboxAutoMinSizeInStrictMode();
   }
 
   bool enableFontScaleChangesUpdatingLayout() override {
@@ -277,6 +270,15 @@ class ReactNativeFeatureFlagsDynamicProvider : public ReactNativeFeatureFlagsDef
     }
 
     return ReactNativeFeatureFlagsDefaults::enableFontScaleChangesUpdatingLayout();
+  }
+
+  bool enableIOSCompressedTextFrameAdjustment() override {
+    auto value = values_["enableIOSCompressedTextFrameAdjustment"];
+    if (!value.isNull()) {
+      return value.getBool();
+    }
+
+    return ReactNativeFeatureFlagsDefaults::enableIOSCompressedTextFrameAdjustment();
   }
 
   bool enableIOSTextBaselineOffsetPerLine() override {
@@ -306,6 +308,15 @@ class ReactNativeFeatureFlagsDynamicProvider : public ReactNativeFeatureFlagsDef
     return ReactNativeFeatureFlagsDefaults::enableImagePrefetchingAndroid();
   }
 
+  bool enableImageTransparentTintColor() override {
+    auto value = values_["enableImageTransparentTintColor"];
+    if (!value.isNull()) {
+      return value.getBool();
+    }
+
+    return ReactNativeFeatureFlagsDefaults::enableImageTransparentTintColor();
+  }
+
   bool enableImmediateUpdateModeForContentOffsetChanges() override {
     auto value = values_["enableImmediateUpdateModeForContentOffsetChanges"];
     if (!value.isNull()) {
@@ -313,6 +324,15 @@ class ReactNativeFeatureFlagsDynamicProvider : public ReactNativeFeatureFlagsDef
     }
 
     return ReactNativeFeatureFlagsDefaults::enableImmediateUpdateModeForContentOffsetChanges();
+  }
+
+  bool enableImperativeEvents() override {
+    auto value = values_["enableImperativeEvents"];
+    if (!value.isNull()) {
+      return value.getBool();
+    }
+
+    return ReactNativeFeatureFlagsDefaults::enableImperativeEvents();
   }
 
   bool enableImperativeFocus() override {
@@ -369,15 +389,6 @@ class ReactNativeFeatureFlagsDynamicProvider : public ReactNativeFeatureFlagsDef
     return ReactNativeFeatureFlagsDefaults::enableLayoutAnimationsOnIOS();
   }
 
-  bool enableMainQueueCoordinatorOnIOS() override {
-    auto value = values_["enableMainQueueCoordinatorOnIOS"];
-    if (!value.isNull()) {
-      return value.getBool();
-    }
-
-    return ReactNativeFeatureFlagsDefaults::enableMainQueueCoordinatorOnIOS();
-  }
-
   bool enableModuleArgumentNSNullConversionIOS() override {
     auto value = values_["enableModuleArgumentNSNullConversionIOS"];
     if (!value.isNull()) {
@@ -385,6 +396,15 @@ class ReactNativeFeatureFlagsDynamicProvider : public ReactNativeFeatureFlagsDef
     }
 
     return ReactNativeFeatureFlagsDefaults::enableModuleArgumentNSNullConversionIOS();
+  }
+
+  bool enableMountingCoordinatorPullModelAndroid() override {
+    auto value = values_["enableMountingCoordinatorPullModelAndroid"];
+    if (!value.isNull()) {
+      return value.getBool();
+    }
+
+    return ReactNativeFeatureFlagsDefaults::enableMountingCoordinatorPullModelAndroid();
   }
 
   bool enableMutationObserverByDefault() override {
@@ -405,24 +425,6 @@ class ReactNativeFeatureFlagsDynamicProvider : public ReactNativeFeatureFlagsDef
     return ReactNativeFeatureFlagsDefaults::enableNativeCSSParsing();
   }
 
-  bool enableNativeViewPropTransformations() override {
-    auto value = values_["enableNativeViewPropTransformations"];
-    if (!value.isNull()) {
-      return value.getBool();
-    }
-
-    return ReactNativeFeatureFlagsDefaults::enableNativeViewPropTransformations();
-  }
-
-  bool enableNetworkEventReporting() override {
-    auto value = values_["enableNetworkEventReporting"];
-    if (!value.isNull()) {
-      return value.getBool();
-    }
-
-    return ReactNativeFeatureFlagsDefaults::enableNetworkEventReporting();
-  }
-
   bool enablePreparedTextLayout() override {
     auto value = values_["enablePreparedTextLayout"];
     if (!value.isNull()) {
@@ -441,13 +443,13 @@ class ReactNativeFeatureFlagsDynamicProvider : public ReactNativeFeatureFlagsDef
     return ReactNativeFeatureFlagsDefaults::enablePropsUpdateReconciliationAndroid();
   }
 
-  bool enableSchedulerDelegateInvalidation() override {
-    auto value = values_["enableSchedulerDelegateInvalidation"];
+  bool enableResizeObserverByDefault() override {
+    auto value = values_["enableResizeObserverByDefault"];
     if (!value.isNull()) {
       return value.getBool();
     }
 
-    return ReactNativeFeatureFlagsDefaults::enableSchedulerDelegateInvalidation();
+    return ReactNativeFeatureFlagsDefaults::enableResizeObserverByDefault();
   }
 
   bool enableSwiftUIBasedFilters() override {
@@ -522,15 +524,6 @@ class ReactNativeFeatureFlagsDynamicProvider : public ReactNativeFeatureFlagsDef
     return ReactNativeFeatureFlagsDefaults::enableVirtualViewContainerStateExperimental();
   }
 
-  bool enableVirtualViewDebugFeatures() override {
-    auto value = values_["enableVirtualViewDebugFeatures"];
-    if (!value.isNull()) {
-      return value.getBool();
-    }
-
-    return ReactNativeFeatureFlagsDefaults::enableVirtualViewDebugFeatures();
-  }
-
   bool fixDifferentiatorParentTagForUnflattenCase() override {
     auto value = values_["fixDifferentiatorParentTagForUnflattenCase"];
     if (!value.isNull()) {
@@ -538,15 +531,6 @@ class ReactNativeFeatureFlagsDynamicProvider : public ReactNativeFeatureFlagsDef
     }
 
     return ReactNativeFeatureFlagsDefaults::fixDifferentiatorParentTagForUnflattenCase();
-  }
-
-  bool fixFindShadowNodeByTagRaceCondition() override {
-    auto value = values_["fixFindShadowNodeByTagRaceCondition"];
-    if (!value.isNull()) {
-      return value.getBool();
-    }
-
-    return ReactNativeFeatureFlagsDefaults::fixFindShadowNodeByTagRaceCondition();
   }
 
   bool fixMappingOfEventPrioritiesBetweenFabricAndReact() override {
@@ -594,15 +578,6 @@ class ReactNativeFeatureFlagsDynamicProvider : public ReactNativeFeatureFlagsDef
     return ReactNativeFeatureFlagsDefaults::fuseboxFrameRecordingEnabled();
   }
 
-  bool fuseboxNetworkInspectionEnabled() override {
-    auto value = values_["fuseboxNetworkInspectionEnabled"];
-    if (!value.isNull()) {
-      return value.getBool();
-    }
-
-    return ReactNativeFeatureFlagsDefaults::fuseboxNetworkInspectionEnabled();
-  }
-
   bool fuseboxScreenshotCaptureEnabled() override {
     auto value = values_["fuseboxScreenshotCaptureEnabled"];
     if (!value.isNull()) {
@@ -612,13 +587,22 @@ class ReactNativeFeatureFlagsDynamicProvider : public ReactNativeFeatureFlagsDef
     return ReactNativeFeatureFlagsDefaults::fuseboxScreenshotCaptureEnabled();
   }
 
-  bool hideOffscreenVirtualViewsOnIOS() override {
-    auto value = values_["hideOffscreenVirtualViewsOnIOS"];
+  bool fuseboxWebSocketEventsEnabled() override {
+    auto value = values_["fuseboxWebSocketEventsEnabled"];
     if (!value.isNull()) {
       return value.getBool();
     }
 
-    return ReactNativeFeatureFlagsDefaults::hideOffscreenVirtualViewsOnIOS();
+    return ReactNativeFeatureFlagsDefaults::fuseboxWebSocketEventsEnabled();
+  }
+
+  bool optimizedAnimatedPropUpdates() override {
+    auto value = values_["optimizedAnimatedPropUpdates"];
+    if (!value.isNull()) {
+      return value.getBool();
+    }
+
+    return ReactNativeFeatureFlagsDefaults::optimizedAnimatedPropUpdates();
   }
 
   bool overrideBySynchronousMountPropsAtMountingAndroid() override {
@@ -765,15 +749,6 @@ class ReactNativeFeatureFlagsDynamicProvider : public ReactNativeFeatureFlagsDef
     return ReactNativeFeatureFlagsDefaults::useFabricInterop();
   }
 
-  bool useLISAlgorithmInDifferentiator() override {
-    auto value = values_["useLISAlgorithmInDifferentiator"];
-    if (!value.isNull()) {
-      return value.getBool();
-    }
-
-    return ReactNativeFeatureFlagsDefaults::useLISAlgorithmInDifferentiator();
-  }
-
   bool useNativeViewConfigsInBridgelessMode() override {
     auto value = values_["useNativeViewConfigsInBridgelessMode"];
     if (!value.isNull()) {
@@ -790,15 +765,6 @@ class ReactNativeFeatureFlagsDynamicProvider : public ReactNativeFeatureFlagsDef
     }
 
     return ReactNativeFeatureFlagsDefaults::useNestedScrollViewAndroid();
-  }
-
-  bool useOptimizedViewRegistryOnAndroid() override {
-    auto value = values_["useOptimizedViewRegistryOnAndroid"];
-    if (!value.isNull()) {
-      return value.getBool();
-    }
-
-    return ReactNativeFeatureFlagsDefaults::useOptimizedViewRegistryOnAndroid();
   }
 
   bool useSharedAnimatedBackend() override {
@@ -828,24 +794,6 @@ class ReactNativeFeatureFlagsDynamicProvider : public ReactNativeFeatureFlagsDef
     return ReactNativeFeatureFlagsDefaults::useTurboModuleInterop();
   }
 
-  bool useTurboModules() override {
-    auto value = values_["useTurboModules"];
-    if (!value.isNull()) {
-      return value.getBool();
-    }
-
-    return ReactNativeFeatureFlagsDefaults::useTurboModules();
-  }
-
-  bool useUnorderedMapInDifferentiator() override {
-    auto value = values_["useUnorderedMapInDifferentiator"];
-    if (!value.isNull()) {
-      return value.getBool();
-    }
-
-    return ReactNativeFeatureFlagsDefaults::useUnorderedMapInDifferentiator();
-  }
-
   double viewCullingOutsetRatio() override {
     auto value = values_["viewCullingOutsetRatio"];
     if (!value.isNull()) {
@@ -862,6 +810,15 @@ class ReactNativeFeatureFlagsDynamicProvider : public ReactNativeFeatureFlagsDef
     }
 
     return ReactNativeFeatureFlagsDefaults::viewTransitionEnabled();
+  }
+
+  bool viewTransitionUseHardwareBitmapAndroid() override {
+    auto value = values_["viewTransitionUseHardwareBitmapAndroid"];
+    if (!value.isNull()) {
+      return value.getBool();
+    }
+
+    return ReactNativeFeatureFlagsDefaults::viewTransitionUseHardwareBitmapAndroid();
   }
 
   double virtualViewPrerenderRatio() override {

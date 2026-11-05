@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <react/cxxstableapi/FrameworksGuard.h>
+
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
@@ -161,8 +163,6 @@ class ShadowTree final {
 
   void mount(ShadowTreeRevision revision, bool mountSynchronously) const;
 
-  void emitLayoutEvents(std::vector<const LayoutableShadowNode *> &affectedLayoutableNodes) const;
-
   void scheduleReactRevisionPromotion() const;
 
   const SurfaceId surfaceId_;
@@ -173,6 +173,8 @@ class ShadowTree final {
   mutable ShadowTreeRevision currentRevision_; // Protected by `revisionMutex_`.
   mutable std::optional<ShadowTreeRevision> currentReactRevision_; // Protected by `revisionMutex_`.
   mutable std::optional<ShadowTreeRevision> reactRevisionToBePromoted_; // Protected by `revisionMutex_`.
+  mutable std::vector<ShadowTreeRevision> queuedReactRevisions_; // Protected by `revisionMutex_`.
+  mutable std::vector<ShadowTreeRevision> promotedReactRevisions_; // Protected by `revisionMutex_`.
   std::shared_ptr<const MountingCoordinator> mountingCoordinator_;
 
   using UniqueLock = std::variant<std::unique_lock<std::shared_mutex>, std::unique_lock<std::recursive_mutex>>;

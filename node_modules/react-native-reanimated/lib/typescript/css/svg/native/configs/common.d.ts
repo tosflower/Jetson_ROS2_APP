@@ -5,7 +5,7 @@ type NonAnimatablePropNames = keyof GestureResponderHandlers | keyof TouchablePr
 export type SvgStyleBuilderConfig<T> = PropsBuilderConfig<Omit<T, NonAnimatablePropNames>>;
 export declare const SVG_COMMON_PROPERTIES_CONFIG: {
     readonly opacity: {
-        readonly process: import("../../../../common").ValueProcessor<import("react-native-svg").NumberProp, number>;
+        readonly process: (percentage: import("react-native-svg").NumberProp) => number;
     };
     readonly filter: (boolean | import("../../../../common").ConfigPropertyAlias<CommonFilterProps>) | {
         process: import("../../../../common").ValueProcessor<string, any>;
@@ -25,7 +25,7 @@ export declare const SVG_COMMON_PROPERTIES_CONFIG: {
     readonly markerEnd: (boolean | import("../../../../common").ConfigPropertyAlias<CommonMarkerProps>) | {
         process: import("../../../../common").ValueProcessor<string, any>;
     };
-    readonly pointerEvents: (boolean | import("../../../../common").ConfigPropertyAlias<Omit<ResponderProps, keyof GestureResponderHandlers>>) | {
+    readonly pointerEvents: (boolean | import("../../../../common").ConfigPropertyAlias<Omit<ResponderProps, "onStartShouldSetResponder" | "onMoveShouldSetResponder" | "onMoveShouldSetResponderCapture" | "onResponderGrant" | "onResponderMove" | "onResponderReject" | "onResponderRelease" | "onResponderStart" | "onResponderEnd" | "onResponderTerminate" | "onResponderTerminationRequest" | "onStartShouldSetResponderCapture">>) | {
         process: import("../../../../common").ValueProcessor<"none" | "auto" | "box-none" | "box-only", any>;
     };
     readonly translate: (boolean | import("../../../../common").ConfigPropertyAlias<TransformProps>) | {
@@ -74,202 +74,35 @@ export declare const SVG_COMMON_PROPERTIES_CONFIG: {
         process: import("../../../../common").ValueProcessor<import("react-native-svg").NumberArray, any>;
     };
     readonly transform: (boolean | import("../../../../common").ConfigPropertyAlias<TransformProps>) | {
-        process: import("../../../../common").ValueProcessor<string | readonly (({
-            perspective: import("react-native").AnimatableNumericValue;
-        } & {
-            rotate?: undefined;
-            rotateX?: undefined;
-            rotateY?: undefined;
-            rotateZ?: undefined;
-            scale?: undefined;
-            scaleX?: undefined;
-            scaleY?: undefined;
-            translateX?: undefined;
-            translateY?: undefined;
-            skewX?: undefined;
-            skewY?: undefined;
-            matrix?: undefined;
-        }) | ({
-            rotate: import("react-native").AnimatableStringValue;
-        } & {
-            perspective?: undefined;
-            rotateX?: undefined;
-            rotateY?: undefined;
-            rotateZ?: undefined;
-            scale?: undefined;
-            scaleX?: undefined;
-            scaleY?: undefined;
-            translateX?: undefined;
-            translateY?: undefined;
-            skewX?: undefined;
-            skewY?: undefined;
-            matrix?: undefined;
-        }) | ({
-            rotateX: import("react-native").AnimatableStringValue;
-        } & {
-            perspective?: undefined;
-            rotate?: undefined;
-            rotateY?: undefined;
-            rotateZ?: undefined;
-            scale?: undefined;
-            scaleX?: undefined;
-            scaleY?: undefined;
-            translateX?: undefined;
-            translateY?: undefined;
-            skewX?: undefined;
-            skewY?: undefined;
-            matrix?: undefined;
-        }) | ({
-            rotateY: import("react-native").AnimatableStringValue;
-        } & {
-            perspective?: undefined;
-            rotate?: undefined;
-            rotateX?: undefined;
-            rotateZ?: undefined;
-            scale?: undefined;
-            scaleX?: undefined;
-            scaleY?: undefined;
-            translateX?: undefined;
-            translateY?: undefined;
-            skewX?: undefined;
-            skewY?: undefined;
-            matrix?: undefined;
-        }) | ({
-            rotateZ: import("react-native").AnimatableStringValue;
-        } & {
-            perspective?: undefined;
-            rotate?: undefined;
-            rotateX?: undefined;
-            rotateY?: undefined;
-            scale?: undefined;
-            scaleX?: undefined;
-            scaleY?: undefined;
-            translateX?: undefined;
-            translateY?: undefined;
-            skewX?: undefined;
-            skewY?: undefined;
-            matrix?: undefined;
-        }) | ({
-            scale: import("react-native").AnimatableNumericValue;
-        } & {
-            perspective?: undefined;
-            rotate?: undefined;
-            rotateX?: undefined;
-            rotateY?: undefined;
-            rotateZ?: undefined;
-            scaleX?: undefined;
-            scaleY?: undefined;
-            translateX?: undefined;
-            translateY?: undefined;
-            skewX?: undefined;
-            skewY?: undefined;
-            matrix?: undefined;
-        }) | ({
-            scaleX: import("react-native").AnimatableNumericValue;
-        } & {
-            perspective?: undefined;
-            rotate?: undefined;
-            rotateX?: undefined;
-            rotateY?: undefined;
-            rotateZ?: undefined;
-            scale?: undefined;
-            scaleY?: undefined;
-            translateX?: undefined;
-            translateY?: undefined;
-            skewX?: undefined;
-            skewY?: undefined;
-            matrix?: undefined;
-        }) | ({
-            scaleY: import("react-native").AnimatableNumericValue;
-        } & {
-            perspective?: undefined;
-            rotate?: undefined;
-            rotateX?: undefined;
-            rotateY?: undefined;
-            rotateZ?: undefined;
-            scale?: undefined;
-            scaleX?: undefined;
-            translateX?: undefined;
-            translateY?: undefined;
-            skewX?: undefined;
-            skewY?: undefined;
-            matrix?: undefined;
-        }) | ({
-            translateX: `${number}%` | import("react-native").AnimatableNumericValue;
-        } & {
-            perspective?: undefined;
-            rotate?: undefined;
-            rotateX?: undefined;
-            rotateY?: undefined;
-            rotateZ?: undefined;
-            scale?: undefined;
-            scaleX?: undefined;
-            scaleY?: undefined;
-            translateY?: undefined;
-            skewX?: undefined;
-            skewY?: undefined;
-            matrix?: undefined;
-        }) | ({
-            translateY: `${number}%` | import("react-native").AnimatableNumericValue;
-        } & {
-            perspective?: undefined;
-            rotate?: undefined;
-            rotateX?: undefined;
-            rotateY?: undefined;
-            rotateZ?: undefined;
-            scale?: undefined;
-            scaleX?: undefined;
-            scaleY?: undefined;
-            translateX?: undefined;
-            skewX?: undefined;
-            skewY?: undefined;
-            matrix?: undefined;
-        }) | ({
-            skewX: import("react-native").AnimatableStringValue;
-        } & {
-            perspective?: undefined;
-            rotate?: undefined;
-            rotateX?: undefined;
-            rotateY?: undefined;
-            rotateZ?: undefined;
-            scale?: undefined;
-            scaleX?: undefined;
-            scaleY?: undefined;
-            translateX?: undefined;
-            translateY?: undefined;
-            skewY?: undefined;
-            matrix?: undefined;
-        }) | ({
-            skewY: import("react-native").AnimatableStringValue;
-        } & {
-            perspective?: undefined;
-            rotate?: undefined;
-            rotateX?: undefined;
-            rotateY?: undefined;
-            rotateZ?: undefined;
-            scale?: undefined;
-            scaleX?: undefined;
-            scaleY?: undefined;
-            translateX?: undefined;
-            translateY?: undefined;
-            skewX?: undefined;
-            matrix?: undefined;
-        }) | ({
-            matrix: import("react-native").AnimatableNumericValue[];
-        } & {
-            perspective?: undefined;
-            rotate?: undefined;
-            rotateX?: undefined;
-            rotateY?: undefined;
-            rotateZ?: undefined;
-            scale?: undefined;
-            scaleX?: undefined;
-            scaleY?: undefined;
-            translateX?: undefined;
-            translateY?: undefined;
-            skewX?: undefined;
-            skewY?: undefined;
-        }))[] | import("react-native-svg").ColumnMajorTransformMatrix, any>;
+        process: import("../../../../common").ValueProcessor<string | readonly Readonly<import("node_modules/react-native/types_generated/Libraries/StyleSheet/private/_TransformStyle").MaximumOneOf<import("node_modules/react-native/types_generated/Libraries/StyleSheet/private/_TransformStyle").MergeUnion<{
+            readonly perspective: number | import("node_modules/react-native/types_generated/Libraries/Animated/AnimatedExports").Node;
+        } | {
+            readonly rotate: string | import("node_modules/react-native/types_generated/Libraries/Animated/AnimatedExports").Node;
+        } | {
+            readonly rotateX: string | import("node_modules/react-native/types_generated/Libraries/Animated/AnimatedExports").Node;
+        } | {
+            readonly rotateY: string | import("node_modules/react-native/types_generated/Libraries/Animated/AnimatedExports").Node;
+        } | {
+            readonly rotateZ: string | import("node_modules/react-native/types_generated/Libraries/Animated/AnimatedExports").Node;
+        } | {
+            readonly scale: number | import("node_modules/react-native/types_generated/Libraries/Animated/AnimatedExports").Node;
+        } | {
+            readonly scaleX: number | import("node_modules/react-native/types_generated/Libraries/Animated/AnimatedExports").Node;
+        } | {
+            readonly scaleY: number | import("node_modules/react-native/types_generated/Libraries/Animated/AnimatedExports").Node;
+        } | {
+            readonly translateX: number | string | import("node_modules/react-native/types_generated/Libraries/Animated/AnimatedExports").Node;
+        } | {
+            readonly translateY: number | string | import("node_modules/react-native/types_generated/Libraries/Animated/AnimatedExports").Node;
+        } | {
+            readonly translate: [number | string | import("node_modules/react-native/types_generated/Libraries/Animated/AnimatedExports").Node, number | string | import("node_modules/react-native/types_generated/Libraries/Animated/AnimatedExports").Node] | import("node_modules/react-native/types_generated/Libraries/Animated/AnimatedExports").Node;
+        } | {
+            readonly skewX: string | import("node_modules/react-native/types_generated/Libraries/Animated/AnimatedExports").Node;
+        } | {
+            readonly skewY: string | import("node_modules/react-native/types_generated/Libraries/Animated/AnimatedExports").Node;
+        } | {
+            readonly matrix: ReadonlyArray<number | import("node_modules/react-native/types_generated/Libraries/Animated/AnimatedExports").Node> | import("node_modules/react-native/types_generated/Libraries/Animated/AnimatedExports").Node;
+        }>>>[] | import("react-native-svg").ColumnMajorTransformMatrix, any>;
     };
     readonly clipRule: (boolean | import("../../../../common").ConfigPropertyAlias<ClipProps>) | {
         process: import("../../../../common").ValueProcessor<import("react-native-svg").FillRule, any>;
@@ -278,7 +111,7 @@ export declare const SVG_COMMON_PROPERTIES_CONFIG: {
         process: import("../../../../common").ValueProcessor<string, any>;
     };
     readonly stroke: (boolean | import("../../../../common").ConfigPropertyAlias<StrokeProps>) | {
-        process: import("../../../../common").ValueProcessor<import("react-native").ColorValue, any>;
+        process: import("../../../../common").ValueProcessor<import("node_modules/react-native/types_generated/Libraries/StyleSheet/StyleSheetTypes").____ColorValue_Internal, any>;
     };
     readonly strokeWidth: (boolean | import("../../../../common").ConfigPropertyAlias<StrokeProps>) | {
         process: import("../../../../common").ValueProcessor<import("react-native-svg").NumberProp, any>;
@@ -305,7 +138,7 @@ export declare const SVG_COMMON_PROPERTIES_CONFIG: {
         process: import("../../../../common").ValueProcessor<import("react-native-svg").VectorEffect, any>;
     };
     readonly fill: (boolean | import("../../../../common").ConfigPropertyAlias<FillProps>) | {
-        process: import("../../../../common").ValueProcessor<import("react-native").ColorValue, any>;
+        process: import("../../../../common").ValueProcessor<import("node_modules/react-native/types_generated/Libraries/StyleSheet/StyleSheetTypes").____ColorValue_Internal, any>;
     };
     readonly fillOpacity: (boolean | import("../../../../common").ConfigPropertyAlias<FillProps>) | {
         process: import("../../../../common").ValueProcessor<import("react-native-svg").NumberProp, any>;
@@ -314,7 +147,7 @@ export declare const SVG_COMMON_PROPERTIES_CONFIG: {
         process: import("../../../../common").ValueProcessor<import("react-native-svg").FillRule, any>;
     };
     readonly color: (boolean | import("../../../../common").ConfigPropertyAlias<ColorProps>) | {
-        process: import("../../../../common").ValueProcessor<import("react-native").ColorValue, any>;
+        process: import("../../../../common").ValueProcessor<import("node_modules/react-native/types_generated/Libraries/StyleSheet/StyleSheetTypes").____ColorValue_Internal, any>;
     };
 };
 export {};

@@ -1,5 +1,10 @@
 'use strict';
 
+import type {
+  ProcessedBackgroundImageValue,
+  ProcessedColorStop,
+  ProcessedDirection,
+} from './common/style/processors/backgroundImage';
 import {
   unprocessColor,
   unprocessColorsInProps,
@@ -11,7 +16,6 @@ import { ReanimatedModule } from './ReanimatedModule';
 const FLUSH_INTERVAL_MS = 500;
 
 export const PropsRegistryGarbageCollector = {
-  viewsCount: 0,
   viewsMap: new Map<number, IAnimatedComponentInternal>(),
   intervalId: null as NodeJS.Timeout | null,
 
@@ -25,16 +29,14 @@ export const PropsRegistryGarbageCollector = {
       return;
     }
     this.viewsMap.set(viewTag, component);
-    this.viewsCount++;
-    if (this.viewsCount === 1) {
+    if (this.viewsMap.size === 1) {
       this.registerInterval();
     }
   },
 
   unregisterView(viewTag: number) {
-    this.viewsMap.delete(viewTag);
-    this.viewsCount--;
-    if (this.viewsCount === 0) {
+    const deleted = this.viewsMap.delete(viewTag);
+    if (deleted && this.viewsMap.size === 0) {
       this.unregisterInterval();
     }
   },
@@ -66,9 +68,10 @@ export const PropsRegistryGarbageCollector = {
   },
 };
 
-function unprocessProps(props: StyleProps) {
+export function unprocessProps(props: StyleProps) {
   unprocessColorsInProps(props);
   unprocessBoxShadow(props);
+  unprocessBackgroundImage(props);
 }
 
 function unprocessBoxShadow(props: StyleProps) {
@@ -79,4 +82,35 @@ function unprocessBoxShadow(props: StyleProps) {
       color: unprocessColor(boxShadow.color),
     }));
   }
+}
+
+function unprocessBackgroundImage(props: StyleProps) {
+  if (!Array.isArray(props.backgroundImage)) {
+    return;
+  }
+  // @ts-ignore props is readonly
+  props.backgroundImage = (
+    props.backgroundImage as ProcessedBackgroundImageValue[]
+  ).map((backgroundImage) => {
+    const colorStops = backgroundImage.colorStops.map(unprocessColorStop);
+    if (backgroundImage.type === 'linear-gradient') {
+      return {
+        ...backgroundImage,
+        direction: unprocessDirection(backgroundImage.direction),
+        colorStops,
+      };
+    }
+    return { ...backgroundImage, colorStops };
+  });
+}
+
+function unprocessDirection({ type, value }: ProcessedDirection) {
+  return type === 'angle' ? `${value}deg` : value;
+}
+
+function unprocessColorStop({ color, position }: ProcessedColorStop) {
+  return {
+    color: color === null ? null : unprocessColor(color),
+    positions: position === null ? undefined : [position],
+  };
 }

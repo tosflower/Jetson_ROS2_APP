@@ -9,7 +9,7 @@ import type { WorkletRuntime } from '../types';
 
 /** Type of `__workletsModuleProxy` injected with JSI. */
 export interface WorkletsModuleProxy {
-  loadUnpackers(
+  loadUnpackersWithCode(
     valueUnpackerCode: string,
     valueUnpackerLocation: string,
     valueUnpackerSourceMap: string,
@@ -28,6 +28,15 @@ export interface WorkletsModuleProxy {
     remoteFunctionUnpackerCode: string,
     remoteFunctionUnpackerLocation: string,
     remoteFunctionUnpackerSourceMap: string
+  ): void;
+
+  loadUnpackersWithBytecode(
+    valueUnpackerBytecode: ArrayBuffer,
+    synchronizableUnpackerBytecode: ArrayBuffer,
+    customSerializableUnpackerBytecode: ArrayBuffer,
+    shareableHostUnpackerBytecode: ArrayBuffer,
+    shareableGuestUnpackerBytecode: ArrayBuffer,
+    remoteFunctionUnpackerBytecode: ArrayBuffer
   ): void;
 
   createSerializableImport<TValue>(
@@ -99,8 +108,6 @@ export interface WorkletsModuleProxy {
     length: number
   ): SerializableRef<TValue>;
 
-  createSerializableInitializer(obj: object): SerializableRef<object>;
-
   createSerializableNonWorkletFunction<TArgs extends unknown[], TReturn>(
     fun: (...args: TArgs) => TReturn,
     functionName: string | undefined
@@ -138,6 +145,7 @@ export interface WorkletsModuleProxy {
 
   scheduleOnUI<TValue>(
     serializableArrayOfWorklets: SerializableRef<TValue[]>,
+    serializableArrayOfArguments: SerializableRef<unknown[]>,
     scheduleStacks: string[] | undefined
   ): void;
 
@@ -151,7 +159,9 @@ export interface WorkletsModuleProxy {
     initializer: SerializableRef<() => void>,
     useDefaultQueue: boolean,
     customQueue: object | undefined,
-    enableEventLoop: boolean
+    enableEventLoop: boolean,
+    enableLocking: boolean,
+    enableNetworking: boolean
   ): WorkletRuntime;
 
   scheduleOnRuntime<TValue>(
@@ -187,7 +197,10 @@ export interface WorkletsModuleProxy {
 
   reportFatalErrorOnJS(message: string, stack: string, name: string): void;
 
-  createSynchronizable<TValue>(value: TValue): SynchronizableRef<TValue>;
+  createSynchronizable<TValue>(
+    value: SerializableRef<TValue> | TValue,
+    isFixed: boolean
+  ): SynchronizableRef<TValue>;
 
   synchronizableGetDirty<TValue>(
     synchronizableRef: SynchronizableRef<TValue>
@@ -199,7 +212,12 @@ export interface WorkletsModuleProxy {
 
   synchronizableSetBlocking<TValue>(
     synchronizableRef: SynchronizableRef<TValue>,
-    value: SerializableRef<TValue>
+    value: SerializableRef<TValue> | TValue
+  ): void;
+
+  synchronizableSetDirty<TValue extends number | boolean>(
+    synchronizableRef: SynchronizableRef<TValue>,
+    value: TValue
   ): void;
 
   synchronizableLock<TValue>(
@@ -214,6 +232,8 @@ export interface WorkletsModuleProxy {
 
   setDynamicFeatureFlag(name: string, value: boolean): void;
 
+  getCurrentThreadId(): string;
+
   getUIRuntimeHolder(): object;
 
   getUISchedulerHolder(): object;
@@ -225,7 +245,10 @@ export interface WorkletsModuleProxy {
   ): SerializableRef<TValue>;
 }
 
-type InternalMethods = 'loadUnpackers' | 'createSerializableLEGACY';
+type InternalMethods =
+  | 'loadUnpackersWithCode'
+  | 'loadUnpackersWithBytecode'
+  | 'createSerializableLEGACY';
 
 type TurboModulePublic = {
   toggleSlowAnimationsOnUIRuntime(): boolean;

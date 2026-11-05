@@ -11,6 +11,7 @@ export default class CSSTransitionsManager {
   propsWithTransitions = new Set();
   // Indicates whether a CSS transition is currently attached to the view
   hasTransition = false;
+  appliedEventMask = 0;
   constructor(shadowNodeWrapper, viewTag) {
     this.viewTag = viewTag;
     this.shadowNodeWrapper = shadowNodeWrapper;
@@ -20,10 +21,14 @@ export default class CSSTransitionsManager {
    * @returns Whether this update detached a running transition (its props were
    *   removed, or normalized to an empty config, e.g. when duration is 0).
    */
-  update(transitionProperties, nextProps = {}) {
+  update(transitionProperties, nextStyle, eventMask = 0) {
     const transitionConfig = transitionProperties && normalizeCSSTransitionProperties(transitionProperties);
+    const nextProps = nextStyle ?? {};
     const prevProps = this.prevProps;
-    this.prevProps = nextProps;
+    // Only a real style snapshot can serve as a baseline. Keeping the empty
+    // stand-in the caller passes when it builds none would make a later attach
+    // diff every property against undefined, animating it from its default.
+    this.prevProps = nextStyle ?? null;
 
     // If there were no previous props, the view is just mounted so we
     // don't trigger any transitions yet. Also, when there is no transition
@@ -39,8 +44,13 @@ export default class CSSTransitionsManager {
     // Trigger transition for changed properties only
     const config = this.processTransitionConfig(prevProps, nextProps, transitionConfig);
     if (Object.keys(config).length) {
-      runCSSTransition(this.shadowNodeWrapper, config);
+      this.appliedEventMask = eventMask;
+      runCSSTransition(this.shadowNodeWrapper, config, eventMask);
       this.hasTransition = true;
+    } else if (this.hasTransition && eventMask !== this.appliedEventMask) {
+      // Only the mask changed, but the native side still has to learn about it.
+      this.appliedEventMask = eventMask;
+      runCSSTransition(this.shadowNodeWrapper, {}, eventMask);
     }
     return false;
   }
@@ -51,6 +61,7 @@ export default class CSSTransitionsManager {
     unregisterCSSTransition(this.viewTag);
     this.propsWithTransitions.clear();
     this.hasTransition = false;
+    this.appliedEventMask = 0;
   }
   processTransitionConfig(oldProps, newProps, newTransitionConfig) {
     const result = {};
@@ -72,19 +83,20 @@ export default class CSSTransitionsManager {
       }
     }
 
-    // Handle old props; for no longer allowed ones, cancel the transition
-    // immediately; for ones that are allowed but were removed, trigger a transition
-    // to undefined (to the default value for the property).
-    for (const key in oldProps) {
+    // Cancel transitions of properties that are no longer allowed. A property
+    // transitioning to or from `undefined` is a key of neither style snapshot,
+    // so the running transitions are checked instead of the old props.
+    for (const key of this.propsWithTransitions) {
       if (!isAllowedProperty(key)) {
-        if (this.propsWithTransitions.has(key)) {
-          // If a property was transitioned before but is no longer allowed,
-          // we need to clear it up immediately
-          result[key] = null;
-          this.propsWithTransitions.delete(key);
-        }
-      } else if (!(key in newProps)) {
-        // Property was removed from props but is still allowed
+        result[key] = null;
+        this.propsWithTransitions.delete(key);
+      }
+    }
+
+    // Allowed properties removed from props transition to undefined
+    // (the default value for the property).
+    for (const key in oldProps) {
+      if (isAllowedProperty(key) && !(key in newProps)) {
         triggerTransition(key);
       }
     }

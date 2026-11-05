@@ -1,6 +1,6 @@
 'use strict';
 
-import { filterCSSAndStyleProperties } from "../../utils/index.js";
+import { filterCSSAndStyleProperties, splitCSSCallbacks } from "../../utils/index.js";
 import { configureWebCSS } from "../domUtils.js";
 import CSSAnimationsManager from "./CSSAnimationsManager.js";
 import CSSPseudoSelectorsManager from "./CSSPseudoSelectorsManager.js";
@@ -14,9 +14,10 @@ export default class CSSManager {
     this.transitionsManager = new CSSTransitionsManager(element);
     this.pseudoSelectorsManager = new CSSPseudoSelectorsManager(element, svgElementTag);
   }
-  update(style) {
-    const [animationProperties, transitionProperties, pseudoStylesBySelector, transitionCallbacks] = filterCSSAndStyleProperties(style);
-    this.animationsManager.update(animationProperties);
+  update(style, props = {}) {
+    const [animationProperties, transitionProperties, pseudoStylesBySelector] = filterCSSAndStyleProperties(style);
+    const [animationCallbacks, transitionCallbacks] = splitCSSCallbacks(props);
+    this.animationsManager.update(animationProperties, animationCallbacks);
     this.transitionsManager.update(transitionProperties, transitionCallbacks);
     this.pseudoSelectorsManager.update(pseudoStylesBySelector);
   }

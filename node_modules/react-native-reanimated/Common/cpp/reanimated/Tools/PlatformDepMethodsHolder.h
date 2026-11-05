@@ -1,12 +1,13 @@
 #pragma once
 
-#include <reanimated/CSS/core/transition/CSSPlatformTransitionProxy.h>
+#include <reanimated/CSS/core/CSSPlatformAnimationFactory.h>
+#include <reanimated/CSS/core/transition/CSSPlatformTransitionBackend.h>
 #include <reanimated/PseudoStyles/PseudoSelector.h>
 
 #include <folly/dynamic.h>
 #include <jsi/jsi.h>
+#include <react/renderer/core/Props.h>
 #include <react/renderer/core/ReactPrimitives.h>
-#include <reanimated/CSS/core/CSSPlatformAnimationFactory.h>
 
 #include <memory>
 #include <string>
@@ -47,7 +48,8 @@ using KeyboardEventSubscribeFunction = std::function<int(std::function<void(int,
 using KeyboardEventUnsubscribeFunction = std::function<void(int)>;
 using MaybeFlushUIUpdatesQueueFunction = std::function<void()>;
 
-using ForceScreenSnapshotFunction = std::function<void(Tag tag)>;
+using ForceScreenSnapshotFunction = std::function<bool(Tag tag)>;
+using ReadMountedViewPropsFunction = std::function<Props::Shared(Tag tag)>;
 
 using PlatformAttachPseudoSelectorFunction = std::function<void(Tag, PseudoSelector, std::function<void(bool)>)>;
 using PlatformDetachPseudoSelectorFunction = std::function<void(Tag, PseudoSelector)>;
@@ -59,6 +61,7 @@ struct PlatformDepMethodsHolder {
 #endif // ANDROID
 #ifdef __APPLE__
   ForceScreenSnapshotFunction forceScreenSnapshotFunction;
+  ReadMountedViewPropsFunction readMountedViewPropsFunction;
 #endif
   SynchronouslyUpdateUIPropsFunction synchronouslyUpdateUIPropsFunction;
   GetAnimationTimestampFunction getAnimationTimestamp;
@@ -70,12 +73,9 @@ struct PlatformDepMethodsHolder {
   MaybeFlushUIUpdatesQueueFunction maybeFlushUIUpdatesQueueFunction;
   PlatformAttachPseudoSelectorFunction attachPseudoSelector;
   PlatformDetachPseudoSelectorFunction detachPseudoSelector;
-  css::CSSCanRoutePropertyFunction cssCanRouteProperty;
-  css::CSSApplyTransitionJSIFunction cssApplyTransitionJSI;
-  css::CSSApplyTransitionDynamicFunction cssApplyTransitionDynamic;
-  css::CSSRemoveTransitionFunction cssRemoveTransition;
-  // Last so platform initializers that don't supply it (iOS, Android today)
-  // can omit it and rely on value-init (= null shared_ptr).
+  // Optional and last, so a platform without them just omits them; null keeps
+  // CSS transitions and animations on the C++ loop.
+  std::shared_ptr<css::CSSPlatformTransitionBackend> platformTransitionBackend;
   std::shared_ptr<css::CSSPlatformAnimationFactory> platformAnimationFactory;
 };
 

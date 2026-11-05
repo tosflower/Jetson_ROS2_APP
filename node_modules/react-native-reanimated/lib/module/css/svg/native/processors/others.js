@@ -11,7 +11,7 @@ export const processNumberArray = value => {
   } else if (typeof value === 'number') {
     return [value];
   } else if (typeof value === 'string') {
-    return value.trim().replace(commaReg, ' ').split(spaceReg);
+    return value.replace(commaReg, ' ').split(spaceReg);
   } else {
     return [];
   }

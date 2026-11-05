@@ -12,6 +12,7 @@ import type {PlatformConfig} from '../AnimatedPlatformConfig';
 import type AnimatedValue from '../nodes/AnimatedValue';
 import type {AnimationConfig, EndCallback} from './Animation';
 
+import {getCurrentAnimationTime} from '../AnimationTimingUtils';
 import Animation from './Animation';
 
 export type DecayAnimationConfig = Readonly<{
@@ -82,16 +83,17 @@ export default class DecayAnimation extends Animation {
     this._lastValue = fromValue;
     this._fromValue = fromValue;
     this._onUpdate = onUpdate;
-    this._startTime = Date.now();
+    this._startTime = getCurrentAnimationTime();
 
     const useNativeDriver = this.__startAnimationIfNative(animatedValue);
+    // TODO: T274006331 - Remove js-only animation once shared backend is fully rolled out
     if (!useNativeDriver) {
       this._animationFrame = requestAnimationFrame(() => this.onUpdate());
     }
   }
 
   onUpdate(): void {
-    const now = Date.now();
+    const now = getCurrentAnimationTime();
 
     const value =
       this._fromValue +

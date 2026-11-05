@@ -5,6 +5,7 @@ import { ReanimatedModule } from '../ReanimatedModule';
 /** @knipIgnore */
 export const DynamicFlags = {
   EXAMPLE_DYNAMIC_FLAG: true,
+  TRACK_SYNCHRONOUS_PROPS_IN_LAYOUT_ANIMATIONS: false,
   init() {
     Object.keys(DynamicFlags).forEach(key => {
       if (key !== 'init' && key !== 'setFlag' && key !== 'getFlag') {

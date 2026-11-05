@@ -1,5 +1,6 @@
 import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
+import { useKeepAwake } from 'expo-keep-awake';
 import { useEffect } from 'react';
 import { Appearance, StatusBar, useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -9,10 +10,16 @@ import { PhoneSensorsProvider, usePhoneSensors } from '@/providers/phone-sensors
 import { RosbridgeProvider, useRosbridge } from '@/providers/rosbridge-provider';
 import { useThemeColors } from '@/ui/tokens';
 
-function PhoneTelemetryStartup(): null {
+function TelemetryKeepAwake(): null {
+  // Expo Go 使用前台定位；采集期间防止自动锁屏，不宣称支持手动锁屏后台定位。
+  useKeepAwake('phone-telemetry', { suppressDeactivateWarnings: true });
+  return null;
+}
+
+function PhoneTelemetryStartup(): React.JSX.Element | null {
   const { sessionReady } = useGateway();
   const { connect, disconnect } = useRosbridge();
-  const { startAll } = usePhoneSensors();
+  const { startAll, gpsEnabled } = usePhoneSensors();
   useEffect(() => {
     // 切换网关时先断开旧开发板的 ROS 连接，避免手机数据继续发往旧地址。
     if (!sessionReady) { disconnect(); return; }
@@ -20,7 +27,7 @@ function PhoneTelemetryStartup(): null {
     connect();
     startAll();
   }, [connect, disconnect, sessionReady, startAll]);
-  return null;
+  return sessionReady || gpsEnabled ? <TelemetryKeepAwake /> : null;
 }
 
 export default function RootLayout(): React.JSX.Element {

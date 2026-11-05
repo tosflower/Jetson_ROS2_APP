@@ -9,7 +9,7 @@ export function installSynchronizableUnpacker() {
 
   // TODO: Add cache for synchronizables.
   const serializer = globalThis.__RUNTIME_KIND === 1 || globalThis._WORKLETS_BUNDLE_MODE_ENABLED ? require('./serializable').createSerializable : value => globalThis.__serializer(value);
-  function synchronizableUnpacker(synchronizableRef) {
+  function synchronizableUnpacker(synchronizableRef, isFixed) {
     const synchronizable = synchronizableRef;
     const proxy = globalThis.__workletsModuleProxy;
     synchronizable.__synchronizableRef = true;
@@ -19,19 +19,27 @@ export function installSynchronizableUnpacker() {
     synchronizable.getBlocking = () => {
       return proxy.synchronizableGetBlocking(synchronizable);
     };
+    const setBlockingValue = newValue => {
+      proxy.synchronizableSetBlocking(synchronizable, isFixed ? newValue : serializer(newValue));
+    };
     synchronizable.setBlocking = valueOrFunction => {
-      let newValue;
       if (typeof valueOrFunction === 'function') {
         const func = valueOrFunction;
         synchronizable.lock();
-        const prev = synchronizable.getBlocking();
-        newValue = func(prev);
-        proxy.synchronizableSetBlocking(synchronizable, serializer(newValue));
-        synchronizable.unlock();
+        if (__DEV__) {
+          try {
+            const prev = synchronizable.getBlocking();
+            setBlockingValue(func(prev));
+          } finally {
+            synchronizable.unlock();
+          }
+        } else {
+          const prev = synchronizable.getBlocking();
+          setBlockingValue(func(prev));
+          synchronizable.unlock();
+        }
       } else {
-        const value = valueOrFunction;
-        newValue = value;
-        proxy.synchronizableSetBlocking(synchronizable, serializer(newValue));
+        setBlockingValue(valueOrFunction);
       }
     };
     synchronizable.lock = () => {
@@ -40,6 +48,11 @@ export function installSynchronizableUnpacker() {
     synchronizable.unlock = () => {
       proxy.synchronizableUnlock(synchronizable);
     };
+    if (isFixed) {
+      synchronizable.setDirty = value => {
+        proxy.synchronizableSetDirty(synchronizable, value);
+      };
+    }
     return synchronizable;
   }
   globalThis.__synchronizableUnpacker = synchronizableUnpacker;

@@ -5,26 +5,34 @@ import { NATIVE_PSEUDO_SELECTORS } from "../../constants/index.js";
 import { deepEqual } from "../../utils/index.js";
 import { normalizeCSSTransitionProperties } from "../normalization/index.js";
 import { registerPseudoStyles, unregisterPseudoStyles } from "../proxy.js";
+import { validatePseudoStyles } from './validatePseudoStyles';
 export default class CSSPseudoStylesManager {
   prevPseudoStylesBySelector = null;
   prevTransitionProperties = null;
   isRegistered = false;
-  constructor(shadowNodeWrapper, viewTag, propsBuilder) {
+  constructor(shadowNodeWrapper, viewTag, propsBuilder, componentName) {
     this.shadowNodeWrapper = shadowNodeWrapper;
     this.viewTag = viewTag;
     this.propsBuilder = propsBuilder;
+    this.componentName = componentName;
   }
   update(pseudoStylesBySelector, transitionProperties) {
     if (deepEqual(pseudoStylesBySelector, this.prevPseudoStylesBySelector) && deepEqual(transitionProperties, this.prevTransitionProperties)) {
       return;
     }
+    const removedSelector = hasRemovedNativeSelector(this.prevPseudoStylesBySelector, pseudoStylesBySelector);
     this.prevPseudoStylesBySelector = pseudoStylesBySelector;
     this.prevTransitionProperties = transitionProperties;
-    if (this.isRegistered) {
-      this.detach();
-    }
     if (!pseudoStylesBySelector) {
+      if (this.isRegistered) {
+        this.detach();
+      }
       return;
+    }
+
+    // Only a selector removal detaches; re-renders keep the registration alive.
+    if (this.isRegistered && removedSelector) {
+      this.detach();
     }
     const normalizedTransition = transitionProperties ? normalizeCSSTransitionProperties(transitionProperties) : null;
     const mergedDefaultStyle = {};
@@ -52,6 +60,9 @@ export default class CSSPseudoStylesManager {
       selectors.push(this.buildPseudoStyleEntry(selector, selectorStyle, builtDefaultStyle, normalizedTransition));
     }
     if (selectors.length > 0) {
+      if (__DEV__) {
+        validatePseudoStyles(pseudoStylesBySelector, mergedDefaultStyle, this.componentName);
+      }
       registerPseudoStyles(this.shadowNodeWrapper, {
         defaultStyle: builtDefaultStyle,
         selectors
@@ -92,6 +103,13 @@ export default class CSSPseudoStylesManager {
       transition
     };
   }
+}
+function hasRemovedNativeSelector(prev, next) {
+  if (!prev) {
+    return false;
+  }
+  const nextKeys = next ? new Set(Object.keys(next)) : new Set();
+  return Object.keys(prev).some(selector => NATIVE_PSEUDO_SELECTORS.has(selector) && !nextKeys.has(selector));
 }
 function nullifyUndefinedValues(style) {
   for (const key in style) {

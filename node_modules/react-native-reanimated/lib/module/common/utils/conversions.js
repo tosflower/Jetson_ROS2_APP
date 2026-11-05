@@ -10,6 +10,8 @@ export function kebabizeCamelCase(property) {
   return property.replace(/[A-Z]/g, x => `-${x.toLowerCase()}`);
 }
 export function camelizeKebabCase(property) {
+  'worklet';
+
   return property.replace(/-./g, x => x[1].toUpperCase());
 }
 //# sourceMappingURL=conversions.js.map

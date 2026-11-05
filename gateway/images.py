@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import queue
 import threading
 import time
+import uuid
 from typing import Any, Dict, Optional, Tuple
 
 from rclpy.node import Node
@@ -43,6 +44,10 @@ class ImageChannel:
         self.lock = threading.Lock()
         self.frame: Optional[FrameSnapshot] = None
         self.sequence = 0
+        # 世代与实际 ROS 订阅对象同生共灭；共享客户端使用同一个世代。
+        self.epoch = uuid.uuid4().hex
+        self.callback_count = 0
+        self.conversion_errors = 0
         self.last_time: Optional[float] = None
         self.fps = 0.0
         self.error = ""
@@ -60,6 +65,8 @@ class ImageChannel:
     def on_image(self, message: Any) -> None:
         """原始图像转 BGR8 后编码 JPEG；压缩 JPEG 直接透传，PNG 解码后转 JPEG。"""
         start = time.monotonic() * 1000
+        with self.lock:
+            self.callback_count += 1
         metrics: Dict[str, float] = {}
         try:
             if self.bridge is not None:
@@ -75,7 +82,7 @@ class ImageChannel:
             else:
                 jpeg = bytes(message.data)
                 if not jpeg:
-                    return
+                    raise ValueError("压缩图像内容为空")
                 if not jpeg.startswith(b"\xff\xd8"):
                     import cv2
                     import numpy as np
@@ -100,7 +107,15 @@ class ImageChannel:
                 self.frame = FrameSnapshot(self.sequence, jpeg, self.fps, now, metrics)
         except Exception as error:
             with self.lock:
+                self.conversion_errors += 1
                 self.error = "图像转换失败：%s" % error
+
+    def diagnostic_snapshot(self) -> Dict[str, Any]:
+        """计数覆盖当前订阅世代；失败计数保留，避免被后续正常帧清除。"""
+        with self.lock:
+            return {"subscription_epoch": self.epoch, "callbacks": self.callback_count,
+                    "generated": self.sequence, "conversion_errors": self.conversion_errors,
+                    "last_error": self.error}
 
     def snapshot(self) -> Tuple[Optional[FrameSnapshot], str]:
         with self.lock:

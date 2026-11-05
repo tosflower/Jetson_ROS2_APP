@@ -1,7 +1,7 @@
 'use strict';
 
 import { isSharedValue } from "../isSharedValue.js";
-import { startMapper, stopMapper } from "../mappers.js";
+import { startMapper, stopMapper } from '../mappers';
 import { updateProps } from "../updateProps/index.js";
 import { makeViewDescriptorsSet } from "../ViewDescriptorsSet.js";
 import { flattenArray } from "./utils.js";
@@ -11,12 +11,12 @@ function isInlineStyleTransform(transform) {
   }
   return transform.some(t => hasInlineStyles(t));
 }
-function inlinePropsHasChanged(styles1, styles2) {
-  if (Object.keys(styles1).length !== Object.keys(styles2).length) {
+function inlinePropsHasChanged(props1, props2) {
+  if (Object.keys(props1).length !== Object.keys(props2).length) {
     return true;
   }
-  for (const key of Object.keys(styles1)) {
-    if (styles1[key] !== styles2[key]) {
+  for (const key of Object.keys(props1)) {
+    if (props1[key] !== props2[key]) {
       return true;
     }
   }
@@ -41,7 +41,8 @@ function getInlinePropsUpdate(styleValue) {
   return styleValue;
 }
 function extractSharedValuesMapFromProps(props) {
-  const inlineProps = {};
+  const inlineStyleProps = {};
+  const inlineTopLevelProps = {};
   for (const key in props) {
     const value = props[key];
     if (key === 'style') {
@@ -55,17 +56,20 @@ function extractSharedValuesMapFromProps(props) {
         }
         for (const [styleKey, styleValue] of Object.entries(style)) {
           if (isSharedValue(styleValue)) {
-            inlineProps[styleKey] = styleValue;
+            inlineStyleProps[styleKey] = styleValue;
           } else if (styleKey === 'transform' && isInlineStyleTransform(styleValue)) {
-            inlineProps[styleKey] = styleValue;
+            inlineStyleProps[styleKey] = styleValue;
           }
         }
       });
     } else if (isSharedValue(value)) {
-      inlineProps[key] = value;
+      inlineTopLevelProps[key] = value;
     }
   }
-  return inlineProps;
+  return {
+    inlineStyleProps,
+    inlineTopLevelProps
+  };
 }
 export function hasInlineStyles(style) {
   if (!style) {
@@ -91,10 +95,14 @@ export function getInlineStyle(style, isFirstRender) {
 export class InlinePropManager {
   _inlinePropsViewDescriptors = null;
   _inlinePropsMapperId = null;
-  _inlineProps = {};
+  _inlineStyleProps = {};
+  _inlineTopLevelProps = {};
   attachInlineProps(animatedComponent, viewInfo) {
-    const newInlineProps = extractSharedValuesMapFromProps(animatedComponent.props);
-    const hasChanged = inlinePropsHasChanged(newInlineProps, this._inlineProps);
+    const {
+      inlineStyleProps,
+      inlineTopLevelProps
+    } = extractSharedValuesMapFromProps(animatedComponent.props);
+    const hasChanged = inlinePropsHasChanged(inlineStyleProps, this._inlineStyleProps) || inlinePropsHasChanged(inlineTopLevelProps, this._inlineTopLevelProps);
     if (hasChanged) {
       if (!this._inlinePropsViewDescriptors) {
         this._inlinePropsViewDescriptors = makeViewDescriptorsSet();
@@ -108,26 +116,42 @@ export class InlinePropManager {
         });
       }
       const shareableViewDescriptors = this._inlinePropsViewDescriptors.shareableViewDescriptors;
+      const hasInlineStyleProps = Object.keys(inlineStyleProps).length > 0;
+      const hasInlineTopLevelProps = Object.keys(inlineTopLevelProps).length > 0;
+      const hasInlineProps = hasInlineStyleProps || hasInlineTopLevelProps;
       const updaterFunction = () => {
         'worklet';
 
-        const update = getInlinePropsUpdate(newInlineProps);
-        updateProps(shareableViewDescriptors, update);
+        if (hasInlineStyleProps) {
+          updateProps(shareableViewDescriptors, getInlinePropsUpdate(inlineStyleProps));
+        }
+        if (hasInlineTopLevelProps) {
+          // Shared values passed directly as top-level props are animated
+          // props, not styles — process them like `useAnimatedProps` updates
+          // (in particular, don't run them through the style props builder,
+          // which drops non-style keys).
+          updateProps(shareableViewDescriptors, getInlinePropsUpdate(inlineTopLevelProps), true);
+        }
       };
-      this._inlineProps = newInlineProps;
+      this._inlineStyleProps = inlineStyleProps;
+      this._inlineTopLevelProps = inlineTopLevelProps;
       if (this._inlinePropsMapperId) {
         stopMapper(this._inlinePropsMapperId);
       }
       this._inlinePropsMapperId = null;
-      if (Object.keys(newInlineProps).length) {
-        this._inlinePropsMapperId = startMapper(updaterFunction, Object.values(newInlineProps));
+      if (hasInlineProps) {
+        this._inlinePropsMapperId = startMapper(updaterFunction, [inlineStyleProps, inlineTopLevelProps]);
       }
     }
   }
   detachInlineProps() {
     if (this._inlinePropsMapperId) {
       stopMapper(this._inlinePropsMapperId);
+      this._inlinePropsMapperId = null;
     }
+    this._inlinePropsViewDescriptors = null;
+    this._inlineStyleProps = {};
+    this._inlineTopLevelProps = {};
   }
 }
 //# sourceMappingURL=InlinePropManager.js.map

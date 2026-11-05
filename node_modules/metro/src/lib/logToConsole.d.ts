@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  *
  * @noformat
- * @generated SignedSource<<95cf7d414507e2035210d06882d858b3>>
+ * @generated SignedSource<<aacbedf836235832348ec1dec691e782>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/lib/logToConsole.js
@@ -16,11 +16,6 @@
 
 import type {Terminal} from 'metro-core';
 
-declare const $$EXPORT_DEFAULT_DECLARATION$$: (
-  terminal: Terminal,
-  level: string,
-  ...data: Array<unknown>
-) => void;
-declare type $$EXPORT_DEFAULT_DECLARATION$$ =
-  typeof $$EXPORT_DEFAULT_DECLARATION$$;
+declare const $$EXPORT_DEFAULT_DECLARATION$$: (terminal: Terminal, level: string, ...data: Array<unknown>) => void;
+declare type $$EXPORT_DEFAULT_DECLARATION$$ = typeof $$EXPORT_DEFAULT_DECLARATION$$;
 export default $$EXPORT_DEFAULT_DECLARATION$$;

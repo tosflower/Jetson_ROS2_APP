@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<6f0cfa5c118fa3cbe65acee044b8c927>>
+ * @generated SignedSource<<85de7e7d8df567af8ee14c290455b1b2>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/lib/bundleProgressUtils.js
@@ -26,8 +26,4 @@
  * - The ratio is capped at 0.999 to ensure we don't display 100% until done.
  * - If previousRatio is provided, the ratio will not go backwards.
  */
-export declare function calculateBundleProgressRatio(
-  transformedFileCount: number,
-  totalFileCount: number,
-  previousRatio?: number,
-): number;
+export declare function calculateBundleProgressRatio(transformedFileCount: number, totalFileCount: number, previousRatio?: number): number;

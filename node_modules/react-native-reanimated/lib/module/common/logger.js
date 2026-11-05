@@ -4,6 +4,7 @@
 const PREFIX = '[Reanimated]';
 const DOCS_URL = 'https://docs.swmansion.com/react-native-reanimated/docs/debugging/logger-configuration';
 const DOCS_REFERENCE = `If you don't want to see this message, you can disable the \`strict\` mode. Refer to:\n${DOCS_URL} for more details.`;
+const loggedMessages = new Set();
 export let ReanimatedLogLevel = /*#__PURE__*/function (ReanimatedLogLevel) {
   ReanimatedLogLevel[ReanimatedLogLevel["warn"] = 1] = "warn";
   ReanimatedLogLevel[ReanimatedLogLevel["error"] = 2] = "error";
@@ -50,15 +51,20 @@ export function getLoggerConfig() {
  *   - Level: The minimum log level to display.
  *   - Strict: Whether to log warnings and errors that are not strict. Defaults to
  *     false.
+ *
+ * @param onLog - An optional callback invoked for every log that passes the
+ *   `level` and `strict` filters, in addition to the default console output.
+ *   Omitting it clears a previously registered callback.
  */
-export function updateLoggerConfig(currentConfig, options) {
+export function updateLoggerConfig(currentConfig, options, onLog) {
   'worklet';
 
   global.__reanimatedLoggerConfig = {
     ...currentConfig,
-    // Don't reuse previous level and strict values from the current config
+    // Don't reuse previous level, strict and onLog values from the current config
     level: options?.level ?? DEFAULT_LOGGER_CONFIG.level,
-    strict: options?.strict ?? DEFAULT_LOGGER_CONFIG.strict
+    strict: options?.strict ?? DEFAULT_LOGGER_CONFIG.strict,
+    onLog
   };
 }
 function handleLog(level, message, options) {
@@ -76,16 +82,33 @@ function handleLog(level, message, options) {
   if (options.strict) {
     message += `\n\n${DOCS_REFERENCE}`;
   }
-  config.logFunction({
+  const data = {
     level,
     message: `${PREFIX} ${message}`
-  });
+  };
+  config.logFunction(data);
+  config.onLog?.(data);
 }
 export const logger = {
   warn(message, options = {}) {
     'worklet';
 
     handleLog(ReanimatedLogLevel.warn, message, options);
+  },
+  warnOnce(message, level) {
+    'worklet';
+
+    if (getLoggerConfig().level > ReanimatedLogLevel.warn) {
+      return;
+    }
+    const frames = new Error().stack?.split('\n').map(line => line.trim()).filter(line => line.startsWith('at ') || line.includes('@'));
+    const frame = Number.isInteger(level) && level >= 0 ? frames?.[level + 1] : undefined;
+    const key = JSON.stringify([message, frame ?? null]);
+    if (loggedMessages.has(key)) {
+      return;
+    }
+    loggedMessages.add(key);
+    handleLog(ReanimatedLogLevel.warn, message, {});
   },
   error(message, options = {}) {
     'worklet';

@@ -7,7 +7,10 @@
 
 #pragma once
 
+#include <react/cxxstableapi/FrameworksGuard.h>
+
 #include <ReactCommon/RuntimeExecutor.h>
+#include <jsi/hermes-interfaces.h>
 #include <react/performance/timeline/PerformanceEntryReporter.h>
 #include <react/renderer/consistency/ShadowTreeRevisionConsistencyManager.h>
 #include <react/renderer/runtimescheduler/SchedulerPriorityUtils.h>
@@ -15,6 +18,7 @@
 #include <react/timing/primitives.h>
 #include "RuntimeSchedulerEventTimingDelegate.h"
 #include "RuntimeSchedulerIntersectionObserverDelegate.h"
+#include "RuntimeSchedulerResizeObserverDelegate.h"
 
 namespace facebook::react {
 
@@ -27,9 +31,12 @@ extern const char RuntimeSchedulerKey[];
 
 // This is a temporary abstract class for RuntimeScheduler forks to implement
 // (and use them interchangeably).
-class RuntimeSchedulerBase {
+class RuntimeSchedulerBase : public facebook::hermes::IEventLoopControl {
  public:
   virtual ~RuntimeSchedulerBase() = default;
+
+  using facebook::hermes::IEventLoopControl::scheduleTask;
+
   virtual void scheduleWork(RawCallback &&callback) noexcept = 0;
   virtual void executeNowOnTheSameThread(RawCallback &&callback) = 0;
   virtual std::shared_ptr<Task> scheduleTask(SchedulerPriority priority, jsi::Function &&callback) noexcept = 0;
@@ -51,11 +58,12 @@ class RuntimeSchedulerBase {
   virtual void setEventTimingDelegate(RuntimeSchedulerEventTimingDelegate *eventTimingDelegate) = 0;
   virtual void setIntersectionObserverDelegate(
       RuntimeSchedulerIntersectionObserverDelegate *intersectionObserverDelegate) = 0;
+  virtual void setResizeObserverDelegate(RuntimeSchedulerResizeObserverDelegate *resizeObserverDelegate) = 0;
 };
 
 // This is a proxy for RuntimeScheduler implementation, which will be selected
 // at runtime based on a feature flag.
-class RuntimeScheduler final : RuntimeSchedulerBase {
+class RuntimeScheduler final : public RuntimeSchedulerBase {
  public:
   explicit RuntimeScheduler(
       RuntimeExecutor runtimeExecutor,
@@ -75,6 +83,13 @@ class RuntimeScheduler final : RuntimeSchedulerBase {
   RuntimeScheduler &operator=(RuntimeScheduler &&) = delete;
 
   void scheduleWork(RawCallback &&callback) noexcept override;
+
+  /// IEventLoopControl implementation, forwarded to the underlying fork.
+  void scheduleTask(const std::function<void()> &task) override;
+
+  uint64_t registerTaskQueueSource() override;
+
+  void unregisterTaskQueueSource(uint64_t sourceId) override;
 
   /*
    * Grants access to the runtime synchronously on the caller's thread.
@@ -155,6 +170,8 @@ class RuntimeScheduler final : RuntimeSchedulerBase {
 
   void setIntersectionObserverDelegate(
       RuntimeSchedulerIntersectionObserverDelegate *intersectionObserverDelegate) override;
+
+  void setResizeObserverDelegate(RuntimeSchedulerResizeObserverDelegate *resizeObserverDelegate) override;
 
  private:
   // Actual implementation, stored as a unique pointer to simplify memory

@@ -17,6 +17,7 @@
 #include "WeakList.h"
 
 #include <functional>
+#include <mutex>
 #include <optional>
 #include <set>
 #include <string>
@@ -251,13 +252,6 @@ class HostTargetController final {
   HostTargetDelegate &getDelegate();
 
   bool hasInstance() const;
-
-  /**
-   * [Experimental] Install a runtime binding subscribing to new Performance
-   * Issues, which we broadcast to the V2 Perf Monitor overlay via
-   * \ref HostTargetDelegate::unstable_onPerfIssueAdded.
-   */
-  void installPerfIssuesBinding();
 
   /**
    * Increments the target's pause overlay counter. The counter represents the

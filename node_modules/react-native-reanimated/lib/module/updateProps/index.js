@@ -1,5 +1,4 @@
 'use strict';
 
-export { default as updateProps } from "./updateProps.js";
-export { updatePropsJestWrapper } from "./updateProps.js";
+export { default as updateProps } from './updateProps';
 //# sourceMappingURL=index.js.map

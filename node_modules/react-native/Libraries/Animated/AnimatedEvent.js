@@ -21,9 +21,7 @@ import AnimatedValueXY from './nodes/AnimatedValueXY';
 import invariant from 'invariant';
 
 export type Mapping =
-  | {[key: string]: Mapping, ...}
-  | AnimatedValue
-  | AnimatedValueXY;
+  {[key: string]: Mapping, ...} | AnimatedValue | AnimatedValueXY;
 export type EventConfig<T> = {
   listener?: ?(NativeSyntheticEvent<T>) => unknown,
   useNativeDriver: boolean,
@@ -199,7 +197,7 @@ export class AnimatedEvent {
     this._attachedEvent && this._attachedEvent.detach();
   }
 
-  __getHandler(): any | ((...args: any) => void) {
+  __getHandler(): (...args: any) => void {
     if (this.__isNative) {
       if (__DEV__) {
         let validatedMapping = false;

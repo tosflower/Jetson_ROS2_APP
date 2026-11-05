@@ -28,6 +28,30 @@ folly::dynamic UpdatesRegistry::get(const Tag tag) const {
   return it->second.second;
 }
 
+void UpdatesRegistry::mergeInto(const Tag tag, folly::dynamic &target) const {
+  react_native_assert(UpdatesRegistryManager::isLockedByCurrentThread());
+  auto it = updatesRegistry_.find(tag);
+  if (it == updatesRegistry_.cend()) {
+    return;
+  }
+  target.update(it->second.second);
+}
+
+#ifdef ANDROID
+void UpdatesRegistry::mergeInto(const Tag tag, folly::dynamic &target, const PropNamePredicate isIncluded) const {
+  react_native_assert(UpdatesRegistryManager::isLockedByCurrentThread());
+  auto it = updatesRegistry_.find(tag);
+  if (it == updatesRegistry_.cend()) {
+    return;
+  }
+  for (const auto &[name, value] : it->second.second.items()) {
+    if (isIncluded(name.getString())) {
+      target[name] = value;
+    }
+  }
+}
+#endif // ANDROID
+
 void UpdatesRegistry::remove(const Tag tag) {
   react_native_assert(UpdatesRegistryManager::isLockedByCurrentThread());
   removeTag(tag);
@@ -50,7 +74,6 @@ void UpdatesRegistry::flush(UpdatesBatch &updatesBatch) {
   }
 }
 
-#if REACT_NATIVE_VERSION_MINOR >= 85
 void UpdatesRegistry::flushUpdates(UpdatesBatchAnimatedProps &updatesBatch) {
   react_native_assert(UpdatesRegistryManager::isLockedByCurrentThread());
   flush(updatesBatch);
@@ -160,7 +183,6 @@ void UpdatesRegistry::addJSIPropsToAnimatedPropsBatch(
   animatedPropsBuilder_.storeJSI(rt, props);
   addAnimatedPropsToBatch(shadowNodeFamily, animatedPropsBuilder_.get(), hasLayoutUpdates);
 }
-#endif
 
 UpdatesBatch UpdatesRegistry::getPendingUpdates() {
   react_native_assert(UpdatesRegistryManager::isLockedByCurrentThread());

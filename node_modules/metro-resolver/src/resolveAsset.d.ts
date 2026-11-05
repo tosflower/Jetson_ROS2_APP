@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<ee7db612dfb499aad9673000da2af870>>
+ * @generated SignedSource<<19ebd4ae3e4945258f9c3fbd8878a99d>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-resolver/src/resolveAsset.js
@@ -21,8 +21,5 @@ import type {AssetResolution, ResolutionContext} from './types';
  * expanding asset resolutions (e.g. `icon@2x.png`). Users may override this
  * behaviour via `context.resolveAsset`.
  */
-declare function resolveAsset(
-  context: ResolutionContext,
-  filePath: string,
-): AssetResolution | null;
+declare function resolveAsset(context: ResolutionContext, filePath: string): AssetResolution | null;
 export default resolveAsset;

@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<62d8c1b54e47245bd0ef831be2b7049d>>
+ * @generated SignedSource<<406a4e912114aee8c49788eecccd6a4d>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-source-map/src/Consumer/index.js
@@ -18,6 +18,5 @@
 import DelegatingConsumer from './DelegatingConsumer';
 
 declare const $$EXPORT_DEFAULT_DECLARATION$$: typeof DelegatingConsumer;
-declare type $$EXPORT_DEFAULT_DECLARATION$$ =
-  typeof $$EXPORT_DEFAULT_DECLARATION$$;
+declare type $$EXPORT_DEFAULT_DECLARATION$$ = typeof $$EXPORT_DEFAULT_DECLARATION$$;
 export default $$EXPORT_DEFAULT_DECLARATION$$;

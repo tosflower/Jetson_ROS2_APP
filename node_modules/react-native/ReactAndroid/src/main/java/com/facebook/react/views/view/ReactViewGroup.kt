@@ -60,7 +60,6 @@ import com.facebook.react.uimanager.ReactClippingViewGroup
 import com.facebook.react.uimanager.ReactClippingViewGroupHelper.calculateClippingRect
 import com.facebook.react.uimanager.ReactOverflowViewWithInset
 import com.facebook.react.uimanager.ReactPointerEventsView
-import com.facebook.react.uimanager.ReactZIndexedViewGroup
 import com.facebook.react.uimanager.style.BorderRadiusProp
 import com.facebook.react.uimanager.style.BorderStyle
 import com.facebook.react.uimanager.style.LogicalEdge
@@ -83,7 +82,6 @@ public open class ReactViewGroup public constructor(context: Context?) :
     ReactClippingViewGroup,
     ReactPointerEventsView,
     ReactHitSlopView,
-    ReactZIndexedViewGroup,
     ReactOverflowViewWithInset {
 
   public override val overflowInset: Rect = Rect()
@@ -129,7 +127,7 @@ public open class ReactViewGroup public constructor(context: Context?) :
    * override all possible add methods for [ViewGroup] so that we can control this process whenever
    * the option is set. We also override [ViewGroup#getChildAt] and [ViewGroup#getChildCount] so
    * those methods may return views that are not attached. This is risky but allows us to perform a
-   * correct cleanup in `NativeViewHierarchyManager`.
+   * correct cleanup.
    */
   internal var _removeClippedSubviews = false
 
@@ -142,6 +140,10 @@ public open class ReactViewGroup public constructor(context: Context?) :
 
   public override var hitSlopRect: Rect? = null
   public override var pointerEvents: PointerEvents = PointerEvents.AUTO
+    set(value) {
+      field = value
+      ImportantForInteractionHelper.setImportantForInteraction(this, value, _overflow)
+    }
 
   public var axOrderList: MutableList<String>? = null
 
@@ -177,9 +179,9 @@ public open class ReactViewGroup public constructor(context: Context?) :
     allChildrenCount = 0
     clippingRect = null
     hitSlopRect = null
+    // pointerEvents setter reads _overflow, so _overflow must be assigned first.
     _overflow = Overflow.VISIBLE
     pointerEvents = PointerEvents.AUTO
-    ImportantForInteractionHelper.setImportantForInteraction(this, pointerEvents)
     childrenLayoutChangeListener = null
     onInterceptTouchEventListener = null
     needsOffscreenAlphaCompositing = false
@@ -240,7 +242,7 @@ public open class ReactViewGroup public constructor(context: Context?) :
   @SuppressLint("MissingSuperCall")
   override fun requestLayout() {
     // No-op, terminate `requestLayout` here, UIManager handles laying out children and
-    // `layout` is called on all RN-managed views by `NativeViewHierarchyManager`
+    // `layout` is called on all RN-managed views by the UIManager
   }
 
   @TargetApi(23)
@@ -257,7 +259,7 @@ public open class ReactViewGroup public constructor(context: Context?) :
   }
 
   @Deprecated(
-      "setTranslucentBackgroundDrawable is deprecated since React Native 0.76.0 and will be removed in a future version"
+      "setTranslucentBackgroundDrawable is deprecated since React Native 0.76.0 and will be removed in a future version",
   )
   public fun setTranslucentBackgroundDrawable(background: Drawable?) {
     setFeedbackUnderlay(this, background)
@@ -481,7 +483,7 @@ public open class ReactViewGroup public constructor(context: Context?) :
       }
       if (i - clippedSoFar > childCount) {
         throw IllegalStateException(
-            "Invalid clipping state. i=$i clippedSoFar=$clippedSoFar count=$childCount allChildrenCount=$allChildrenCount recycleCount=$recycleCount  excludedViews=${excludedViewsSet?.size ?: 0}"
+            "Invalid clipping state. i=$i clippedSoFar=$clippedSoFar count=$childCount allChildrenCount=$allChildrenCount recycleCount=$recycleCount  excludedViews=${excludedViewsSet?.size ?: 0}",
         )
       }
     }
@@ -652,19 +654,7 @@ public open class ReactViewGroup public constructor(context: Context?) :
     }
   }
 
-  /**
-   * No-op implementation for backward compatibility. Z-order is now managed at the C++ layer in
-   * Fabric.
-   */
-  override fun getZIndexMappedChildIndex(index: Int): Int = index
-
-  /**
-   * No-op implementation for backward compatibility. Z-order is now managed at the C++ layer in
-   * Fabric.
-   */
-  override fun updateDrawingOrder() {
-    // No-op: Z-order is managed at the C++ layer
-  }
+  override fun shouldDelayChildPressedState(): Boolean = false
 
   override fun dispatchSetPressed(pressed: Boolean) {
     // Prevents the ViewGroup from dispatching the pressed state
@@ -709,12 +699,12 @@ public open class ReactViewGroup public constructor(context: Context?) :
                 logSoftException(
                     ReactSoftExceptionLogger.Categories.CLIPPING_PROHIBITED_VIEW,
                     ReactNoCrashSoftException(
-                        "Child view has been added to Parent view in which it is clipped and not visible. This is not legal for this particular child view. Child: [${child.id}] $child Parent: [$id] ${toString()}"
+                        "Child view has been added to Parent view in which it is clipped and not visible. This is not legal for this particular child view. Child: [${child.id}] $child Parent: [$id] ${toString()}",
                     ),
                 )
               }
             }
-          }
+          },
       )
     }
   }
@@ -766,7 +756,7 @@ public open class ReactViewGroup public constructor(context: Context?) :
       logSoftException(
           ReactSoftExceptionLogger.Categories.RVG_IS_VIEW_CLIPPED,
           ReactNoCrashSoftException(
-              "View missing clipping tag: index=$index parentNull=${parent == null} parentThis=${parent === this} transitioning=$transitioning"
+              "View missing clipping tag: index=$index parentNull=${parent == null} parentThis=${parent === this} transitioning=$transitioning",
           ),
       )
     }
@@ -832,22 +822,17 @@ public open class ReactViewGroup public constructor(context: Context?) :
     }
   }
 
-  private var _overflow: Overflow? = null
+  private var _overflow: Overflow = Overflow.VISIBLE
   override var overflow: String?
     get() =
         when (_overflow) {
           Overflow.HIDDEN -> "hidden"
           Overflow.SCROLL -> "scroll"
           Overflow.VISIBLE -> "visible"
-          else -> null
         }
     set(overflow) {
-      _overflow =
-          if (overflow == null) {
-            Overflow.VISIBLE
-          } else {
-            Overflow.fromString(overflow)
-          }
+      _overflow = Overflow.fromString(overflow)
+      ImportantForInteractionHelper.setImportantForInteraction(this, pointerEvents, _overflow)
       invalidate()
     }
 
@@ -860,9 +845,7 @@ public open class ReactViewGroup public constructor(context: Context?) :
    */
   override fun getClipBounds(): Rect? {
     if (
-        ReactNativeFeatureFlags.syncAndroidClipBoundsWithOverflow() &&
-            _overflow != null &&
-            _overflow != Overflow.VISIBLE
+        ReactNativeFeatureFlags.syncAndroidClipBoundsWithOverflow() && _overflow != Overflow.VISIBLE
     ) {
       val rect = Rect()
       getPaddingBoxRect(this, rect)
@@ -874,9 +857,7 @@ public open class ReactViewGroup public constructor(context: Context?) :
   /** See [getClipBounds]. */
   override fun getClipBounds(outRect: Rect): Boolean {
     if (
-        ReactNativeFeatureFlags.syncAndroidClipBoundsWithOverflow() &&
-            _overflow != null &&
-            _overflow != Overflow.VISIBLE
+        ReactNativeFeatureFlags.syncAndroidClipBoundsWithOverflow() && _overflow != Overflow.VISIBLE
     ) {
       getPaddingBoxRect(this, outRect)
       return true

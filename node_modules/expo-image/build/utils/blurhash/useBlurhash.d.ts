@@ -5,4 +5,3 @@ export declare function useBlurhash(blurhash: {
 } | undefined | null, punch?: number): readonly [{
     uri: string;
 } | null, boolean | ""];
-//# sourceMappingURL=useBlurhash.d.ts.map

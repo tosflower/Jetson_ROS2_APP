@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<46981e9bc1ef3945b99b147cbdf9ec5d>>
+ * @generated SignedSource<<dbaacdd35772fc9a25cab8550b39b6da>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/DeltaBundler/mergeDeltas.js
@@ -17,8 +17,5 @@
 
 import type {DeltaBundle} from 'metro-runtime/src/modules/types';
 
-declare function mergeDeltas(
-  delta1: DeltaBundle,
-  delta2: DeltaBundle,
-): DeltaBundle;
+declare function mergeDeltas(delta1: DeltaBundle, delta2: DeltaBundle): DeltaBundle;
 export default mergeDeltas;

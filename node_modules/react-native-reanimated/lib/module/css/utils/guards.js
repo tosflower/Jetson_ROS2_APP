@@ -32,17 +32,10 @@ export const isTransitionProp = key => {
       return false;
   }
 };
-export const isTransitionCallbackProp = key => {
-  switch (key) {
-    case 'onTransitionRun':
-    case 'onTransitionStart':
-    case 'onTransitionEnd':
-    case 'onTransitionCancel':
-      return true;
-    default:
-      return false;
-  }
-};
+export const ANIMATION_CALLBACK_PROPS = ['onCSSAnimationStart', 'onCSSAnimationEnd', 'onCSSAnimationIteration', 'onCSSAnimationCancel'];
+export const TRANSITION_CALLBACK_PROPS = ['onCSSTransitionRun', 'onCSSTransitionStart', 'onCSSTransitionEnd', 'onCSSTransitionCancel'];
+const CSS_CALLBACK_PROPS = [...ANIMATION_CALLBACK_PROPS, ...TRANSITION_CALLBACK_PROPS];
+const CSS_CALLBACK_PROP_SET = new Set(CSS_CALLBACK_PROPS);
 export const isStepsModifier = value => {
   switch (value) {
     case 'jump-start':
@@ -56,7 +49,8 @@ export const isStepsModifier = value => {
       return false;
   }
 };
-export const isCSSConfigProp = key => isTransitionProp(key) || isAnimationProp(key) || isTransitionCallbackProp(key);
+export const isCSSConfigProp = key => isTransitionProp(key) || isAnimationProp(key);
+export const isCSSCallbackProp = key => CSS_CALLBACK_PROP_SET.has(key);
 export const isTimeUnit = value =>
 // TODO: implement more strict check
 typeof value === 'string' && (/^-?(\d+)?(\.\d+)?(ms|s)$/.test(value) || value === '0');

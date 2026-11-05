@@ -8,4 +8,3 @@ export declare const absoluteFilledPosition: {
     readonly top: 0;
 };
 export declare function getObjectPositionFromContentPositionObject(contentPosition?: ImageContentPositionObject): string;
-//# sourceMappingURL=positioning.d.ts.map

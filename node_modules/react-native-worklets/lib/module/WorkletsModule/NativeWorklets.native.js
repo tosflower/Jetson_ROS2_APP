@@ -1,5 +1,6 @@
 'use strict';
 
+import { isBundleModeEnabled } from '../debug/bundleMode';
 import { checkCppVersion } from "../debug/checkCppVersion.js";
 import { jsVersion } from "../debug/jsVersion.js";
 import { installCustomSerializableUnpacker } from '../memory/customSerializableUnpacker';
@@ -17,7 +18,7 @@ class NativeWorklets {
   #serializableTrue;
   #serializableFalse;
   constructor() {
-    const bundleModeEnabled = globalThis._WORKLETS_BUNDLE_MODE_ENABLED ?? false;
+    const bundleModeEnabled = isBundleModeEnabled();
     globalThis._WORKLETS_VERSION_JS = jsVersion;
     const onRNRuntime = isRNRuntime();
     if (globalThis.__workletsModuleProxy === undefined && onRNRuntime) {
@@ -96,9 +97,6 @@ See https://docs.swmansion.com/react-native-worklets/docs/guides/troubleshooting
   createSerializableArrayBufferView(typeName, buffer, byteOffset, length) {
     return this.#workletsModuleProxy.createSerializableArrayBufferView(typeName, buffer, byteOffset, length);
   }
-  createSerializableInitializer(obj) {
-    return this.#workletsModuleProxy.createSerializableInitializer(obj);
-  }
   createSerializableNonWorkletFunction(fun, functionName) {
     return this.#workletsModuleProxy.createSerializableNonWorkletFunction(fun, functionName);
   }
@@ -117,14 +115,14 @@ See https://docs.swmansion.com/react-native-worklets/docs/guides/troubleshooting
   scheduleOnRN(fun, args) {
     this.#workletsModuleProxy.scheduleOnRN(fun, args);
   }
-  scheduleOnUI(serializableArrayOfWorklets, scheduleStacks) {
-    return this.#workletsModuleProxy.scheduleOnUI(serializableArrayOfWorklets, scheduleStacks);
+  scheduleOnUI(serializableArrayOfWorklets, serializableArrayOfArguments, scheduleStacks) {
+    return this.#workletsModuleProxy.scheduleOnUI(serializableArrayOfWorklets, serializableArrayOfArguments, scheduleStacks);
   }
   runOnUISync(worklet, scheduleStack) {
     return this.#workletsModuleProxy.runOnUISync(worklet, scheduleStack);
   }
-  createWorkletRuntime(name, initializer, useDefaultQueue, customQueue, enableEventLoop) {
-    return this.#workletsModuleProxy.createWorkletRuntime(name, initializer, useDefaultQueue, customQueue, enableEventLoop);
+  createWorkletRuntime(name, initializer, useDefaultQueue, customQueue, enableEventLoop, enableLocking, enableNetworking) {
+    return this.#workletsModuleProxy.createWorkletRuntime(name, initializer, useDefaultQueue, customQueue, enableEventLoop, enableLocking, enableNetworking);
   }
   scheduleOnRuntime(workletRuntime, serializableWorklet, scheduleStack) {
     return this.#workletsModuleProxy.scheduleOnRuntime(workletRuntime, serializableWorklet, scheduleStack);
@@ -141,8 +139,8 @@ See https://docs.swmansion.com/react-native-worklets/docs/guides/troubleshooting
   handlePromise(resolveOrReject, valueOrError) {
     return this.#workletsModuleProxy.handlePromise(resolveOrReject, valueOrError);
   }
-  createSynchronizable(value) {
-    return this.#workletsModuleProxy.createSynchronizable(value);
+  createSynchronizable(value, isFixed) {
+    return this.#workletsModuleProxy.createSynchronizable(value, isFixed);
   }
   synchronizableGetDirty(synchronizableRef) {
     return this.#workletsModuleProxy.synchronizableGetDirty(synchronizableRef);
@@ -152,6 +150,9 @@ See https://docs.swmansion.com/react-native-worklets/docs/guides/troubleshooting
   }
   synchronizableSetBlocking(synchronizableRef, value) {
     return this.#workletsModuleProxy.synchronizableSetBlocking(synchronizableRef, value);
+  }
+  synchronizableSetDirty(synchronizableRef, value) {
+    return this.#workletsModuleProxy.synchronizableSetDirty(synchronizableRef, value);
   }
   synchronizableLock(synchronizableRef) {
     return this.#workletsModuleProxy.synchronizableLock(synchronizableRef);
@@ -168,6 +169,9 @@ See https://docs.swmansion.com/react-native-worklets/docs/guides/troubleshooting
   setDynamicFeatureFlag(name, value) {
     this.#workletsModuleProxy.setDynamicFeatureFlag(name, value);
   }
+  getCurrentThreadId() {
+    return this.#workletsModuleProxy.getCurrentThreadId();
+  }
   getUIRuntimeHolder() {
     return this.#workletsModuleProxy.getUIRuntimeHolder();
   }
@@ -180,6 +184,19 @@ See https://docs.swmansion.com/react-native-worklets/docs/guides/troubleshooting
 }
 export const WorkletsModule = new NativeWorklets();
 function installUnpackers(workletsModuleProxy) {
-  workletsModuleProxy.loadUnpackers(installValueUnpacker.__initData.code, installValueUnpacker.__initData.location ?? '', installValueUnpacker.__initData.sourceMap ?? '', installSynchronizableUnpacker.__initData.code, installSynchronizableUnpacker.__initData.location ?? '', installSynchronizableUnpacker.__initData.sourceMap ?? '', installCustomSerializableUnpacker.__initData.code, installCustomSerializableUnpacker.__initData.location ?? '', installCustomSerializableUnpacker.__initData.sourceMap ?? '', installShareableHostUnpacker.__initData.code, installShareableHostUnpacker.__initData.location ?? '', installShareableHostUnpacker.__initData.sourceMap ?? '', installShareableGuestUnpacker.__initData.code, installShareableGuestUnpacker.__initData.location ?? '', installShareableGuestUnpacker.__initData.sourceMap ?? '', installRemoteFunctionUnpacker.__initData.code, installRemoteFunctionUnpacker.__initData.location ?? '', installRemoteFunctionUnpacker.__initData.sourceMap ?? '');
+  const value = installValueUnpacker.__initData;
+  const synchronizable = installSynchronizableUnpacker.__initData;
+  const customSerializable = installCustomSerializableUnpacker.__initData;
+  const shareableHost = installShareableHostUnpacker.__initData;
+  const shareableGuest = installShareableGuestUnpacker.__initData;
+  const remoteFunction = installRemoteFunctionUnpacker.__initData;
+  if (value.bytecode !== undefined) {
+    if (__DEV__) {
+      throw new Error('[Worklets] Unpackers were compiled to Hermes bytecode in a development build, which is not supported.');
+    }
+    workletsModuleProxy.loadUnpackersWithBytecode(value.bytecode, synchronizable.bytecode, customSerializable.bytecode, shareableHost.bytecode, shareableGuest.bytecode, remoteFunction.bytecode);
+  } else {
+    workletsModuleProxy.loadUnpackersWithCode(value.code, value.location ?? '', value.sourceMap ?? '', synchronizable.code, synchronizable.location ?? '', synchronizable.sourceMap ?? '', customSerializable.code, customSerializable.location ?? '', customSerializable.sourceMap ?? '', shareableHost.code, shareableHost.location ?? '', shareableHost.sourceMap ?? '', shareableGuest.code, shareableGuest.location ?? '', shareableGuest.sourceMap ?? '', remoteFunction.code, remoteFunction.location ?? '', remoteFunction.sourceMap ?? '');
+  }
 }
 //# sourceMappingURL=NativeWorklets.native.js.map

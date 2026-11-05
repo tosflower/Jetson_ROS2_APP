@@ -1,7 +1,3 @@
 import type { Mutable } from './commonTypes';
-declare function makeMutableWeb<TValue>(initial: TValue): Mutable<TValue>;
-export declare const makeMutable: typeof makeMutableWeb;
-/** @deprecated Used only in `animationsManager.ts`. Don't use. */
-export declare function makeMutableUI<TValue>(initial: TValue): Mutable<TValue>;
-export {};
+export declare function makeMutable<TValue>(initial: TValue): Mutable<TValue>;
 //# sourceMappingURL=mutables.d.ts.map

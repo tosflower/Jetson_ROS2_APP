@@ -1,6 +1,6 @@
 'use strict';
 
-import { useAnimatedStyle } from "./useAnimatedStyle.js";
+import { useAnimatedStyle } from './useAnimatedStyle';
 
 // TODO: we should make sure that when useAP is used we are not assigning styles
 

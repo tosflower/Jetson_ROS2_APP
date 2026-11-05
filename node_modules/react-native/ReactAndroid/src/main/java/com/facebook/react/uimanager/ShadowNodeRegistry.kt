@@ -33,7 +33,7 @@ internal class ShadowNodeRegistry {
 
   fun addRootNode(node: ReactShadowNode<*>) {
     threadAsserter.assertNow()
-    val tag = node.reactTag
+    val tag = node.getReactTag()
     tagsToCSSNodes.put(tag, node)
     rootTags.put(tag, true)
   }
@@ -55,14 +55,14 @@ internal class ShadowNodeRegistry {
 
   fun addNode(node: ReactShadowNode<*>) {
     threadAsserter.assertNow()
-    tagsToCSSNodes.put(node.reactTag, node)
+    tagsToCSSNodes.put(node.getReactTag(), node)
   }
 
   fun removeNode(tag: Int) {
     threadAsserter.assertNow()
     if (rootTags[tag]) {
       throw IllegalViewOperationException(
-          "Trying to remove root node $tag without using removeRootNode!"
+          "Trying to remove root node $tag without using removeRootNode!",
       )
     }
     tagsToCSSNodes.remove(tag)

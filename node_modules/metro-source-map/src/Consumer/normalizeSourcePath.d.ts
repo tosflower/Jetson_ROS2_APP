@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<f0cb08627027adbc9cc7b4b9c8caa208>>
+ * @generated SignedSource<<a42fed23652a46f2668bf8166dc422a3>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-source-map/src/Consumer/normalizeSourcePath.js
@@ -15,8 +15,5 @@
  *   yarn run build-ts-defs (OSS) 
  */
 
-declare function normalizeSourcePath(
-  sourceInput: string,
-  map: {readonly sourceRoot?: null | undefined | string},
-): string;
+declare function normalizeSourcePath(sourceInput: string, map: {readonly sourceRoot?: null | undefined | string}): string;
 export default normalizeSourcePath;

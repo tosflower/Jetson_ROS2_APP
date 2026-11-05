@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<94cd41a2f04528e81f82e6c2feadaf52>>
+ * @generated SignedSource<<24a7023cf7c68adf63e59eef41d6dcb3>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/shared/output/RamBundle/magic-number.js
@@ -16,6 +16,5 @@
  */
 
 declare const $$EXPORT_DEFAULT_DECLARATION$$: 0xfb0bd1e5;
-declare type $$EXPORT_DEFAULT_DECLARATION$$ =
-  typeof $$EXPORT_DEFAULT_DECLARATION$$;
+declare type $$EXPORT_DEFAULT_DECLARATION$$ = typeof $$EXPORT_DEFAULT_DECLARATION$$;
 export default $$EXPORT_DEFAULT_DECLARATION$$;

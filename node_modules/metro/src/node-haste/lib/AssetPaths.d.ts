@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<31b3384bffa191e4c3c9916d93df8571>>
+ * @generated SignedSource<<4adbd3ce4f1290c6b7509072a8c0afd2>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/node-haste/lib/AssetPaths.js
@@ -26,11 +26,5 @@ export type AssetPath = {
  * Return `null` if the `filePath` doesn't have a valid extension, required
  * to describe the type of an asset.
  */
-export declare function tryParse(
-  filePath: string,
-  platforms: ReadonlySet<string>,
-): null | undefined | AssetPath;
-export declare function parse(
-  filePath: string,
-  platforms: ReadonlySet<string>,
-): AssetPath;
+export declare function tryParse(filePath: string, platforms: ReadonlySet<string>): null | undefined | AssetPath;
+export declare function parse(filePath: string, platforms: ReadonlySet<string>): AssetPath;

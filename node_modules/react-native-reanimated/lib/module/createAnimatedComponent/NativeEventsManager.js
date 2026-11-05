@@ -1,7 +1,8 @@
 'use strict';
 
+import { findHostInstance } from '../platform-specific/findHostInstance';
 import { findNodeHandle } from '../platformFunctions/findNodeHandle';
-import { WorkletEventHandler } from "../WorkletEventHandler.js";
+import { WorkletEventHandler } from '../WorkletEventHandler';
 import { has } from "./utils.js";
 export class NativeEventsManager {
   #managedComponent;
@@ -74,7 +75,7 @@ export class NativeEventsManager {
     if (this.#componentOptions?.setNativeProps) {
       // This case ensures backward compatibility with components that
       // have their own setNativeProps method passed as an option.
-      return findNodeHandle(this.#managedComponent) ?? -1;
+      return this.#managedComponent.getComponentViewTag();
     }
     if (!componentUpdate) {
       // On the first render of a component, we may already receive a resolved view tag.
@@ -84,10 +85,13 @@ export class NativeEventsManager {
       return componentAnimatedRef.__nativeTag ?? -1;
     }
     /*
-      When a component is updated, a child could potentially change and have a different 
+      When a component is updated, a child could potentially change and have a different
       view tag. This can occur with a GestureDetector component.
     */
-    return findNodeHandle(componentAnimatedRef) ?? -1;
+    if (!componentAnimatedRef) {
+      return -1;
+    }
+    return findHostInstance(this.#managedComponent)?.__nativeTag ?? findNodeHandle(componentAnimatedRef) ?? -1;
   }
 }
 function isWorkletEventHandler(prop) {

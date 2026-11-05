@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<0bb41edd0d0c6f257cb95ca9b7b00aa9>>
+ * @generated SignedSource<<9a510c4b4eda34f59f744e0cb76b055f>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-resolver/src/utils/reduceExportsLikeMap.js
@@ -21,8 +21,4 @@
  */
 import type {FlattenedExportMap, NormalizedExportsLikeMap} from '../types';
 
-export declare function reduceExportsLikeMap(
-  exportsLikeMap: NormalizedExportsLikeMap,
-  conditionNames: ReadonlySet<string>,
-  createConfigError: (reason: string) => Error,
-): FlattenedExportMap;
+export declare function reduceExportsLikeMap(exportsLikeMap: NormalizedExportsLikeMap, conditionNames: ReadonlySet<string>, createConfigError: (reason: string) => Error): FlattenedExportMap;

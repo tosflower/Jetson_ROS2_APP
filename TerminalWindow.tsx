@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View, type ScrollViewInstance } from 'react-native';
 import type { MonitoredRun } from '@/providers/monitor-provider';
 
 /** 将网关的真实进程输出呈现为终端；翻页保留任务，用户可暂停自动滚动查看前文。 */
 export default function TerminalWindow({ run, logs, message, sourceLabel }: {
   run?: MonitoredRun | null; logs: string; message: string; sourceLabel?: string;
 }): React.JSX.Element {
-  const scrollRef = useRef<ScrollView>(null);
+  // React Native 0.88 的 ref 指向滚动实例，而非 ScrollView 组件。
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const [follow, setFollow] = useState(true);
   const [frozen, setFrozen] = useState<{ run?: MonitoredRun | null; logs: string; message: string } | null>(null);
   // 暂停时冻结整个终端内容，避免有界日志裁掉开头后把正在阅读的行顶走。

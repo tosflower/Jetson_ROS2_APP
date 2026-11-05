@@ -1,6 +1,22 @@
 'use strict';
 
 import React from 'react';
+export function assignRef(ref, instance) {
+  if (typeof ref === 'function') {
+    const cleanup = ref(instance);
+    return typeof cleanup === 'function' ? cleanup : undefined;
+  }
+  if (ref) {
+    ref.current = instance;
+  }
+  return undefined;
+}
+export function mergeRefs(...refs) {
+  return instance => {
+    const cleanups = refs.map(ref => assignRef(ref, instance) ?? (() => assignRef(ref, null)));
+    return () => cleanups.forEach(cleanup => cleanup());
+  };
+}
 function getCurrentReactOwner() {
   return (
     // @ts-expect-error React secret internals aren't typed

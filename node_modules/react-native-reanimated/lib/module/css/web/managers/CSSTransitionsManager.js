@@ -3,24 +3,29 @@
 import { camelizeKebabCase, kebabizeCamelCase } from "../../../common/index.js";
 import { normalizeCSSTransitionProperties } from "../normalization/index.js";
 import { maybeAddSuffixes, parseTimingFunction } from "../utils.js";
+import { CSSCallbackListeners } from "./CSSCallbackListeners.js";
 const TRANSITION_EVENT_NAME = {
-  onTransitionRun: 'transitionrun',
-  onTransitionStart: 'transitionstart',
-  onTransitionEnd: 'transitionend',
-  onTransitionCancel: 'transitioncancel'
+  onCSSTransitionRun: 'transitionrun',
+  onCSSTransitionStart: 'transitionstart',
+  onCSSTransitionEnd: 'transitionend',
+  onCSSTransitionCancel: 'transitioncancel'
 };
-const CALLBACK_PROPS = Object.keys(TRANSITION_EVENT_NAME);
 export default class CSSTransitionsManager {
   isAttached = false;
-  callbacks = {};
-  attachedStateListeners = new Map();
   constructor(element) {
     this.element = element;
+    this.callbackListeners = new CSSCallbackListeners(element, TRANSITION_EVENT_NAME, event => {
+      const transitionEvent = event;
+      return {
+        propertyName: camelizeKebabCase(transitionEvent.propertyName),
+        elapsedTime: transitionEvent.elapsedTime
+      };
+    });
   }
   update(transitionProperties, callbacks = null) {
     // Keep listeners tied to callback presence (not transition presence) so a
     // `transitioncancel` emitted while detaching still reaches the user.
-    this.syncStateListeners(callbacks ?? {});
+    this.callbackListeners.sync(callbacks ?? {});
     if (!transitionProperties) {
       this.detach();
       return;
@@ -29,7 +34,7 @@ export default class CSSTransitionsManager {
     this.isAttached = true;
   }
   unmountCleanup() {
-    this.syncStateListeners({});
+    this.callbackListeners.detach();
   }
   detach() {
     if (!this.isAttached) {
@@ -43,36 +48,6 @@ export default class CSSTransitionsManager {
     // @ts-ignore this is correct
     this.element.style.transitionBehavior = '';
     this.isAttached = false;
-  }
-  syncStateListeners(callbacks) {
-    this.callbacks = callbacks;
-    for (const prop of CALLBACK_PROPS) {
-      const eventName = TRANSITION_EVENT_NAME[prop];
-      const hasCallback = typeof callbacks[prop] === 'function';
-      const listener = this.attachedStateListeners.get(prop);
-      if (hasCallback && !listener) {
-        const newListener = this.createStateListener(prop);
-        this.attachedStateListeners.set(prop, newListener);
-        this.element.addEventListener(eventName, newListener);
-      } else if (!hasCallback && listener) {
-        this.element.removeEventListener(eventName, listener);
-        this.attachedStateListeners.delete(prop);
-      }
-    }
-  }
-  createStateListener(prop) {
-    return event => {
-      const transitionEvent = event;
-      // Transition events bubble; only handle this element's own transitions.
-      if (transitionEvent.target !== this.element) {
-        return;
-      }
-      const payload = {
-        propertyName: camelizeKebabCase(transitionEvent.propertyName),
-        elapsedTime: transitionEvent.elapsedTime
-      };
-      this.callbacks[prop]?.(payload);
-    };
   }
   setElementTransition(transitionProperties) {
     const normalizedProps = normalizeCSSTransitionProperties(transitionProperties);

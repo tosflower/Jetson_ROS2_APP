@@ -2,7 +2,7 @@
 'use strict';
 
 import { IS_ANDROID } from "../constants/index.js";
-import { processAspectRatio, processBoxShadow, processColor, processFilter, processFontWeight, processGap, processInset, processInsetBlock, processInsetInline, processTransform, processTransformOrigin } from "./processors/index.js";
+import { processAspectRatio, processBackgroundImage, processBoxShadow, processColor, processFilter, processFontWeight, processGap, processInset, processInsetBlock, processInsetInline, processTransform, processTransformOrigin } from "./processors/index.js";
 const colorAttributes = {
   process: processColor
 };
@@ -214,16 +214,29 @@ export const STYLE_PROPERTIES_CONFIG = {
   backfaceVisibility: true,
   opacity: true,
   mixBlendMode: true,
+  // @ts-ignore Available since RN 0.87
+  backgroundImage: {
+    process: processBackgroundImage
+  },
   experimental_backgroundImage: false,
   // TODO
   // @ts-ignore This type doesn't exist on non-strict-api
   experimental_backgroundPosition: false,
   // TODO
+  // @ts-ignore Available since RN 0.88
+  backgroundPosition: false,
+  // TODO
   // @ts-ignore This type doesn't exist on non-strict-api
   experimental_backgroundSize: false,
   // TODO
+  // @ts-ignore Available since RN 0.88
+  backgroundSize: false,
+  // TODO
   // @ts-ignore This type doesn't exist on non-strict-api
   experimental_backgroundRepeat: false,
+  // TODO
+  // @ts-ignore Available since RN 0.88
+  backgroundRepeat: false,
   // TODO
 
   /** Typography */
@@ -232,6 +245,9 @@ export const STYLE_PROPERTIES_CONFIG = {
   fontSize: true,
   fontStyle: true,
   fontVariant: true,
+  // @ts-ignore Available since RN 0.88
+  fontVariationSettings: false,
+  // TODO
   fontWeight: {
     process: processFontWeight
   },
@@ -248,6 +264,9 @@ export const STYLE_PROPERTIES_CONFIG = {
   // Others
   userSelect: true,
   writingDirection: false,
+  // @ts-ignore Available since RN 0.89
+  experimental_textWidthMode: false,
+  // TODO
   includeFontPadding: true,
   /** Others */
   // Image

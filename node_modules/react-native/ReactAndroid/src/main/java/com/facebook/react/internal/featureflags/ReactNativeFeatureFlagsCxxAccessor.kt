@@ -4,7 +4,7 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  *
- * @generated SignedSource<<76d977ea53cb2a37fc2ea8549e31cebd>>
+ * @generated SignedSource<<a1c52a57a980eaab23d92416340a6734>>
  */
 
 /**
@@ -34,37 +34,37 @@ internal class ReactNativeFeatureFlagsCxxAccessor : ReactNativeFeatureFlagsAcces
   private var enableAccumulatedUpdatesInRawPropsAndroidCache: Boolean? = null
   private var enableAndroidTextMeasurementOptimizationsCache: Boolean? = null
   private var enableBridgelessArchitectureCache: Boolean? = null
+  private var enableBufferedCallInvokerCache: Boolean? = null
   private var enableCppPropsIteratorSetterCache: Boolean? = null
   private var enableCustomFocusSearchOnClippedElementsAndroidCache: Boolean? = null
   private var enableDestroyShadowTreeRevisionAsyncCache: Boolean? = null
-  private var enableDifferentiatorMutationVectorPreallocationCache: Boolean? = null
   private var enableDoubleMeasurementFixAndroidCache: Boolean? = null
-  private var enableEagerMainQueueModulesOnIOSCache: Boolean? = null
   private var enableEagerRootViewAttachmentCache: Boolean? = null
   private var enableExclusivePropsUpdateAndroidCache: Boolean? = null
   private var enableFabricCommitBranchingCache: Boolean? = null
   private var enableFabricLogsCache: Boolean? = null
-  private var enableFabricRendererCache: Boolean? = null
+  private var enableFlexboxAutoMinSizeInStrictModeCache: Boolean? = null
   private var enableFontScaleChangesUpdatingLayoutCache: Boolean? = null
+  private var enableIOSCompressedTextFrameAdjustmentCache: Boolean? = null
   private var enableIOSTextBaselineOffsetPerLineCache: Boolean? = null
   private var enableIOSViewClipToPaddingBoxCache: Boolean? = null
   private var enableImagePrefetchingAndroidCache: Boolean? = null
+  private var enableImageTransparentTintColorCache: Boolean? = null
   private var enableImmediateUpdateModeForContentOffsetChangesCache: Boolean? = null
+  private var enableImperativeEventsCache: Boolean? = null
   private var enableImperativeFocusCache: Boolean? = null
   private var enableInteropViewManagerClassLookUpOptimizationIOSCache: Boolean? = null
   private var enableIntersectionObserverByDefaultCache: Boolean? = null
   private var enableKeyEventsCache: Boolean? = null
   private var enableLayoutAnimationsOnAndroidCache: Boolean? = null
   private var enableLayoutAnimationsOnIOSCache: Boolean? = null
-  private var enableMainQueueCoordinatorOnIOSCache: Boolean? = null
   private var enableModuleArgumentNSNullConversionIOSCache: Boolean? = null
+  private var enableMountingCoordinatorPullModelAndroidCache: Boolean? = null
   private var enableMutationObserverByDefaultCache: Boolean? = null
   private var enableNativeCSSParsingCache: Boolean? = null
-  private var enableNativeViewPropTransformationsCache: Boolean? = null
-  private var enableNetworkEventReportingCache: Boolean? = null
   private var enablePreparedTextLayoutCache: Boolean? = null
   private var enablePropsUpdateReconciliationAndroidCache: Boolean? = null
-  private var enableSchedulerDelegateInvalidationCache: Boolean? = null
+  private var enableResizeObserverByDefaultCache: Boolean? = null
   private var enableSwiftUIBasedFiltersCache: Boolean? = null
   private var enableViewCullingCache: Boolean? = null
   private var enableViewRecyclingCache: Boolean? = null
@@ -73,17 +73,15 @@ internal class ReactNativeFeatureFlagsCxxAccessor : ReactNativeFeatureFlagsAcces
   private var enableViewRecyclingForTextCache: Boolean? = null
   private var enableViewRecyclingForViewCache: Boolean? = null
   private var enableVirtualViewContainerStateExperimentalCache: Boolean? = null
-  private var enableVirtualViewDebugFeaturesCache: Boolean? = null
   private var fixDifferentiatorParentTagForUnflattenCaseCache: Boolean? = null
-  private var fixFindShadowNodeByTagRaceConditionCache: Boolean? = null
   private var fixMappingOfEventPrioritiesBetweenFabricAndReactCache: Boolean? = null
   private var fixYogaFlexBasisFitContentInMainAxisCache: Boolean? = null
   private var fuseboxAssertSingleHostStateCache: Boolean? = null
   private var fuseboxEnabledReleaseCache: Boolean? = null
   private var fuseboxFrameRecordingEnabledCache: Boolean? = null
-  private var fuseboxNetworkInspectionEnabledCache: Boolean? = null
   private var fuseboxScreenshotCaptureEnabledCache: Boolean? = null
-  private var hideOffscreenVirtualViewsOnIOSCache: Boolean? = null
+  private var fuseboxWebSocketEventsEnabledCache: Boolean? = null
+  private var optimizedAnimatedPropUpdatesCache: Boolean? = null
   private var overrideBySynchronousMountPropsAtMountingAndroidCache: Boolean? = null
   private var perfIssuesEnabledCache: Boolean? = null
   private var perfMonitorV2EnabledCache: Boolean? = null
@@ -100,17 +98,14 @@ internal class ReactNativeFeatureFlagsCxxAccessor : ReactNativeFeatureFlagsAcces
   private var updateRuntimeShadowNodeReferencesOnCommitThreadCache: Boolean? = null
   private var useAlwaysAvailableJSErrorHandlingCache: Boolean? = null
   private var useFabricInteropCache: Boolean? = null
-  private var useLISAlgorithmInDifferentiatorCache: Boolean? = null
   private var useNativeViewConfigsInBridgelessModeCache: Boolean? = null
   private var useNestedScrollViewAndroidCache: Boolean? = null
-  private var useOptimizedViewRegistryOnAndroidCache: Boolean? = null
   private var useSharedAnimatedBackendCache: Boolean? = null
   private var useTraitHiddenOnAndroidCache: Boolean? = null
   private var useTurboModuleInteropCache: Boolean? = null
-  private var useTurboModulesCache: Boolean? = null
-  private var useUnorderedMapInDifferentiatorCache: Boolean? = null
   private var viewCullingOutsetRatioCache: Double? = null
   private var viewTransitionEnabledCache: Boolean? = null
+  private var viewTransitionUseHardwareBitmapAndroidCache: Boolean? = null
   private var virtualViewPrerenderRatioCache: Double? = null
 
   override fun commonTestFlag(): Boolean {
@@ -239,6 +234,15 @@ internal class ReactNativeFeatureFlagsCxxAccessor : ReactNativeFeatureFlagsAcces
     return cached
   }
 
+  override fun enableBufferedCallInvoker(): Boolean {
+    var cached = enableBufferedCallInvokerCache
+    if (cached == null) {
+      cached = ReactNativeFeatureFlagsCxxInterop.enableBufferedCallInvoker()
+      enableBufferedCallInvokerCache = cached
+    }
+    return cached
+  }
+
   override fun enableCppPropsIteratorSetter(): Boolean {
     var cached = enableCppPropsIteratorSetterCache
     if (cached == null) {
@@ -266,29 +270,11 @@ internal class ReactNativeFeatureFlagsCxxAccessor : ReactNativeFeatureFlagsAcces
     return cached
   }
 
-  override fun enableDifferentiatorMutationVectorPreallocation(): Boolean {
-    var cached = enableDifferentiatorMutationVectorPreallocationCache
-    if (cached == null) {
-      cached = ReactNativeFeatureFlagsCxxInterop.enableDifferentiatorMutationVectorPreallocation()
-      enableDifferentiatorMutationVectorPreallocationCache = cached
-    }
-    return cached
-  }
-
   override fun enableDoubleMeasurementFixAndroid(): Boolean {
     var cached = enableDoubleMeasurementFixAndroidCache
     if (cached == null) {
       cached = ReactNativeFeatureFlagsCxxInterop.enableDoubleMeasurementFixAndroid()
       enableDoubleMeasurementFixAndroidCache = cached
-    }
-    return cached
-  }
-
-  override fun enableEagerMainQueueModulesOnIOS(): Boolean {
-    var cached = enableEagerMainQueueModulesOnIOSCache
-    if (cached == null) {
-      cached = ReactNativeFeatureFlagsCxxInterop.enableEagerMainQueueModulesOnIOS()
-      enableEagerMainQueueModulesOnIOSCache = cached
     }
     return cached
   }
@@ -329,11 +315,11 @@ internal class ReactNativeFeatureFlagsCxxAccessor : ReactNativeFeatureFlagsAcces
     return cached
   }
 
-  override fun enableFabricRenderer(): Boolean {
-    var cached = enableFabricRendererCache
+  override fun enableFlexboxAutoMinSizeInStrictMode(): Boolean {
+    var cached = enableFlexboxAutoMinSizeInStrictModeCache
     if (cached == null) {
-      cached = ReactNativeFeatureFlagsCxxInterop.enableFabricRenderer()
-      enableFabricRendererCache = cached
+      cached = ReactNativeFeatureFlagsCxxInterop.enableFlexboxAutoMinSizeInStrictMode()
+      enableFlexboxAutoMinSizeInStrictModeCache = cached
     }
     return cached
   }
@@ -343,6 +329,15 @@ internal class ReactNativeFeatureFlagsCxxAccessor : ReactNativeFeatureFlagsAcces
     if (cached == null) {
       cached = ReactNativeFeatureFlagsCxxInterop.enableFontScaleChangesUpdatingLayout()
       enableFontScaleChangesUpdatingLayoutCache = cached
+    }
+    return cached
+  }
+
+  override fun enableIOSCompressedTextFrameAdjustment(): Boolean {
+    var cached = enableIOSCompressedTextFrameAdjustmentCache
+    if (cached == null) {
+      cached = ReactNativeFeatureFlagsCxxInterop.enableIOSCompressedTextFrameAdjustment()
+      enableIOSCompressedTextFrameAdjustmentCache = cached
     }
     return cached
   }
@@ -374,11 +369,29 @@ internal class ReactNativeFeatureFlagsCxxAccessor : ReactNativeFeatureFlagsAcces
     return cached
   }
 
+  override fun enableImageTransparentTintColor(): Boolean {
+    var cached = enableImageTransparentTintColorCache
+    if (cached == null) {
+      cached = ReactNativeFeatureFlagsCxxInterop.enableImageTransparentTintColor()
+      enableImageTransparentTintColorCache = cached
+    }
+    return cached
+  }
+
   override fun enableImmediateUpdateModeForContentOffsetChanges(): Boolean {
     var cached = enableImmediateUpdateModeForContentOffsetChangesCache
     if (cached == null) {
       cached = ReactNativeFeatureFlagsCxxInterop.enableImmediateUpdateModeForContentOffsetChanges()
       enableImmediateUpdateModeForContentOffsetChangesCache = cached
+    }
+    return cached
+  }
+
+  override fun enableImperativeEvents(): Boolean {
+    var cached = enableImperativeEventsCache
+    if (cached == null) {
+      cached = ReactNativeFeatureFlagsCxxInterop.enableImperativeEvents()
+      enableImperativeEventsCache = cached
     }
     return cached
   }
@@ -437,20 +450,20 @@ internal class ReactNativeFeatureFlagsCxxAccessor : ReactNativeFeatureFlagsAcces
     return cached
   }
 
-  override fun enableMainQueueCoordinatorOnIOS(): Boolean {
-    var cached = enableMainQueueCoordinatorOnIOSCache
-    if (cached == null) {
-      cached = ReactNativeFeatureFlagsCxxInterop.enableMainQueueCoordinatorOnIOS()
-      enableMainQueueCoordinatorOnIOSCache = cached
-    }
-    return cached
-  }
-
   override fun enableModuleArgumentNSNullConversionIOS(): Boolean {
     var cached = enableModuleArgumentNSNullConversionIOSCache
     if (cached == null) {
       cached = ReactNativeFeatureFlagsCxxInterop.enableModuleArgumentNSNullConversionIOS()
       enableModuleArgumentNSNullConversionIOSCache = cached
+    }
+    return cached
+  }
+
+  override fun enableMountingCoordinatorPullModelAndroid(): Boolean {
+    var cached = enableMountingCoordinatorPullModelAndroidCache
+    if (cached == null) {
+      cached = ReactNativeFeatureFlagsCxxInterop.enableMountingCoordinatorPullModelAndroid()
+      enableMountingCoordinatorPullModelAndroidCache = cached
     }
     return cached
   }
@@ -473,24 +486,6 @@ internal class ReactNativeFeatureFlagsCxxAccessor : ReactNativeFeatureFlagsAcces
     return cached
   }
 
-  override fun enableNativeViewPropTransformations(): Boolean {
-    var cached = enableNativeViewPropTransformationsCache
-    if (cached == null) {
-      cached = ReactNativeFeatureFlagsCxxInterop.enableNativeViewPropTransformations()
-      enableNativeViewPropTransformationsCache = cached
-    }
-    return cached
-  }
-
-  override fun enableNetworkEventReporting(): Boolean {
-    var cached = enableNetworkEventReportingCache
-    if (cached == null) {
-      cached = ReactNativeFeatureFlagsCxxInterop.enableNetworkEventReporting()
-      enableNetworkEventReportingCache = cached
-    }
-    return cached
-  }
-
   override fun enablePreparedTextLayout(): Boolean {
     var cached = enablePreparedTextLayoutCache
     if (cached == null) {
@@ -509,11 +504,11 @@ internal class ReactNativeFeatureFlagsCxxAccessor : ReactNativeFeatureFlagsAcces
     return cached
   }
 
-  override fun enableSchedulerDelegateInvalidation(): Boolean {
-    var cached = enableSchedulerDelegateInvalidationCache
+  override fun enableResizeObserverByDefault(): Boolean {
+    var cached = enableResizeObserverByDefaultCache
     if (cached == null) {
-      cached = ReactNativeFeatureFlagsCxxInterop.enableSchedulerDelegateInvalidation()
-      enableSchedulerDelegateInvalidationCache = cached
+      cached = ReactNativeFeatureFlagsCxxInterop.enableResizeObserverByDefault()
+      enableResizeObserverByDefaultCache = cached
     }
     return cached
   }
@@ -590,29 +585,11 @@ internal class ReactNativeFeatureFlagsCxxAccessor : ReactNativeFeatureFlagsAcces
     return cached
   }
 
-  override fun enableVirtualViewDebugFeatures(): Boolean {
-    var cached = enableVirtualViewDebugFeaturesCache
-    if (cached == null) {
-      cached = ReactNativeFeatureFlagsCxxInterop.enableVirtualViewDebugFeatures()
-      enableVirtualViewDebugFeaturesCache = cached
-    }
-    return cached
-  }
-
   override fun fixDifferentiatorParentTagForUnflattenCase(): Boolean {
     var cached = fixDifferentiatorParentTagForUnflattenCaseCache
     if (cached == null) {
       cached = ReactNativeFeatureFlagsCxxInterop.fixDifferentiatorParentTagForUnflattenCase()
       fixDifferentiatorParentTagForUnflattenCaseCache = cached
-    }
-    return cached
-  }
-
-  override fun fixFindShadowNodeByTagRaceCondition(): Boolean {
-    var cached = fixFindShadowNodeByTagRaceConditionCache
-    if (cached == null) {
-      cached = ReactNativeFeatureFlagsCxxInterop.fixFindShadowNodeByTagRaceCondition()
-      fixFindShadowNodeByTagRaceConditionCache = cached
     }
     return cached
   }
@@ -662,15 +639,6 @@ internal class ReactNativeFeatureFlagsCxxAccessor : ReactNativeFeatureFlagsAcces
     return cached
   }
 
-  override fun fuseboxNetworkInspectionEnabled(): Boolean {
-    var cached = fuseboxNetworkInspectionEnabledCache
-    if (cached == null) {
-      cached = ReactNativeFeatureFlagsCxxInterop.fuseboxNetworkInspectionEnabled()
-      fuseboxNetworkInspectionEnabledCache = cached
-    }
-    return cached
-  }
-
   override fun fuseboxScreenshotCaptureEnabled(): Boolean {
     var cached = fuseboxScreenshotCaptureEnabledCache
     if (cached == null) {
@@ -680,11 +648,20 @@ internal class ReactNativeFeatureFlagsCxxAccessor : ReactNativeFeatureFlagsAcces
     return cached
   }
 
-  override fun hideOffscreenVirtualViewsOnIOS(): Boolean {
-    var cached = hideOffscreenVirtualViewsOnIOSCache
+  override fun fuseboxWebSocketEventsEnabled(): Boolean {
+    var cached = fuseboxWebSocketEventsEnabledCache
     if (cached == null) {
-      cached = ReactNativeFeatureFlagsCxxInterop.hideOffscreenVirtualViewsOnIOS()
-      hideOffscreenVirtualViewsOnIOSCache = cached
+      cached = ReactNativeFeatureFlagsCxxInterop.fuseboxWebSocketEventsEnabled()
+      fuseboxWebSocketEventsEnabledCache = cached
+    }
+    return cached
+  }
+
+  override fun optimizedAnimatedPropUpdates(): Boolean {
+    var cached = optimizedAnimatedPropUpdatesCache
+    if (cached == null) {
+      cached = ReactNativeFeatureFlagsCxxInterop.optimizedAnimatedPropUpdates()
+      optimizedAnimatedPropUpdatesCache = cached
     }
     return cached
   }
@@ -833,15 +810,6 @@ internal class ReactNativeFeatureFlagsCxxAccessor : ReactNativeFeatureFlagsAcces
     return cached
   }
 
-  override fun useLISAlgorithmInDifferentiator(): Boolean {
-    var cached = useLISAlgorithmInDifferentiatorCache
-    if (cached == null) {
-      cached = ReactNativeFeatureFlagsCxxInterop.useLISAlgorithmInDifferentiator()
-      useLISAlgorithmInDifferentiatorCache = cached
-    }
-    return cached
-  }
-
   override fun useNativeViewConfigsInBridgelessMode(): Boolean {
     var cached = useNativeViewConfigsInBridgelessModeCache
     if (cached == null) {
@@ -856,15 +824,6 @@ internal class ReactNativeFeatureFlagsCxxAccessor : ReactNativeFeatureFlagsAcces
     if (cached == null) {
       cached = ReactNativeFeatureFlagsCxxInterop.useNestedScrollViewAndroid()
       useNestedScrollViewAndroidCache = cached
-    }
-    return cached
-  }
-
-  override fun useOptimizedViewRegistryOnAndroid(): Boolean {
-    var cached = useOptimizedViewRegistryOnAndroidCache
-    if (cached == null) {
-      cached = ReactNativeFeatureFlagsCxxInterop.useOptimizedViewRegistryOnAndroid()
-      useOptimizedViewRegistryOnAndroidCache = cached
     }
     return cached
   }
@@ -896,24 +855,6 @@ internal class ReactNativeFeatureFlagsCxxAccessor : ReactNativeFeatureFlagsAcces
     return cached
   }
 
-  override fun useTurboModules(): Boolean {
-    var cached = useTurboModulesCache
-    if (cached == null) {
-      cached = ReactNativeFeatureFlagsCxxInterop.useTurboModules()
-      useTurboModulesCache = cached
-    }
-    return cached
-  }
-
-  override fun useUnorderedMapInDifferentiator(): Boolean {
-    var cached = useUnorderedMapInDifferentiatorCache
-    if (cached == null) {
-      cached = ReactNativeFeatureFlagsCxxInterop.useUnorderedMapInDifferentiator()
-      useUnorderedMapInDifferentiatorCache = cached
-    }
-    return cached
-  }
-
   override fun viewCullingOutsetRatio(): Double {
     var cached = viewCullingOutsetRatioCache
     if (cached == null) {
@@ -928,6 +869,15 @@ internal class ReactNativeFeatureFlagsCxxAccessor : ReactNativeFeatureFlagsAcces
     if (cached == null) {
       cached = ReactNativeFeatureFlagsCxxInterop.viewTransitionEnabled()
       viewTransitionEnabledCache = cached
+    }
+    return cached
+  }
+
+  override fun viewTransitionUseHardwareBitmapAndroid(): Boolean {
+    var cached = viewTransitionUseHardwareBitmapAndroidCache
+    if (cached == null) {
+      cached = ReactNativeFeatureFlagsCxxInterop.viewTransitionUseHardwareBitmapAndroid()
+      viewTransitionUseHardwareBitmapAndroidCache = cached
     }
     return cached
   }

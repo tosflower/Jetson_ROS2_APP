@@ -8,6 +8,8 @@
 #include <array>
 #include <optional>
 #include <string>
+#include <string_view>
+#include <utility>
 #include <variant>
 
 namespace reanimated::css {
@@ -16,16 +18,47 @@ namespace reanimated::css {
 /// colors (normalized to [0, 1]).
 using PlatformValue = std::variant<double, std::array<double, 2>, std::array<double, 4>>;
 
-/// Whether the property can animate natively for the given easing. Routing is
-/// platform specific: platforms without a native backend (e.g. Android) never
-/// route, so every property runs on the C++ loop.
-bool canRouteCSSProperty(const std::string &propertyName, const EasingConfig &easing);
+#ifdef ANDROID
+/// Properties the Android backend animates natively; the index is the id the JNI seam
+/// carries and cssPropertyWriterFor switches on. A new one also needs a traitsFor() entry
+/// in platform.cpp and a writer, or its endpoints never parse and it stays on the loop.
+/// borderWidth affects layout, so it stays on the loop; the writer declines shadowColor
+/// below API 28.
+inline constexpr std::array<std::string_view, 5> kAndroidPlatformProperties{
+    "opacity",
+    "backgroundColor",
+    "borderColor",
+    "borderRadius",
+    "shadowColor",
+};
+#endif // ANDROID
 
-/// Parses a transition endpoint into a platform value. Null/undefined falls back
-/// to the property's CSS default; nullopt means it can't be animated natively and
-/// runs on the loop. Two overloads: jsi::Value (config) and folly::dynamic (toggle).
-std::optional<PlatformValue>
-parsePlatformValue(facebook::jsi::Runtime &rt, const std::string &propertyName, const facebook::jsi::Value &value);
-std::optional<PlatformValue> parsePlatformValue(const std::string &propertyName, const folly::dynamic &value);
+/// Whether parsePlatformValues knows the property (value kind and CSS default).
+bool hasPlatformValueTraits(const std::string &propertyName);
+
+std::optional<PlatformValue> lerpPlatformValues(const PlatformValue &from, const PlatformValue &to, double progress);
+
+/// Packs normalized [r, g, b, a] into the ARGB int RN's processColor commits.
+double packColorChannels(const std::array<double, 4> &channels);
+
+/// The value in the form the C++ loop takes: a number for scalars and colors,
+/// `{width, height}` for sizes. The jsi::Value form feeds the config path, the
+/// folly::dynamic form the pseudo-selector diffs.
+facebook::jsi::Value platformValueToJSI(facebook::jsi::Runtime &rt, const PlatformValue &value);
+folly::dynamic platformValueToDynamic(const PlatformValue &value);
+
+/// Parses a transition's endpoints, looking the property up once. Null/undefined
+/// falls back to its CSS default; nullopt means the platform can't express the
+/// pair, so it runs on the loop. jsi::Value is the config path, folly::dynamic the
+/// pseudo-selector toggle path.
+using PlatformValuePair = std::pair<PlatformValue, PlatformValue>;
+
+std::optional<PlatformValuePair> parsePlatformValues(
+    facebook::jsi::Runtime &rt,
+    const std::string &propertyName,
+    const facebook::jsi::Value &fromValue,
+    const facebook::jsi::Value &toValue);
+std::optional<PlatformValuePair>
+parsePlatformValues(const std::string &propertyName, const folly::dynamic &fromValue, const folly::dynamic &toValue);
 
 } // namespace reanimated::css

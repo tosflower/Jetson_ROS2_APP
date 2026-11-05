@@ -1,5 +1,5 @@
 import type { StyleProp } from 'react-native';
-import type { AnimatedStyle, EntryExitAnimationFunction, LayoutAnimationFunction, SharedValue } from './commonTypes';
+import type { AnimatedStyle, EntryExitAnimationFunction, LayoutAnimationFunction, SharedValueDisableContravariance } from './commonTypes';
 import type { NestedArray } from './createAnimatedComponent/commonTypes';
 import type { CSSStyle } from './css';
 import type { BaseAnimationBuilder } from './layoutReanimation/animationBuilder/BaseAnimationBuilder';
@@ -15,7 +15,7 @@ type AnimatedStyleProps<Props extends object> = {
 /** Component props that are not specially handled by us. */
 type ComponentPropsWithoutStyle<Props extends object> = Omit<Props, keyof PickStyleProps<Props> | 'style'>;
 type RestProps<Props extends object> = {
-    [K in keyof ComponentPropsWithoutStyle<Props>]: Props[K] | SharedValue<Props[K]>;
+    [K in keyof ComponentPropsWithoutStyle<Props>]: Props[K] | SharedValueDisableContravariance<Props[K]>;
 };
 type LayoutProps = {
     /**

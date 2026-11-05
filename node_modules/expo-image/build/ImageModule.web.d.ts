@@ -1,4 +1,4 @@
-import { NativeModule } from 'expo-modules-core';
+import { NativeModule } from 'expo';
 import type { ImageCacheConfig, ImageRef, ImageSource, ImageNativeModule, ImageModuleEvents } from './Image.types';
 declare class ImageModule extends NativeModule<ImageModuleEvents> implements ImageNativeModule {
     Image: typeof ImageRef;
@@ -16,6 +16,5 @@ declare class ImageModule extends NativeModule<ImageModuleEvents> implements Ima
     }): Promise<string | null>;
     generateThumbhashAsync(_: string | ImageRef): Promise<string>;
 }
-declare const _default: typeof ImageModule;
+declare const _default: ImageModule;
 export default _default;
-//# sourceMappingURL=ImageModule.web.d.ts.map

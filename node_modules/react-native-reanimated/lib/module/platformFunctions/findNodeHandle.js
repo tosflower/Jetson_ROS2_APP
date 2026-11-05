@@ -1,4 +1,7 @@
 'use strict';
 
-export { findNodeHandle } from 'react-native';
+function findNodeHandleWeb(componentOrHandle) {
+  return componentOrHandle;
+}
+export const findNodeHandle = findNodeHandleWeb;
 //# sourceMappingURL=findNodeHandle.js.map

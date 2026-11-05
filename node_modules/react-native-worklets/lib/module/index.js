@@ -20,7 +20,7 @@ export { createShareable } from './memory/shareable';
 export { createSynchronizable } from './memory/synchronizable';
 export { getRuntimeKind, isRNRuntime, isUIRuntime, isWorkerRuntime, isWorkletRuntime, RuntimeKind } from "./runtimeKind.js";
 export { createWorkletRuntime, getUIRuntimeHolder, getUISchedulerHolder, runOnRuntime, runOnRuntimeAsync, runOnRuntimeAsyncWithId, runOnRuntimeSync, runOnRuntimeSyncWithId, scheduleOnRuntime, scheduleOnRuntimeWithId, UIRuntimeId } from './runtimes';
-export { executeOnUIRuntimeSync, runOnJS, runOnUI, runOnUIAsync, runOnUISync, scheduleOnRN, scheduleOnUI } from './threads';
+export { executeOnUIRuntimeSync, getCurrentThreadId, runOnJS, runOnUI, runOnUIAsync, runOnUISync, scheduleOnRN, scheduleOnUI } from './threads';
 export { isWorkletFunction } from "./workletFunction.js";
 export { WorkletsModule } from './WorkletsModule/NativeWorklets';
 //# sourceMappingURL=index.js.map

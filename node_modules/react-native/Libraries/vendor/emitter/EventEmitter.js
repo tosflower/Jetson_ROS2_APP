@@ -41,9 +41,9 @@ export interface IEventEmitter<
 }
 
 interface Registration<TArgs> {
-  +context: unknown;
-  +listener: (...args: TArgs) => unknown;
-  +remove: () => void;
+  readonly context: unknown;
+  readonly listener: (...args: TArgs) => unknown;
+  readonly remove: () => void;
 }
 
 type Registry<
@@ -84,7 +84,7 @@ export default class EventEmitter<
 
   constructor() {
     // $FlowFixMe[incompatible-type]
-    this.#registry = {};
+    this.#registry = Object.create(null);
   }
 
   /**
@@ -147,8 +147,9 @@ export default class EventEmitter<
   ): void {
     if (eventType == null) {
       // $FlowFixMe[incompatible-type]
-      this.#registry = {};
+      this.#registry = Object.create(null);
     } else {
+      // $FlowFixMe[cannot-write]
       delete this.#registry[eventType];
     }
   }
@@ -178,6 +179,7 @@ function allocate<
     registry[eventType];
   if (registrations == null) {
     registrations = new Set();
+    // $FlowFixMe[cannot-write]
     registry[eventType] = registrations;
   }
   return registrations;

@@ -1,25 +1,7 @@
 'use strict';
 
-import { runOnUISync } from 'react-native-worklets';
-
-import type { LoggerConfig } from './common';
-import {
-  getLoggerConfig,
-  SHOULD_BE_USE_WEB,
-  updateLoggerConfig,
-} from './common';
-
-/** @deprecated This function is a no-op in Reanimated 4. */
-export function addWhitelistedNativeProps(
-  _props: Record<string, boolean>
-): void {
-  // Do nothing. This is just for backward compatibility.
-}
-
-/** @deprecated This function is a no-op in Reanimated 4. */
-export function addWhitelistedUIProps(_props: Record<string, boolean>): void {
-  // Do nothing. This is just for backward compatibility.
-}
+import type { LogFunction, LoggerConfig } from './common';
+import { getLoggerConfig, updateLoggerConfig } from './common';
 
 /**
  * Updates Reanimated logger config with the user-provided configuration. Will
@@ -29,14 +11,16 @@ export function addWhitelistedUIProps(_props: Record<string, boolean>): void {
  * call it only once).
  *
  * @param config - The new logger configuration to apply.
+ * @param onLog - Optional callback invoked for every log that passes the
+ *   `level` and `strict` filters, in addition to the default console output.
+ *   Omitting it clears a previously registered callback.
  */
-export function configureReanimatedLogger(config: LoggerConfig) {
+export function configureReanimatedLogger(
+  config: LoggerConfig,
+  onLog?: LogFunction
+) {
   // Get the current config from the React runtime (to have a single source of truth)
   const currentConfig = getLoggerConfig();
   // Update the configuration object in the React runtime
-  updateLoggerConfig(currentConfig, config);
-  // Register the updated configuration in the UI runtime
-  if (!SHOULD_BE_USE_WEB) {
-    runOnUISync(updateLoggerConfig, currentConfig, config);
-  }
+  updateLoggerConfig(currentConfig, config, onLog);
 }

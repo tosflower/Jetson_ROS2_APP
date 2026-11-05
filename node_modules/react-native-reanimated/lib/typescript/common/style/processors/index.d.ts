@@ -1,3 +1,4 @@
+export { processBackgroundImage } from './backgroundImage';
 export { DynamicColorIOS, PlatformColor, processColor, processColorNumber, processColorsInProps, } from './colors';
 export { processFilter } from './filter';
 export { processFontWeight } from './font';

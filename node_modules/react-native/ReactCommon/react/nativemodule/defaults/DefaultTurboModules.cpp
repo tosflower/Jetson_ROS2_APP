@@ -13,6 +13,7 @@
 #include <react/nativemodule/intersectionobserver/NativeIntersectionObserver.h>
 #include <react/nativemodule/microtasks/NativeMicrotasks.h>
 #include <react/nativemodule/mutationobserver/NativeMutationObserver.h>
+#include <react/nativemodule/resizeobserver/NativeResizeObserver.h>
 #include <react/nativemodule/viewtransition/NativeViewTransition.h>
 #include <react/nativemodule/webperformance/NativePerformance.h>
 #include <react/renderer/animated/AnimatedModule.h>
@@ -58,6 +59,12 @@ namespace facebook::react {
     }
   }
 
+  if (ReactNativeFeatureFlags::enableResizeObserverByDefault()) {
+    if (name == NativeResizeObserver::kModuleName) {
+      return std::make_shared<NativeResizeObserver>(jsInvoker);
+    }
+  }
+
   if (ReactNativeFeatureFlags::viewTransitionEnabled()) {
     if (name == NativeViewTransition::kModuleName) {
       return std::make_shared<NativeViewTransition>(jsInvoker);
@@ -65,7 +72,13 @@ namespace facebook::react {
   }
 
   if (ReactNativeFeatureFlags::cxxNativeAnimatedEnabled() &&
+  // on Android, the render loop for AnimatedModule is driven
+  // internally whether or not shared backend is enabled; ios uses
+  // RCTAnimatedModuleProvider.mm to drive the render loop when shared backend
+  // is off
+#ifndef __ANDROID__
       ReactNativeFeatureFlags::useSharedAnimatedBackend() &&
+#endif
       name == AnimatedModule::kModuleName) {
     return std::make_shared<AnimatedModule>(
         jsInvoker, std::make_shared<NativeAnimatedNodesManagerProvider>());

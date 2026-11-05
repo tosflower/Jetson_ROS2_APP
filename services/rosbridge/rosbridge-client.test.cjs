@@ -160,3 +160,39 @@ test('Service 依靠唯一 id 匹配响应，并在断线时清理未完成请�
   await assert.rejects(interrupted, /连接已中断/);
   client.disconnect();
 });
+
+test('内置手机桥先认证，确认后才恢复订阅与发布', async () => {
+  const sockets = [];
+  const client = new RosbridgeClient({ createSocket: (url) => {
+    const socket = new FakeSocket(url);
+    sockets.push(socket);
+    return socket;
+  } });
+  client.advertise('/phone/gps_data', 'std_msgs/msg/String');
+  client.subscribe('/rosout', 'rcl_interfaces/msg/Log', () => {});
+  const connection = client.connect('ws://robot.local:9090', 'login-token');
+  sockets[0].open();
+  assert.deepEqual(sockets[0].sent, [{ op: 'auth', token: 'login-token' }]);
+  assert.equal(client.getConnectionState(), 'connecting');
+  sockets[0].receive({ op: 'auth_response', result: true });
+  await connection;
+  assert.deepEqual(sockets[0].sent.map((message) => message.op), ['auth', 'subscribe', 'advertise']);
+  client.disconnect();
+});
+
+test('网关拒绝发布时显示错误，但保持已认证的连接', async () => {
+  const errors = [];
+  let socket;
+  const client = new RosbridgeClient({
+    createSocket: (url) => { socket = new FakeSocket(url); return socket; },
+    onError: (message) => errors.push(message),
+  });
+  const connection = client.connect('ws://robot.local:9090', 'login-token');
+  socket.open();
+  socket.receive({ op: 'auth_response', result: true });
+  await connection;
+  socket.receive({ op: 'status', level: 'error', msg: '话题未 advertise 或消息格式错误' });
+  assert.deepEqual(errors, ['话题未 advertise 或消息格式错误']);
+  assert.equal(client.getConnectionState(), 'connected');
+  client.disconnect();
+});

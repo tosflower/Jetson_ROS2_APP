@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<cb907f1a9aa40efd505a19826a21be6d>>
+ * @generated SignedSource<<29b3ff9729245b368d3fce2599296550>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/DeltaBundler/Serializers/sourceMapObject.js
@@ -19,12 +19,6 @@ import type {Module} from '../types';
 import type {SourceMapGeneratorOptions} from './sourceMapGenerator';
 import type {MixedSourceMap} from 'metro-source-map';
 
-declare function sourceMapObject(
-  modules: ReadonlyArray<Module>,
-  options: SourceMapGeneratorOptions,
-): MixedSourceMap;
-declare function sourceMapObjectNonBlocking(
-  modules: ReadonlyArray<Module>,
-  options: SourceMapGeneratorOptions,
-): Promise<MixedSourceMap>;
+declare function sourceMapObject(modules: ReadonlyArray<Module>, options: SourceMapGeneratorOptions): MixedSourceMap;
+declare function sourceMapObjectNonBlocking(modules: ReadonlyArray<Module>, options: SourceMapGeneratorOptions): Promise<MixedSourceMap>;
 export {sourceMapObject, sourceMapObjectNonBlocking};

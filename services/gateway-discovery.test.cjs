@@ -58,3 +58,21 @@ test('同一路由器下忽略路由器，使用 Jetson 发布的 mDNS 地址', 
     globalThis.fetch = originalFetch;
   }
 });
+
+test('唤醒时网络状态暂时为 NONE，仍先验证上次已知的网关地址', async () => {
+  const originalNetwork = network.getNetworkStateAsync;
+  const originalFetch = globalThis.fetch;
+  network.getNetworkStateAsync = async () => ({ type: 'NONE' });
+  const requested = [];
+  globalThis.fetch = async url => {
+    requested.push(url);
+    return { ok: true, json: async () => ({ status: 'ok', capabilities: ['password_auth', 'image_topics'] }) };
+  };
+  try {
+    assert.equal(await discoverGateway('10.23.15.41:8080'), '10.23.15.41:8080');
+    assert.deepEqual(requested, ['http://10.23.15.41:8080/health']);
+  } finally {
+    network.getNetworkStateAsync = originalNetwork;
+    globalThis.fetch = originalFetch;
+  }
+});

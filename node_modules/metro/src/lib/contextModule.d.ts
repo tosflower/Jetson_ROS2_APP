@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<461f7a7b3b3d99d1f1e7eeeeb5125686>>
+ * @generated SignedSource<<742406027aa7f8ed4ff81272b8325505>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/lib/contextModule.js
@@ -15,10 +15,7 @@
  *   yarn run build-ts-defs (OSS) 
  */
 
-import type {
-  ContextMode,
-  RequireContextParams,
-} from '../ModuleGraph/worker/collectDependencies';
+import type {ContextMode, RequireContextParams} from '../ModuleGraph/worker/collectDependencies';
 
 export type RequireContext = Readonly<{
   recursive: boolean;
@@ -29,12 +26,6 @@ export type RequireContext = Readonly<{
   from: string;
 }>;
 /** Given a fully qualified require context, return a virtual file path that ensures uniqueness between paths with different contexts. */
-export declare function deriveAbsolutePathFromContext(
-  from: string,
-  context: RequireContextParams,
-): string;
+export declare function deriveAbsolutePathFromContext(from: string, context: RequireContextParams): string;
 /** Match a file against a require context. */
-export declare function fileMatchesContext(
-  testPath: string,
-  context: RequireContext,
-): boolean;
+export declare function fileMatchesContext(testPath: string, context: RequireContext): boolean;

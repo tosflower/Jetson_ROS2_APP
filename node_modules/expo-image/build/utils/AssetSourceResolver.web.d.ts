@@ -1,4 +1,4 @@
-import type { PackagerAsset } from '@react-native/assets-registry/registry';
+import type { PackagerAsset } from 'react-native';
 export type ResolvedAssetSource = {
     __packager_asset: boolean;
     width?: number;
@@ -21,4 +21,3 @@ export default class AssetSourceResolver {
     fromSource(source: string): ResolvedAssetSource;
     static pickScale(scales: number[], deviceScale: number): number;
 }
-//# sourceMappingURL=AssetSourceResolver.web.d.ts.map

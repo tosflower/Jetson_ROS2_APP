@@ -1,6 +1,6 @@
 'use strict';
 
-import { WebEasings } from "./Easing.web.js";
+import { WebEasings } from "./Easing.js";
 export function convertAnimationObjectToKeyframes(animationObject) {
   let keyframe = `@keyframes ${animationObject.name} { `;
   for (const [timestamp, style] of Object.entries(animationObject.style)) {

@@ -12,7 +12,6 @@ declare class ExpoImage extends React.PureComponent<ImageNativeProps> {
     onProgress: (event: NativeSyntheticEvent<ImageProgressEventData>) => void;
     onError: (event: NativeSyntheticEvent<ImageErrorEventData>) => void;
     onLoadEnd: () => void;
-    render(): import("react/jsx-runtime").JSX.Element;
+    render(): React.JSX.Element;
 }
 export default ExpoImage;
-//# sourceMappingURL=ExpoImage.d.ts.map

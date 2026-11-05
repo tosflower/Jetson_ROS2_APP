@@ -1,7 +1,7 @@
 'use strict';
 
 import { useEvent } from "./useEvent.js";
-import { useHandler } from "./useHandler.js";
+import { useHandler } from './useHandler';
 
 /**
  * Lets you run callbacks on ScrollView events. Supports `onScroll`,

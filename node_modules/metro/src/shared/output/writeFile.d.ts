@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<37de849e415f8aa1e94b73289a573ee3>>
+ * @generated SignedSource<<82f089c2ca16d6724ba639289eea82c0>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/shared/output/writeFile.js
@@ -15,9 +15,5 @@
  *   yarn run build-ts-defs (OSS) 
  */
 
-declare function writeFile(
-  filePath: string,
-  data: string | Buffer | Uint8Array,
-  encoding?: string,
-): Promise<void>;
+declare function writeFile(filePath: string, data: string | Buffer | Uint8Array, encoding?: string): Promise<void>;
 export default writeFile;

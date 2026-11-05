@@ -16,8 +16,10 @@ from pathlib import Path
 from auth import AuthError, AuthManager
 from commands import CommandManager
 from discovery import GatewayAdvertiser
-from images import ImageBridgeNode, COMPRESSED
+from images import ImageBridgeNode, ImageChannel, COMPRESSED
+from phone_bridge import PhoneBridgeNode, PhoneBridgeServer
 from streaming import StreamTiming
+from diagnostics import StreamEvidence
 from typing import Dict, List, Optional, Set, Tuple
 
 import rclpy
@@ -29,6 +31,7 @@ from rclpy.executors import ExternalShutdownException, SingleThreadedExecutor
 
 GATEWAY_HOST = os.environ.get("GATEWAY_HOST", "0.0.0.0")
 GATEWAY_PORT = int(os.environ.get("GATEWAY_PORT", "8080"))
+PHONE_BRIDGE_PORT = int(os.environ.get("PHONE_BRIDGE_PORT", "9090"))
 IMAGE_TOPIC = os.environ.get("ROS_IMAGE_TOPIC", "/camera/image_raw/compressed")
 MAX_STREAM_FPS = max(1.0, float(os.environ.get("MAX_STREAM_FPS", "20")))
 
@@ -122,8 +125,12 @@ class GatewayRuntime:
         self.launches = LaunchManager(self.commands)
         rclpy.init(args=None)
         self.node = ImageBridgeNode()
+        self.phone_node = PhoneBridgeNode(asyncio.get_running_loop())
+        self.image_diagnostics: Dict[str, Tuple[StreamEvidence, ImageChannel, str, str]] = {}
         self.executor = SingleThreadedExecutor()
         self.executor.add_node(self.node)
+        self.executor.add_node(self.phone_node)
+        self.phone_server = PhoneBridgeServer(self.phone_node, self.auth, GATEWAY_HOST, PHONE_BRIDGE_PORT)
         self.ros_thread = threading.Thread(target=self._spin_ros, name="ros2-executor", daemon=True)
         self.ros_thread.start()
 
@@ -135,6 +142,7 @@ class GatewayRuntime:
             pass
 
     async def close(self) -> None:
+        await self.phone_server.close()
         await self.commands.shutdown()
         if rclpy.ok():
             # ROS context 仍有效时，让执行器线程安全销毁动态订阅。
@@ -143,6 +151,7 @@ class GatewayRuntime:
                     asyncio.wrap_future(self.node.submit("close")), timeout=2.0)
         self.executor.shutdown()
         self.node.destroy_node()
+        self.phone_node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()
         self.ros_thread.join(timeout=2.0)
@@ -155,8 +164,14 @@ app = FastAPI(title="Jetson ROS2 Mobile Gateway", version="0.1.0")
 async def startup() -> None:
     """在 uvicorn 事件循环启动后初始化 ROS2。"""
     app.state.runtime = GatewayRuntime()
+    try:
+        await app.state.runtime.phone_server.start()
+    except Exception:
+        # 9090 被独立 rosbridge 占用时，不留下后台 ROS 线程或半启动的网关。
+        await app.state.runtime.close()
+        raise
     app.state.discovery = GatewayAdvertiser(GATEWAY_PORT)
-    app.state.discovery.refresh()
+    await app.state.discovery.refresh()
     app.state.discovery_task = asyncio.create_task(refresh_discovery())
 
 
@@ -164,7 +179,7 @@ async def refresh_discovery() -> None:
     """热点或路由器地址改变时刷新 mDNS 记录。"""
     while True:
         await asyncio.sleep(15)
-        app.state.discovery.refresh()
+        await app.state.discovery.refresh()
 
 
 @app.on_event("shutdown")
@@ -173,7 +188,7 @@ async def shutdown() -> None:
     app.state.discovery_task.cancel()
     with contextlib.suppress(asyncio.CancelledError):
         await app.state.discovery_task
-    app.state.discovery.close()
+    await app.state.discovery.close()
     await app.state.runtime.close()
 
 
@@ -184,10 +199,11 @@ async def health() -> Dict[str, object]:
     return {
         "status": "ok",
         "image_topic": IMAGE_TOPIC,
+        "phone_bridge": runtime.phone_server.status(),
         "capabilities": ["commands", "defaults", "dynamic_defaults", "history_clear",
-                         "image_topics", "latency",
+                         "image_topics", "latency", "image_diagnostics",
                          "multi_terminal", "yaml_editor", "build",
-                         "password_auth", "system_power"],
+                         "password_auth", "system_power", "phone_bridge"],
     }
 
 
@@ -401,6 +417,17 @@ async def image_topics(_: str = Depends(require_auth)) -> Dict[str, object]:
     return {"topics": topics, "default_topic": IMAGE_TOPIC}
 
 
+@app.get("/api/images/diagnostics")
+async def image_diagnostics(_: str = Depends(require_auth)) -> Dict[str, object]:
+    """仅返回活动流的有界证据；同世代客户端可按共享计数对照排查。"""
+    now = time.monotonic() * 1000
+    return {"observed_mono_ms": now, "streams": [
+        {"topic": topic, "message_type": kind, "shared": channel.diagnostic_snapshot(),
+         **evidence.snapshot(now)}
+        for evidence, channel, topic, kind in app.state.runtime.image_diagnostics.values()
+    ]}
+
+
 @app.post("/api/commands/defaults")
 async def create_default(request: CreateDefaultRequest,
                          _: str = Depends(require_auth)) -> Dict[str, object]:
@@ -452,13 +479,17 @@ async def mobile_stream(websocket: WebSocket) -> None:
     acquisition = None
     workers = []
     timing = StreamTiming()
+    evidence: Optional[StreamEvidence] = None
 
     async def receive() -> None:
         while True:
             text = await websocket.receive_text()
             received = time.monotonic() * 1000
             try:
-                reply = timing.receive(json.loads(text), received)
+                data = json.loads(text)
+                if evidence is not None:
+                    evidence.receive(data, received)
+                reply = timing.receive(data, received)
             except (ValueError, TypeError):
                 continue
             if reply is not None:
@@ -480,13 +511,17 @@ async def mobile_stream(websocket: WebSocket) -> None:
                 if frame is not None and frame.sequence != sequence:
                     async with send_lock:
                         sent = time.monotonic() * 1000
+                        # 真实选帧处登记，避免把未进入本客户端发送流程的帧当作丢包。
+                        evidence.select(frame.sequence, sent)
                         timing.sent(frame.sequence, sent)
                         metrics = dict(frame.latency_ms)
                         metrics["broadcast_wait_ms"] = sent - frame.ready_ms
                         await websocket.send_json({"type": "frame", "frame_id": frame.sequence,
+                                                   **evidence.identity(),
                                                    "send_mono_ms": sent, "latency_ms": metrics,
                                                    "fps": round(frame.fps, 1), "topic": topic})
                         await websocket.send_bytes(frame.jpeg)
+                        evidence.written(frame.sequence, time.monotonic() * 1000)
                         await websocket.send_json({"type": "latency_result", "frame_id": frame.sequence,
                                                    "latency_ms": {"socket_write_ms": time.monotonic() * 1000 - sent}})
                     sequence = frame.sequence
@@ -496,6 +531,8 @@ async def mobile_stream(websocket: WebSocket) -> None:
         if websocket.query_params.get("stream") != "0":
             acquisition = asyncio.wrap_future(runtime.node.submit("acquire", topic, kind))
             channel = await asyncio.shield(acquisition)
+            evidence = StreamEvidence(channel.epoch)
+            runtime.image_diagnostics[evidence.session] = (evidence, channel, topic, kind)
         await websocket.send_json({"type": "status", "connection_ready": True,
                                    "message": "连接成功", "topic": topic if channel else None})
         workers = [asyncio.create_task(receive()), asyncio.create_task(send_frames())]
@@ -512,6 +549,8 @@ async def mobile_stream(websocket: WebSocket) -> None:
         for task in workers:
             task.cancel()
         await asyncio.gather(*workers, return_exceptions=True)
+        if evidence is not None:
+            runtime.image_diagnostics.pop(evidence.session, None)
         if channel is None and acquisition is not None:
             # 连接在订阅创建过程中断开时，也必须回收已创建的 ROS 实体。
             with contextlib.suppress(Exception):

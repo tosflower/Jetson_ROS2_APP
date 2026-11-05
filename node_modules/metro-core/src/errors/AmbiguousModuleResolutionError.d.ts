@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<7a75db672d30c9ee9eb88666b881b3f6>>
+ * @generated SignedSource<<9931686fa381e18a503f22ef59797a39>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-core/src/errors/AmbiguousModuleResolutionError.js
@@ -20,9 +20,6 @@ import type {DuplicateHasteCandidatesError} from 'metro-file-map';
 declare class AmbiguousModuleResolutionError extends Error {
   fromModulePath: string;
   hasteError: DuplicateHasteCandidatesError;
-  constructor(
-    fromModulePath: string,
-    hasteError: DuplicateHasteCandidatesError,
-  );
+  constructor(fromModulePath: string, hasteError: DuplicateHasteCandidatesError);
 }
 export default AmbiguousModuleResolutionError;

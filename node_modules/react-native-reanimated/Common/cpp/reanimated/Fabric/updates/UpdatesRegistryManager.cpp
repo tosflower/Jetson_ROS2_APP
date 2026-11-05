@@ -106,7 +106,24 @@ PropsMap UpdatesRegistryManager::collectProps() {
   return propsMap;
 }
 
+void UpdatesRegistryManager::mergeRegistryProps(const Tag viewTag, folly::dynamic &target) {
+  react_native_assert(isLockedByCurrentThread());
+  for (const auto &registry : registries_) {
+    registry->mergeInto(viewTag, target);
+  }
+}
+
 #ifdef ANDROID
+
+void UpdatesRegistryManager::mergeRegistryProps(
+    const Tag viewTag,
+    folly::dynamic &target,
+    const PropNamePredicate isIncluded) {
+  react_native_assert(isLockedByCurrentThread());
+  for (const auto &registry : registries_) {
+    registry->mergeInto(viewTag, target, isIncluded);
+  }
+}
 
 bool UpdatesRegistryManager::hasPropsToRevert() {
   react_native_assert(isLockedByCurrentThread());

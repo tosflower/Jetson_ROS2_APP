@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <react/cxxstableapi/FrameworksGuard.h>
+
 #include <ReactCommon/RuntimeExecutor.h>
 #include <react/renderer/consistency/ShadowTreeRevisionConsistencyManager.h>
 #include <react/renderer/runtimescheduler/RuntimeScheduler.h>
@@ -44,6 +46,14 @@ class RuntimeScheduler_Modern final : public RuntimeSchedulerBase {
    * All callers should use scheduleTask with the right priority after that.
    */
   void scheduleWork(RawCallback &&callback) noexcept override;
+
+  /// IEventLoopControl implementation. \p task is always scheduled as an idle
+  /// task.
+  void scheduleTask(const std::function<void()> &task) override;
+
+  uint64_t registerTaskQueueSource() override;
+
+  void unregisterTaskQueueSource(uint64_t sourceId) override;
 
   /*
    * Grants access to the runtime synchronously on the caller's thread.
@@ -143,7 +153,13 @@ class RuntimeScheduler_Modern final : public RuntimeSchedulerBase {
   void setIntersectionObserverDelegate(
       RuntimeSchedulerIntersectionObserverDelegate *intersectionObserverDelegate) override;
 
+  void setResizeObserverDelegate(RuntimeSchedulerResizeObserverDelegate *resizeObserverDelegate) override;
+
  private:
+  /// Monotonic counter handing out IDs for IEventLoopControl task queue
+  /// sources.
+  std::atomic<uint64_t> nextTaskQueueSourceId_{0};
+
   std::atomic<uint_fast8_t> syncTaskRequests_{0};
 
   std::priority_queue<std::shared_ptr<Task>, std::vector<std::shared_ptr<Task>>, TaskPriorityComparer> taskQueue_;
@@ -177,9 +193,13 @@ class RuntimeScheduler_Modern final : public RuntimeSchedulerBase {
    */
   void runEventLoopTick(jsi::Runtime &runtime, Task &task);
 
-  void executeTask(jsi::Runtime &runtime, Task &task, bool didUserCallbackTimeout) const;
+  void executeTask(jsi::Runtime &runtime, Task &task, bool didUserCallbackTimeout);
 
-  void updateRendering(HighResTimeStamp taskEndTime);
+  void updateRendering(jsi::Runtime &runtime, HighResTimeStamp taskEndTime);
+
+  void handleTaskError(jsi::Runtime &runtime, jsi::JSError &error);
+
+  void clearQueues();
 
   bool performingMicrotaskCheckpoint_{false};
   void performMicrotaskCheckpoint(jsi::Runtime &runtime);
@@ -209,6 +229,7 @@ class RuntimeScheduler_Modern final : public RuntimeSchedulerBase {
 
   PerformanceEntryReporter *performanceEntryReporter_{nullptr};
   RuntimeSchedulerIntersectionObserverDelegate *intersectionObserverDelegate_{nullptr};
+  RuntimeSchedulerResizeObserverDelegate *resizeObserverDelegate_{nullptr};
 
   RuntimeSchedulerTaskErrorHandler onTaskError_;
 };

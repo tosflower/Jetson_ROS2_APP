@@ -65,11 +65,9 @@ abstract class GenerateCodegenSchemaTask : Exec() {
                 .cliPath(workingDir),
             "--platform",
             "android",
-            "--exclude",
-            "NativeSampleTurboModule",
             generatedSchemaFile.get().asFile.cliPath(workingDir),
             jsRootDir.asFile.get().cliPath(workingDir),
-        )
+        ),
     )
   }
 }

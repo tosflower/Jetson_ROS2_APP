@@ -28,7 +28,9 @@ export type RosbridgeServiceResponseEvent = {
   values: unknown;
 };
 
-export type RosbridgeIncomingEvent = RosbridgePublishEvent | RosbridgeServiceResponseEvent;
+export type RosbridgeStatusEvent = { op: 'status'; level: string; msg: string };
+
+export type RosbridgeIncomingEvent = RosbridgePublishEvent | RosbridgeServiceResponseEvent | RosbridgeStatusEvent;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -53,7 +55,7 @@ export function normalizeRosbridgeUrl(value: string): string {
   return url.toString().replace(/\/$/, '');
 }
 
-/** Phone Gateway 与 rosbridge 保持并行，仅复用主机地址并切换到 9090 端口。 */
+/** 从网关地址推导同进程手机桥的 9090 WebSocket 地址。 */
 export function rosbridgeUrlFromGateway(gatewayAddress: string): string {
   const trimmed = gatewayAddress.trim();
   const candidate = /^[a-z][a-z\d+.-]*:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
@@ -80,6 +82,9 @@ export function parseRosbridgeMessage(raw: unknown): RosbridgeIncomingEvent | un
     if (!isRecord(value)) return undefined;
     if (value.op === 'publish' && typeof value.topic === 'string' && isRecord(value.msg)) {
       return { op: 'publish', topic: value.topic, msg: value.msg };
+    }
+    if (value.op === 'status' && typeof value.level === 'string' && typeof value.msg === 'string') {
+      return { op: 'status', level: value.level, msg: value.msg };
     }
     if (value.op === 'service_response' && typeof value.id === 'string') {
       if (value.result !== undefined && typeof value.result !== 'boolean') return undefined;

@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<40375a98e9c03360973e0cf65b702ced>>
+ * @generated SignedSource<<b629f5e440d8b7578b742ad2df39590e>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-resolver/src/utils/matchSubpathPattern.js
@@ -21,7 +21,4 @@
  *
  * See https://nodejs.org/docs/latest-v19.x/api/packages.html#subpath-patterns.
  */
-export declare function matchSubpathPattern(
-  subpathPattern: string,
-  subpath: string,
-): string | null;
+export declare function matchSubpathPattern(subpathPattern: string, subpath: string): string | null;

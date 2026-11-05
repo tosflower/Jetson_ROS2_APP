@@ -3,5 +3,5 @@
  * version used to build the native part of the library in runtime. Remember to
  * keep this in sync with the version declared in `package.json`
  */
-export declare const jsVersion = "0.10.1";
+export declare const jsVersion = "0.13.0";
 //# sourceMappingURL=jsVersion.d.ts.map

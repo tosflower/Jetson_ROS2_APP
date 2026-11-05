@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<dfdfdf9ddb80994cc031e3767a87b56f>>
+ * @generated SignedSource<<27388cefc38bf3652ac17e24a200dcb1>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/lib/transformHelpers.js
@@ -17,11 +17,7 @@
 
 import type Bundler from '../Bundler';
 import type {TransformFn, default as DeltaBundler} from '../DeltaBundler';
-import type {
-  BundlerResolution,
-  TransformInputOptions,
-  TransformResultDependency,
-} from '../DeltaBundler/types';
+import type {BundlerResolution, TransformInputOptions, TransformResultDependency} from '../DeltaBundler/types';
 import type {ResolverInputOptions} from '../shared/types';
 import type {ConfigT} from 'metro-config';
 
@@ -37,6 +33,4 @@ export declare function getResolveDependencyFn(
   bundler: Bundler,
   platform: null | undefined | string,
   resolverOptions: ResolverInputOptions,
-): Promise<
-  (from: string, dependency: TransformResultDependency) => BundlerResolution
->;
+): Promise<(from: string, dependency: TransformResultDependency) => BundlerResolution>;

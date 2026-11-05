@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import com.facebook.react.internal.PrivateReactExtension
 import com.facebook.react.tasks.internal.*
 import de.undercouch.gradle.tasks.download.Download
 import org.apache.tools.ant.taskdefs.condition.Os
@@ -50,8 +49,6 @@ fun getSDKManagerPath(): String {
   }
 }
 
-val hermesV1Enabled =
-    rootProject.extensions.getByType(PrivateReactExtension::class.java).hermesV1Enabled.get()
 val reactNativeRootDir = project(":packages:react-native:ReactAndroid").projectDir.parent
 val customDownloadDir = System.getenv("REACT_NATIVE_DOWNLOADS_DIR")
 val downloadsDir =
@@ -82,12 +79,11 @@ val hermesBuildOutputFileTree =
         .include("**/*.cmake", "**/*.marks", "**/compiler_depends.ts", "**/Makefile", "**/link.txt")
 
 val hermesVersionProvider: Provider<String> = providers.provider {
-  var hermesVersion = if (hermesV1Enabled) "250829098.0.0-stable" else "main"
-  val hermesVersionFile =
-      File(
-          reactNativeRootDir,
-          if (hermesV1Enabled) "sdks/.hermesv1version" else "sdks/.hermesversion",
-      )
+  var hermesVersion = "250829098.0.0-stable"
+  val hermesVersionFile = File(
+      reactNativeRootDir,
+      "sdks/.hermesv1version",
+  )
 
   if (hermesVersionFile.exists()) {
     hermesVersion = hermesVersionFile.readText()
@@ -108,7 +104,7 @@ val downloadHermes by
       src(
           providers.provider {
             "https://github.com/facebook/hermes/tarball/${hermesVersionProvider.get()}"
-          }
+          },
       )
       onlyIfModified(true)
       overwrite(true)
@@ -144,7 +140,7 @@ val installCMake by
     tasks.registering(CustomExecTask::class) {
       onlyIfProvidedPathDoesNotExists.set(cmakePath)
       commandLine(
-          windowsAwareCommandLine(getSDKManagerPath(), "--install", "cmake;${cmakeVersion}")
+          windowsAwareCommandLine(getSDKManagerPath(), "--install", "cmake;${cmakeVersion}"),
       )
     }
 
@@ -153,42 +149,38 @@ fun configureBuildForHermesCommandLineArgs(
     jsiDir: File,
     enableDebugger: Boolean,
 ): List<String> {
-  var cmakeCommandLine =
-      windowsAwareCommandLine(
-          cmakeBinaryPath,
-          // Suppress all warnings as this is the Hermes build and we can't fix them.
-          "--log-level=ERROR",
-          "-Wno-dev",
-          "-S",
-          ".",
-          "-B",
-          hermesBuildDir.toString(),
-          "-DJSI_DIR=" + jsiDir.absolutePath,
-          "-DCMAKE_BUILD_TYPE=Release",
-      )
+  var cmakeCommandLine = windowsAwareCommandLine(
+      cmakeBinaryPath,
+      // Suppress all warnings as this is the Hermes build and we can't fix them.
+      "--log-level=ERROR",
+      "-Wno-dev",
+      "-S",
+      ".",
+      "-B",
+      hermesBuildDir.toString(),
+      "-DJSI_DIR=" + jsiDir.absolutePath,
+      "-DCMAKE_BUILD_TYPE=Release",
+  )
   if (enableDebugger) {
     cmakeCommandLine = cmakeCommandLine + "-DHERMES_ENABLE_DEBUGGER=True"
   }
   if (Os.isFamily(Os.FAMILY_WINDOWS)) {
     cmakeCommandLine = cmakeCommandLine + "-GNMake Makefiles"
   }
-  if (hermesV1Enabled) {
-    cmakeCommandLine = cmakeCommandLine + "-DHERMESVM_HEAP_HV_MODE=HEAP_HV_PREFER32"
-  }
+  cmakeCommandLine = cmakeCommandLine + "-DHERMESVM_HEAP_HV_MODE=HEAP_HV_PREFER32"
 
   return cmakeCommandLine
 }
 
-fun buildHermesCCommandLineArgs() =
-    listOf(
-        cmakeBinaryPath,
-        "--build",
-        hermesBuildDir.toString(),
-        "--target",
-        "hermesc",
-        "-j",
-        ndkBuildJobs,
-    )
+fun buildHermesCCommandLineArgs() = listOf(
+    cmakeBinaryPath,
+    "--build",
+    hermesBuildDir.toString(),
+    "--target",
+    "hermesc",
+    "-j",
+    ndkBuildJobs,
+)
 
 val configureBuildForHermes by
     tasks.registering(CustomExecTask::class) {
@@ -358,9 +350,7 @@ android {
             "-DHERMES_ENABLE_INTL=True",
         )
 
-        if (hermesV1Enabled) {
-          arguments("-DHERMESVM_HEAP_HV_MODE=HEAP_HV_PREFER32")
-        }
+        arguments("-DHERMESVM_HEAP_HV_MODE=HEAP_HV_PREFER32")
 
         targets("hermesvm")
       }
@@ -415,9 +405,16 @@ android {
     }
   }
 
-  sourceSets.getByName("main") {
-    manifest.srcFile("$hermesDir/android/hermes/src/main/AndroidManifest.xml")
-    java.srcDirs("$hermesDir/lib/Platform/Intl/java", "$hermesDir/lib/Platform/Unicode/java")
+  sourceSets {
+    named("main") {
+      manifest.srcFile("$hermesDir/android/hermes/src/main/AndroidManifest.xml")
+      java.directories.addAll(
+          listOf(
+              "$hermesDir/lib/Platform/Intl/java",
+              "$hermesDir/lib/Platform/Unicode/java",
+          ),
+      )
+    }
   }
 
   buildFeatures {

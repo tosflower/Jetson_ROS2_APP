@@ -1,6 +1,6 @@
 'use strict';
 
-import AnimatedComponentImpl from "./AnimatedComponent.js";
+import AnimatedComponentImpl from './AnimatedComponent';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
@@ -15,6 +15,15 @@ import AnimatedComponentImpl from "./AnimatedComponent.js";
  *
  * @returns A component that Reanimated is capable of animating.
  * @see https://docs.swmansion.com/react-native-reanimated/docs/core/createAnimatedComponent
+ */
+
+/**
+ * `text` is the native prop backing `TextInput`'s value. It's not part of
+ * `TextInputProps`, but Reanimated can update it directly, so the animated
+ * `TextInput` accepts it as a shared value. Static strings are still disallowed
+ * - use `value` or `defaultValue` for those. It's added only to the inline
+ * props (not to the base component props) so that `useAnimatedProps`, which
+ * supplies raw values, keeps accepting `{ text: string }`.
  */
 
 /**

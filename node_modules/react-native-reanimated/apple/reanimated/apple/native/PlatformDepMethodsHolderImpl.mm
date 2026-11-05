@@ -1,4 +1,5 @@
 #import <reanimated/CSS/utils/platform.h>
+#import <reanimated/Tools/FeatureFlags.h>
 #import <reanimated/Tools/PlatformDepMethodsHolder.h>
 #import <reanimated/apple/CSS/REACSSPlatformTransitions.h>
 #import <reanimated/apple/READisplayLink.h>
@@ -11,9 +12,14 @@
 #import <reanimated/apple/pseudoSelectors/REAPseudoSelectorAttachQueue.h>
 #import <reanimated/apple/sensor/ReanimatedSensorContainer.h>
 
+#import <React/RCTAssert.h>
 #import <React/RCTComponentViewProtocol.h>
 #import <React/RCTComponentViewRegistry.h>
 #import <React/RCTMountingManager.h>
+#import <React/RCTViewComponentView.h>
+
+#import <memory>
+#import <variant>
 
 @protocol RNScreenViewOptionalProtocol <NSObject>
 @required
@@ -127,66 +133,97 @@ KeyboardEventUnsubscribeFunction makeUnsubscribeFromKeyboardEventsFunction(REAKe
   return unsubscribeFromKeyboardEventsFunction;
 }
 
-css::CSSCanRoutePropertyFunction makeCSSCanRouteProperty()
+namespace {
+
+/// Drives CSS transitions through Core Animation on the view's layer.
+class REACSSPlatformTransitionBackend : public css::CSSPlatformTransitionBackend {
+ public:
+  explicit REACSSPlatformTransitionBackend(REACSSPlatformTransitions *platformTransitions)
+      : platformTransitions_(platformTransitions)
+  {
+  }
+
+  bool canRoute(const std::string &propertyName, const css::EasingConfig &easing) const override
+  {
+    // TODO: border props snap when RN rasterizes the border (the view fails
+    // useCoreAnimationBorderRendering); route them only when the layer draws them.
+    // CAMediaTimingFunction carries only linear and cubic-bezier curves.
+    return css::hasPlatformValueTraits(propertyName) &&
+        (std::holds_alternative<css::LinearEasing>(easing) || std::holds_alternative<css::CubicBezierEasing>(easing));
+  }
+
+  bool startTransition(
+      Tag viewTag,
+      const std::string &propertyName,
+      const css::PlatformValue &fromValue,
+      const css::PlatformValue &toValue,
+      double durationMs,
+      double startTimestampMs,
+      const css::EasingConfig &easing,
+      bool persistent) override
+  {
+    return [platformTransitions_ startTransitionForTag:viewTag
+                                          propertyName:propertyName
+                                             fromValue:fromValue
+                                               toValue:toValue
+                                            durationMs:durationMs
+                                      startTimestampMs:startTimestampMs
+                                                easing:easing
+                                            persistent:persistent];
+  }
+
+  void stopTransition(Tag viewTag, const std::string &propertyName) override
+  {
+    [platformTransitions_ stopTransitionForTag:viewTag propertyName:propertyName];
+  }
+
+ private:
+  REACSSPlatformTransitions *platformTransitions_;
+};
+
+/// The one place that decides whether CSS transitions run on Core Animation.
+std::shared_ptr<css::CSSPlatformTransitionBackend> makePlatformTransitionBackend(REANodesManager *nodesManager)
 {
-  return &css::canRouteCSSProperty;
+  if constexpr (!StaticFeatureFlags::getFlag("IOS_CSS_CORE_ANIMATION")) {
+    return nullptr;
+  }
+  REACSSPlatformTransitions *platformTransitions =
+      [[REACSSPlatformTransitions alloc] initWithSurfacePresenter:nodesManager.surfacePresenter];
+  return std::make_shared<REACSSPlatformTransitionBackend>(platformTransitions);
 }
 
-css::CSSApplyTransitionJSIFunction makeCSSApplyTransitionJSI(REACSSPlatformTransitions *platformTransitions)
-{
-  return [platformTransitions](
-             jsi::Runtime &rt,
-             Tag viewTag,
-             const std::string &propertyName,
-             const jsi::Value &fromValue,
-             const jsi::Value &toValue,
-             const css::CSSTransitionPropertySettings &settings,
-             double timestamp) {
-    return [platformTransitions applyTransitionForTag:viewTag
-                                         propertyName:propertyName
-                                            fromValue:fromValue
-                                              toValue:toValue
-                                              runtime:rt
-                                             settings:settings
-                                            timestamp:timestamp];
-  };
-}
-
-css::CSSApplyTransitionDynamicFunction makeCSSApplyTransitionDynamic(REACSSPlatformTransitions *platformTransitions)
-{
-  return [platformTransitions](
-             Tag viewTag,
-             const std::string &propertyName,
-             const folly::dynamic &fromValue,
-             const folly::dynamic &toValue,
-             double timestamp) {
-    return [platformTransitions applyDynamicTransitionForTag:viewTag
-                                                propertyName:propertyName
-                                                   fromValue:fromValue
-                                                     toValue:toValue
-                                                   timestamp:timestamp];
-  };
-}
-
-css::CSSRemoveTransitionFunction makeCSSRemoveTransition(REACSSPlatformTransitions *platformTransitions)
-{
-  return [platformTransitions](Tag viewTag, const std::string &propertyName) {
-    [platformTransitions removeTransitionForTag:viewTag propertyName:propertyName];
-  };
-}
+} // namespace
 
 ForceScreenSnapshotFunction makeForceScreenSnapshotFunction(REANodesManager *nodesManager)
 {
-  auto forceScreenSnapshot = [=](Tag tag) {
+  auto forceScreenSnapshot = [=](Tag tag) -> bool {
     RCTSurfacePresenter *surfacePresenter = nodesManager.surfacePresenter;
     RCTComponentViewRegistry *componentViewRegistry = surfacePresenter.mountingManager.componentViewRegistry;
     REAUIView<RCTComponentViewProtocol> *maybeRNSScreenView = [componentViewRegistry findComponentViewWithTag:tag];
     SEL setSnapshotAfterUpdatesSelector = @selector(setSnapshotAfterUpdates:);
     if ([maybeRNSScreenView respondsToSelector:setSnapshotAfterUpdatesSelector]) {
       [static_cast<id<RNScreenViewOptionalProtocol>>(maybeRNSScreenView) setSnapshotAfterUpdates:YES];
+      return true;
     }
+    return false;
   };
   return forceScreenSnapshot;
+}
+
+ReadMountedViewPropsFunction makeReadMountedViewPropsFunction(REANodesManager *nodesManager)
+{
+  auto readMountedViewProps = [=](Tag tag) -> Props::Shared {
+    RCTAssertMainQueue();
+    RCTSurfacePresenter *surfacePresenter = nodesManager.surfacePresenter;
+    RCTComponentViewRegistry *componentViewRegistry = surfacePresenter.mountingManager.componentViewRegistry;
+    REAUIView<RCTComponentViewProtocol> *componentView = [componentViewRegistry findComponentViewWithTag:tag];
+    // The default `props` getter of `UIView` asserts.
+    if (![componentView isKindOfClass:[RCTViewComponentView class]]) {
+      return nullptr;
+    }
+    return [componentView props];
+  };
+  return readMountedViewProps;
 }
 
 PlatformAttachPseudoSelectorFunction makeAttachPseudoSelectorFunction(REAPseudoSelectorAttachQueue *attachQueue)
@@ -210,6 +247,8 @@ PlatformDepMethodsHolder makePlatformDepMethodsHolder(RCTModuleRegistry *moduleR
   auto requestRender = makeRequestRender(nodesManager);
 
   auto forceScreenSnapshotFunction = makeForceScreenSnapshotFunction(nodesManager);
+
+  auto readMountedViewPropsFunction = makeReadMountedViewPropsFunction(nodesManager);
 
   auto synchronouslyUpdateUIPropsFunction = makeSynchronouslyUpdateUIPropsFunction(nodesManager);
 
@@ -236,16 +275,12 @@ PlatformDepMethodsHolder makePlatformDepMethodsHolder(RCTModuleRegistry *moduleR
   auto attachPseudoSelectorFunction = makeAttachPseudoSelectorFunction(attachQueue);
   auto detachPseudoSelectorFunction = makeDetachPseudoSelectorFunction(attachQueue);
 
-  REACSSPlatformTransitions *platformTransitions =
-      [[REACSSPlatformTransitions alloc] initWithSurfacePresenter:nodesManager.surfacePresenter];
-  auto cssCanRouteProperty = makeCSSCanRouteProperty();
-  auto cssApplyTransitionJSI = makeCSSApplyTransitionJSI(platformTransitions);
-  auto cssApplyTransitionDynamic = makeCSSApplyTransitionDynamic(platformTransitions);
-  auto cssRemoveTransition = makeCSSRemoveTransition(platformTransitions);
+  auto platformTransitionBackend = makePlatformTransitionBackend(nodesManager);
 
   PlatformDepMethodsHolder platformDepMethodsHolder = {
       requestRender,
       forceScreenSnapshotFunction,
+      readMountedViewPropsFunction,
       synchronouslyUpdateUIPropsFunction,
       getAnimationTimestamp,
       registerSensorFunction,
@@ -256,10 +291,7 @@ PlatformDepMethodsHolder makePlatformDepMethodsHolder(RCTModuleRegistry *moduleR
       maybeFlushUIUpdatesQueueFunction,
       attachPseudoSelectorFunction,
       detachPseudoSelectorFunction,
-      cssCanRouteProperty,
-      cssApplyTransitionJSI,
-      cssApplyTransitionDynamic,
-      cssRemoveTransition,
+      platformTransitionBackend,
   };
   return platformDepMethodsHolder;
 }

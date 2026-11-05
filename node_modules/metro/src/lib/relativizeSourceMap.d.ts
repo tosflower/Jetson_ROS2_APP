@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<5282fe2c42baa79f957ef2a40bec560b>>
+ * @generated SignedSource<<f91dfd2baf43b98762a0eea6cf943782>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/lib/relativizeSourceMap.js
@@ -17,8 +17,5 @@
 
 import type {MixedSourceMap} from 'metro-source-map';
 
-declare function relativizeSourceMapInline(
-  sourceMap: MixedSourceMap,
-  sourcesRoot: string,
-): void;
+declare function relativizeSourceMapInline(sourceMap: MixedSourceMap, sourcesRoot: string): void;
 export default relativizeSourceMapInline;

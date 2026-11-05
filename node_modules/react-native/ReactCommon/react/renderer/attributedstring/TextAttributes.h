@@ -10,7 +10,9 @@
 #include <functional>
 #include <limits>
 #include <optional>
+#include <vector>
 
+#include <folly/dynamic.h>
 #include <react/renderer/attributedstring/primitives.h>
 #include <react/renderer/components/view/AccessibilityPrimitives.h>
 #include <react/renderer/core/LayoutPrimitives.h>
@@ -22,6 +24,12 @@
 #include <react/utils/hash_combine.h>
 
 namespace facebook::react {
+
+struct TextEffectInfo {
+  std::string name;
+  folly::dynamic props;
+  bool operator==(const TextEffectInfo &) const = default;
+};
 
 class TextAttributes;
 
@@ -50,6 +58,7 @@ class TextAttributes : public DebugStringConvertible {
   std::optional<FontWeight> fontWeight{};
   std::optional<FontStyle> fontStyle{};
   std::optional<FontVariant> fontVariant{};
+  std::optional<std::string> fontVariationSettings{};
   std::optional<bool> allowFontScaling{};
   Float maxFontSizeMultiplier{std::numeric_limits<Float>::quiet_NaN()};
   std::optional<DynamicTypeRamp> dynamicTypeRamp{};
@@ -86,6 +95,9 @@ class TextAttributes : public DebugStringConvertible {
   std::optional<AccessibilityRole> accessibilityRole{};
   std::optional<Role> role{};
 
+  // Text Effects (ordered by nesting depth: index 0 = outermost = drawn first)
+  std::vector<TextEffectInfo> textEffects{};
+
 #pragma mark - Operations
 
   void apply(TextAttributes textAttributes);
@@ -106,10 +118,26 @@ class TextAttributes : public DebugStringConvertible {
 namespace std {
 
 template <>
+struct hash<facebook::react::TextEffectInfo> {
+  size_t operator()(const facebook::react::TextEffectInfo &info) const
+  {
+    return facebook::react::hash_combine(info.name, info.props);
+  }
+};
+
+template <>
 struct hash<facebook::react::TextAttributes> {
   size_t operator()(const facebook::react::TextAttributes &textAttributes) const
   {
-    return facebook::react::hash_combine(
+    size_t textEffectsHash = 0;
+    for (const auto &effect : textAttributes.textEffects) {
+      facebook::react::hash_combine(textEffectsHash, effect);
+    }
+    // The optionals are folded into one presence mask rather than being chained individually, so
+    // that the properties a given text run does not set stay off the hash's dependency chain.
+    size_t seed = 0;
+    facebook::react::hash_combine(
+        seed,
         textAttributes.foregroundColor,
         textAttributes.backgroundColor,
         textAttributes.opacity,
@@ -117,28 +145,33 @@ struct hash<facebook::react::TextAttributes> {
         textAttributes.fontSize,
         textAttributes.maxFontSizeMultiplier,
         textAttributes.fontSizeMultiplier,
+        textAttributes.letterSpacing,
+        textAttributes.lineHeight,
+        textAttributes.textShadowRadius,
+        textAttributes.textDecorationColor,
+        textAttributes.textShadowColor,
+        textEffectsHash);
+    facebook::react::hash_combine_optionals(
+        seed,
         textAttributes.fontWeight,
         textAttributes.fontStyle,
         textAttributes.fontVariant,
+        textAttributes.fontVariationSettings,
         textAttributes.allowFontScaling,
-        textAttributes.letterSpacing,
         textAttributes.textTransform,
-        textAttributes.lineHeight,
         textAttributes.alignment,
         textAttributes.baseWritingDirection,
         textAttributes.lineBreakStrategy,
         textAttributes.lineBreakMode,
-        textAttributes.textDecorationColor,
         textAttributes.textDecorationLineType,
         textAttributes.textDecorationStyle,
         textAttributes.textShadowOffset,
-        textAttributes.textShadowRadius,
-        textAttributes.textShadowColor,
         textAttributes.isHighlighted,
         textAttributes.isPressable,
         textAttributes.layoutDirection,
         textAttributes.accessibilityRole,
         textAttributes.role);
+    return seed;
   }
 };
 } // namespace std

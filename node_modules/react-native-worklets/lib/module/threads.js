@@ -1,7 +1,6 @@
 'use strict';
 
 import { IS_JEST } from './platformChecker';
-import { mockedRequestAnimationFrame } from "./runLoop/uiRuntime/mockedRequestAnimationFrame.js";
 export function scheduleOnUI(worklet, ...args) {
   enqueueUI(worklet, args);
 }
@@ -23,38 +22,61 @@ export function scheduleOnRN(fun, ...args) {
   queueMicrotask(args.length ? () => fun(...args) : fun);
 }
 export function runOnUIAsync(worklet, ...args) {
-  return new Promise(resolve => {
-    enqueueUI(worklet, args, resolve);
+  return new Promise((resolve, reject) => {
+    enqueueUI(worklet, args, resolve, reject);
   });
 }
 let runOnUIQueue = [];
-function enqueueUI(worklet, args, resolve) {
-  if (IS_JEST) {
-    mockedRequestAnimationFrame(() => {
-      const result = worklet(...args);
-      resolve?.(result);
-    });
-  } else {
-    const job = [worklet, args, resolve];
-    runOnUIQueue.push(job);
-    if (runOnUIQueue.length === 1) {
+function enqueueUI(worklet, args, resolve, reject) {
+  const job = [worklet, args, resolve, reject];
+  runOnUIQueue.push(job);
+  if (runOnUIQueue.length === 1) {
+    if (IS_JEST) {
       flushUIQueue();
+    } else {
+      queueMicrotask(flushUIQueue);
     }
   }
 }
+let offset = 0;
 function flushUIQueue() {
-  queueMicrotask(() => {
-    const queue = runOnUIQueue;
-    runOnUIQueue = [];
-    requestAnimationFrameImpl(() => {
-      queue.forEach(([workletFunction, workletArgs, jobResolve]) => {
-        const result = workletFunction(...workletArgs);
-        if (jobResolve) {
-          jobResolve(result);
+  const queue = runOnUIQueue;
+  runOnUIQueue = [];
+  requestAnimationFrame(() => {
+    offset = 0;
+    while (queue.length > offset) {
+      try {
+        drainUIQueue(queue);
+      } catch (e) {
+        const [,,, jobReject] = queue[offset - 1];
+        if (jobReject) {
+          jobReject(e);
+        } else {
+          console.error(e);
         }
-      });
-    });
+      }
+    }
   });
 }
-const requestAnimationFrameImpl = !globalThis.requestAnimationFrame ? mockedRequestAnimationFrame : globalThis.requestAnimationFrame;
+function drainUIQueue(queue) {
+  while (queue.length > offset) {
+    const [workletFunction, workletArgs, jobResolve] = queue[offset];
+    offset++;
+    const result = workletFunction(...workletArgs);
+    if (jobResolve) {
+      jobResolve(result);
+    }
+  }
+}
+
+/**
+ * Returns the id of the thread which currently executes JavaScript on the
+ * calling Runtime.
+ *
+ * @returns The id of the current thread.
+ * @see https://docs.swmansion.com/react-native-worklets/docs/utility/getCurrentThreadId
+ */
+export function getCurrentThreadId() {
+  throw new Error('[Worklets] `getCurrentThreadId` is not supported on web.');
+}
 //# sourceMappingURL=threads.js.map

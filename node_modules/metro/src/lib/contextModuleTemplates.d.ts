@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<bcc2ba36a2edccb791b6d380f2c27ebe>>
+ * @generated SignedSource<<f8268496c004d74dc4715c4213797ded>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/lib/contextModuleTemplates.js
@@ -25,8 +25,4 @@ import type {ContextMode} from '../ModuleGraph/worker/collectDependencies';
  *
  * @returns a string representing a context module (virtual file contents).
  */
-export declare function getContextModuleTemplate(
-  mode: ContextMode,
-  modulePath: string,
-  files: string[],
-): string;
+export declare function getContextModuleTemplate(mode: ContextMode, modulePath: string, files: string[]): string;

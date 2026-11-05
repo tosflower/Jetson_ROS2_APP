@@ -5,12 +5,12 @@ import { LayoutAnimationType } from "../../commonTypes.js";
 import { convertAnimationObjectToKeyframes } from "./animationParser.js";
 import { AnimationsData, TransitionType } from "./config.js";
 import { insertWebAnimation } from "./domUtils.js";
-import { CurvedTransition } from "./transition/Curved.web.js";
-import { EntryExitTransition } from "./transition/EntryExit.web.js";
-import { FadingTransition } from "./transition/Fading.web.js";
-import { JumpingTransition } from "./transition/Jumping.web.js";
-import { LinearTransition } from "./transition/Linear.web.js";
-import { SequencedTransition } from "./transition/Sequenced.web.js";
+import { CurvedTransition } from "./transition/Curved.js";
+import { EntryExitTransition } from "./transition/EntryExit.js";
+import { FadingTransition } from "./transition/Fading.js";
+import { JumpingTransition } from "./transition/Jumping.js";
+import { LinearTransition } from "./transition/Linear.js";
+import { SequencedTransition } from "./transition/Sequenced.js";
 function assignTransformRules(map, transform) {
   if (!transform) {
     return;
@@ -61,7 +61,17 @@ export function createCustomKeyFrameAnimation(keyframeDefinitions, animationType
   // Move keyframe easings one keyframe up (our LA Keyframe definition is different
   // from the CSS keyframes and expects easing to be present in the keyframe to which
   // we animate instead of the keyframe we animate from)
-  const offsets = Object.keys(keyframeDefinitions);
+  // `Object.keys` puts integer-like keys first, so the offsets must be sorted.
+  const toOffset = offset => {
+    if (offset === 'from') {
+      return 0;
+    }
+    if (offset === 'to') {
+      return 100;
+    }
+    return Number(offset);
+  };
+  const offsets = Object.keys(keyframeDefinitions).sort((a, b) => toOffset(a) - toOffset(b));
   for (let i = 1; i < offsets.length; i++) {
     const style = keyframeDefinitions[offsets[i]];
     if (style.easing) {

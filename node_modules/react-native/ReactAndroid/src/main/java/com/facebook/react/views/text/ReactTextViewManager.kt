@@ -31,6 +31,7 @@ import com.facebook.react.uimanager.IViewManagerWithChildren
 import com.facebook.react.uimanager.LayoutShadowNode
 import com.facebook.react.uimanager.LengthPercentage
 import com.facebook.react.uimanager.LengthPercentageType
+import com.facebook.react.uimanager.PointerEvents
 import com.facebook.react.uimanager.ReactStylesDiffMap
 import com.facebook.react.uimanager.ReferenceStateWrapper
 import com.facebook.react.uimanager.StateWrapper
@@ -43,6 +44,8 @@ import com.facebook.react.uimanager.style.BorderRadiusProp
 import com.facebook.react.uimanager.style.BorderStyle.Companion.fromString
 import com.facebook.react.uimanager.style.LogicalEdge
 import com.facebook.react.views.text.DefaultStyleValuesUtil.getDefaultTextColorHighlight
+import com.facebook.react.views.text.ReactTypefaceUtils.getFontWeightAdjustment
+import com.facebook.react.views.view.ImportantForInteractionHelper
 import java.util.HashMap
 
 /** View manager for `<Text>` nodes. */
@@ -51,7 +54,7 @@ import java.util.HashMap
 public open class ReactTextViewManager
 @JvmOverloads
 public constructor(
-    protected var reactTextViewManagerCallback: ReactTextViewManagerCallback? = null
+    protected var reactTextViewManagerCallback: ReactTextViewManagerCallback? = null,
 ) :
     BaseViewManager<ReactTextView, LayoutShadowNode>(),
     IViewManagerWithChildren,
@@ -115,7 +118,7 @@ public constructor(
   override fun createShadowNodeInstance(): LayoutShadowNode = LayoutShadowNode()
 
   public fun createShadowNodeInstance(
-      reactTextViewManagerCallback: ReactTextViewManagerCallback?
+      reactTextViewManagerCallback: ReactTextViewManagerCallback?,
   ): LayoutShadowNode = LayoutShadowNode()
 
   override fun getShadowNodeClass(): Class<LayoutShadowNode> = LayoutShadowNode::class.java
@@ -158,8 +161,10 @@ public constructor(
     val spanned: Spannable =
         TextLayoutManager.getOrCreateSpannableForText(
             view.context.assets,
+            getFontWeightAdjustment(view.context),
             attributedString,
             reactTextViewManagerCallback,
+            TextEffectRegistry.current,
         )
     view.setSpanned(spanned)
 
@@ -172,7 +177,7 @@ public constructor(
 
     val textBreakStrategy =
         TextAttributeProps.getTextBreakStrategy(
-            paragraphAttributes.getString(TextLayoutManager.PA_KEY_TEXT_BREAK_STRATEGY)
+            paragraphAttributes.getString(TextLayoutManager.PA_KEY_TEXT_BREAK_STRATEGY),
         )
     val currentJustificationMode =
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) 0 else view.justificationMode
@@ -233,6 +238,12 @@ public constructor(
   @ReactProp(name = "overflow")
   public fun setOverflow(view: ReactTextView, overflow: String?) {
     view.setOverflow(overflow)
+    ImportantForInteractionHelper.setImportantForInteraction(
+        view,
+        // <Text> has no pointerEvents prop, so it always behaves as AUTO.
+        PointerEvents.AUTO,
+        view.overflow,
+    )
   }
 
   @ReactProp(name = "accessible")

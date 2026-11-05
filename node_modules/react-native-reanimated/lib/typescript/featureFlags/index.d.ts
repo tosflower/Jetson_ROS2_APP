@@ -1,6 +1,7 @@
 import type { StaticFeatureFlagsSchema } from './staticFeatureFlags';
 type DynamicFlagsType = {
     EXAMPLE_DYNAMIC_FLAG: boolean;
+    TRACK_SYNCHRONOUS_PROPS_IN_LAYOUT_ANIMATIONS: boolean;
     init(): void;
     setFlag(name: DynamicFlagName, value: boolean): void;
     getFlag(name: DynamicFlagName): boolean;

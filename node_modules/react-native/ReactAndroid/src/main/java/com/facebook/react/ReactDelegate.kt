@@ -49,9 +49,7 @@ public open class ReactDelegate {
    *
    * @return true if Fabric is enabled for this Activity, false otherwise.
    */
-  protected var isFabricEnabled: Boolean =
-      ReactNativeNewArchitectureFeatureFlags.enableFabricRenderer()
-    private set
+  protected val isFabricEnabled: Boolean = true
 
   /**
    * Do not use this constructor as it's not accounting for New Architecture at all. You should use
@@ -59,7 +57,7 @@ public open class ReactDelegate {
    * used for New Architecture.
    */
   @Deprecated(
-      "Use one of the other constructors instead to account for New Architecture. Deprecated since 0.75.0"
+      "Use one of the other constructors instead to account for New Architecture. Deprecated since 0.75.0",
   )
   public constructor(
       activity: Activity,
@@ -95,7 +93,6 @@ public open class ReactDelegate {
       launchOptions: Bundle?,
       fabricEnabled: Boolean,
   ) {
-    this.isFabricEnabled = fabricEnabled
     this.activity = activity
     this.mainComponentName = appKey
     this.launchOptions = launchOptions
@@ -121,7 +118,7 @@ public open class ReactDelegate {
   public fun onHostResume() {
     if (activity !is DefaultHardwareBackBtnHandler) {
       throw ClassCastException(
-          "Host Activity `${activity.javaClass.simpleName}` does not implement DefaultHardwareBackBtnHandler"
+          "Host Activity `${activity.javaClass.simpleName}` does not implement DefaultHardwareBackBtnHandler",
       )
     }
     if (
@@ -252,7 +249,7 @@ public open class ReactDelegate {
             ((ReactNativeNewArchitectureFeatureFlags.enableBridgelessArchitecture() &&
                 reactHost?.devSupportManager != null) ||
                 (reactNativeHost?.hasInstance() == true &&
-                    reactNativeHost?.useDeveloperSupport == true))
+                    reactNativeHost?.getUseDeveloperSupport() == true))
     ) {
       event.startTracking()
       return true
@@ -273,7 +270,8 @@ public open class ReactDelegate {
         }
       } else {
         if (
-            reactNativeHost?.hasInstance() == true && reactNativeHost?.useDeveloperSupport == true
+            reactNativeHost?.hasInstance() == true &&
+                reactNativeHost?.getUseDeveloperSupport() == true
         ) {
           reactNativeHost?.reactInstanceManager?.showDevOptionsDialog()
           return true
@@ -411,7 +409,7 @@ public open class ReactDelegate {
   }
 
   @Deprecated(
-      "Do not access [ReactInstanceManager] directly. This class is going away in the New Architecture. You should use [ReactHost] instead."
+      "Do not access [ReactInstanceManager] directly. This class is going away in the New Architecture. You should use [ReactHost] instead.",
   )
   public fun getReactInstanceManager(): ReactInstanceManager {
     val nonNullReactNativeHost =

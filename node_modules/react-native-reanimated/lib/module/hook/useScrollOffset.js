@@ -1,11 +1,9 @@
 'use strict';
 
 import { useCallback, useEffect, useRef } from 'react';
-import { IS_WEB, logger } from "../common/index.js";
-import { useEvent } from "./useEvent.js";
+import { logger } from "../common/index.js";
 import { useSharedValue } from "./useSharedValue.js";
 const NOT_INITIALIZED_WARNING = 'animatedRef is not initialized in useScrollOffset. Make sure to pass the animated ref to the scrollable component to get scroll offset updates.';
-const NATIVE_SCROLL_EVENT_NAMES = ['onScroll', 'onScrollBeginDrag', 'onScrollEndDrag', 'onMomentumScrollBegin', 'onMomentumScrollEnd'];
 
 /**
  * Lets you synchronously get the current offset of a scrollable component.
@@ -17,8 +15,7 @@ const NATIVE_SCROLL_EVENT_NAMES = ['onScroll', 'onScrollBeginDrag', 'onScrollEnd
  *   scrollable component.
  * @see https://docs.swmansion.com/react-native-reanimated/docs/scroll/useScrollOffset
  */
-export const useScrollOffset = IS_WEB ? useScrollOffsetWeb : useScrollOffsetNative;
-function useScrollOffsetWeb(animatedRef, providedOffset) {
+export function useScrollOffset(animatedRef, providedOffset) {
   const internalOffset = useSharedValue(0);
   const offset = useRef(providedOffset ?? internalOffset).current;
   const eventHandler = useCallback(() => {
@@ -43,34 +40,6 @@ function useScrollOffsetWeb(animatedRef, providedOffset) {
       element.addEventListener('scroll', eventHandler);
       return () => {
         element.removeEventListener('scroll', eventHandler);
-      };
-    });
-  }, [animatedRef, eventHandler]);
-  return offset;
-}
-function useScrollOffsetNative(animatedRef, providedOffset) {
-  const internalOffset = useSharedValue(0);
-  const offset = useRef(providedOffset ?? internalOffset).current;
-  const eventHandler = useEvent(event => {
-    'worklet';
-
-    offset.value = event.contentOffset.x === 0 ? event.contentOffset.y : event.contentOffset.x;
-  }, NATIVE_SCROLL_EVENT_NAMES
-  // Read https://github.com/software-mansion/react-native-reanimated/pull/5056
-  // for more information about this cast.
-  );
-  useEffect(() => {
-    if (!animatedRef) {
-      return;
-    }
-    return animatedRef.observe(tag => {
-      if (!tag) {
-        logger.warn(NOT_INITIALIZED_WARNING);
-        return;
-      }
-      eventHandler.workletEventHandler.registerForEvents(tag);
-      return () => {
-        eventHandler.workletEventHandler.unregisterFromEvents(tag);
       };
     });
   }, [animatedRef, eventHandler]);

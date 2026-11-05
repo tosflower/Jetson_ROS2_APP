@@ -2,17 +2,18 @@ export declare enum ReanimatedLogLevel {
     warn = 1,
     error = 2
 }
-type LogData = {
+export type LogData = {
     level: ReanimatedLogLevel;
     message: string;
 };
-type LogFunction = (data: LogData) => void;
+export type LogFunction = (data: LogData) => void;
 export type LoggerConfig = {
     level?: ReanimatedLogLevel;
     strict?: boolean;
 };
 export type LoggerConfigInternal = {
     logFunction: LogFunction;
+    onLog?: LogFunction;
 } & Required<LoggerConfig>;
 /**
  * Current logger config getter.
@@ -29,13 +30,18 @@ export declare function getLoggerConfig(): LoggerConfigInternal;
  *   - Level: The minimum log level to display.
  *   - Strict: Whether to log warnings and errors that are not strict. Defaults to
  *     false.
+ *
+ * @param onLog - An optional callback invoked for every log that passes the
+ *   `level` and `strict` filters, in addition to the default console output.
+ *   Omitting it clears a previously registered callback.
  */
-export declare function updateLoggerConfig(currentConfig: LoggerConfigInternal, options?: Partial<LoggerConfig>): void;
+export declare function updateLoggerConfig(currentConfig: LoggerConfigInternal, options?: Partial<LoggerConfig>, onLog?: LogFunction): void;
 type LogOptions = {
     strict?: boolean;
 };
 export declare const logger: {
     warn(message: string, options?: LogOptions): void;
+    warnOnce(message: string, level: number): void;
     error(message: string, options?: LogOptions): void;
 };
 export {};

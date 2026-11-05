@@ -1,3 +1,3 @@
-export { ReanimatedModule } from './reanimatedModuleInstance';
+export declare const ReanimatedModule: import("./reanimatedModuleProxy").IReanimatedModule;
 export type { IReanimatedModule, ReanimatedModuleProxy, } from './reanimatedModuleProxy';
 //# sourceMappingURL=index.d.ts.map

@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/no-empty-function */
 'use strict';
 
 import { getUIRuntimeHolder, getUISchedulerHolder } from 'react-native-worklets';
-import { SHOULD_BE_USE_WEB } from "../common/index.js";
+import { IS_JEST } from "../common/index.js";
 import { getShadowNodeWrapperFromRef } from '../fabricUtils';
 import { checkCppVersion } from "../platform-specific/checkCppVersion.js";
 import { jsVersion } from "../platform-specific/jsVersion.js";
@@ -30,22 +29,14 @@ class NativeReanimatedModule {
       assertWorkletsVersion();
     }
     global._REANIMATED_VERSION_JS = jsVersion;
-    if (ReanimatedTurboModule) {
-      const status = installTurboModule();
-      if (!status) {
-        // This path means that React Native has failed on reload.
-        // We don't want to throw any errors to not mislead the users
-        // that the problem is related to Reanimated.
-        // We install a DummyReanimatedModuleProxy instead.
-        this.#reanimatedModuleProxy = new DummyReanimatedModuleProxy();
-        return;
-      }
+    if (ReanimatedTurboModule && !installTurboModule()) {
+      throw new Error('[Reanimated] Failed to install the native module because React Native has no active surface on its discarded instance. This happens when the app is reloaded while a previous reload is still in progress, for example during an OTA update immediately upon launch. No action is required; the app will continue to function as usual.');
     }
     if (global.__reanimatedModuleProxy === undefined) {
       throw new Error(`[Reanimated] Native part of Reanimated doesn't seem to be initialized.
 See https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#native-part-of-reanimated-doesnt-seem-to-be-initialized for more details.`);
     }
-    if (__DEV__ && !globalThis.RN$Bridgeless && !SHOULD_BE_USE_WEB) {
+    if (__DEV__ && !globalThis.RN$Bridgeless && !IS_JEST) {
       throw new Error('[Reanimated] Reanimated 4 supports only the React Native New Architecture and web.');
     }
     if (__DEV__) {
@@ -90,6 +81,9 @@ See https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooti
   setViewStyle(viewTag, style) {
     this.#reanimatedModuleProxy.setViewStyle(viewTag, style);
   }
+  setCSSEventHandler(handler) {
+    this.#reanimatedModuleProxy.setCSSEventHandler(handler);
+  }
   markNodeAsRemovable(shadowNodeWrapper) {
     this.#reanimatedModuleProxy.markNodeAsRemovable(shadowNodeWrapper);
   }
@@ -108,8 +102,8 @@ See https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooti
   unregisterCSSAnimations(viewTag) {
     this.#reanimatedModuleProxy.unregisterCSSAnimations(viewTag);
   }
-  runCSSTransition(shadowNodeWrapper, transitionConfig) {
-    this.#reanimatedModuleProxy.runCSSTransition(shadowNodeWrapper, transitionConfig);
+  runCSSTransition(shadowNodeWrapper, transitionConfig, eventMask) {
+    this.#reanimatedModuleProxy.runCSSTransition(shadowNodeWrapper, transitionConfig, eventMask);
   }
   unregisterCSSTransition(viewTag) {
     this.#reanimatedModuleProxy.unregisterCSSTransition(viewTag);
@@ -123,45 +117,6 @@ See https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooti
   unregisterPseudoStyles(viewTag) {
     this.#reanimatedModuleProxy.unregisterPseudoStyles(viewTag);
   }
-}
-class DummyReanimatedModuleProxy {
-  configureLayoutAnimationBatch() {}
-  setShouldAnimateExitingForTag() {}
-  getStaticFeatureFlag() {
-    return false;
-  }
-  setDynamicFeatureFlag() {}
-  subscribeForKeyboardEvents() {
-    return -1;
-  }
-  unsubscribeFromKeyboardEvents() {}
-  setViewStyle() {}
-  markNodeAsRemovable() {}
-  unmarkNodeAsRemovable() {}
-  registerCSSKeyframes() {}
-  unregisterCSSKeyframes() {}
-  applyCSSAnimations() {}
-  registerCSSAnimations() {}
-  updateCSSAnimations() {}
-  unregisterCSSAnimations() {}
-  runCSSTransition() {}
-  unregisterCSSTransition() {}
-  registerSensor() {
-    return -1;
-  }
-  unregisterSensor() {}
-  registerEventHandler() {
-    return -1;
-  }
-  unregisterEventHandler() {}
-  getViewProp() {
-    return null;
-  }
-  getSettledUpdates() {
-    return [];
-  }
-  registerPseudoStyles() {}
-  unregisterPseudoStyles() {}
 }
 function installTurboModule() {
   if (globalThis.__reanimatedModuleProxy) {

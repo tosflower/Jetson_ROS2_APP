@@ -134,6 +134,8 @@ public class ReactModalHostView(context: ThemedReactContext) :
     dialogRootViewGroup.dispatchProvideStructure(structure)
   }
 
+  override fun shouldDelayChildPressedState(): Boolean = false
+
   protected override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
     // Do nothing as we are laid out by UIManager
   }
@@ -326,7 +328,7 @@ public class ReactModalHostView(context: ThemedReactContext) :
             }
             return false
           }
-        }
+        },
     )
 
     window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
@@ -565,7 +567,7 @@ public class ReactModalHostView(context: ThemedReactContext) :
                       .getNativeModule(UIManagerModule::class.java)
                       ?.updateNodeSize(id, viewWidth, viewHeight)
                 }
-              }
+              },
           )
         }
       }

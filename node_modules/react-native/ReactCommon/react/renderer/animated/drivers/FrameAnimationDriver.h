@@ -5,6 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <react/cxxstableapi/FrameworksGuard.h>
+
 /*
  * Adapted from react-native-windows under the MIT license.
  */
@@ -35,6 +37,7 @@ class FrameAnimationDriver : public AnimationDriver {
   std::vector<double> frames_{};
   double toValue_{0};
   std::optional<double> startValue_{};
+  bool deferredStart_{false};
 };
 
 } // namespace facebook::react

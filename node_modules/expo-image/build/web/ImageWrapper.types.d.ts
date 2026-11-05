@@ -1,6 +1,6 @@
 import type { CSSProperties, SyntheticEvent } from 'react';
-import type { SrcSetSource } from './useSourceSelection';
 import type { ImageContentPositionObject, ImageProps, ImageSource } from '../Image.types';
+import type { SrcSetSource } from './useSourceSelection';
 export type OnErrorEvent = (({ source }: {
     source: ImageSource | null;
 }) => void) | undefined | null;
@@ -30,4 +30,3 @@ export type ImageWrapperProps = {
     cachePolicy?: ImageProps['cachePolicy'];
     draggable?: boolean;
 };
-//# sourceMappingURL=ImageWrapper.types.d.ts.map

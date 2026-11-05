@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<900f968546b7cc3e463e2de9d1f06200>>
+ * @generated SignedSource<<3393b22da266c40b31527fb852b7c99c>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/lib/debounceAsyncQueue.js
@@ -15,8 +15,5 @@
  *   yarn run build-ts-defs (OSS) 
  */
 
-declare function debounceAsyncQueue<T>(
-  fn: () => Promise<T>,
-  delay: number,
-): () => Promise<T>;
+declare function debounceAsyncQueue<T>(fn: () => Promise<T>, delay: number): () => Promise<T>;
 export default debounceAsyncQueue;

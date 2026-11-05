@@ -28,6 +28,7 @@ export type CSSAnimationUpdates = {
     animationNames?: string[];
     newAnimationSettings?: Record<number, NormalizedSingleCSSAnimationSettings>;
     settingsUpdates?: Record<number, Partial<NormalizedSingleCSSAnimationSettings>>;
+    eventMask?: number;
 };
 export {};
 //# sourceMappingURL=animation.d.ts.map

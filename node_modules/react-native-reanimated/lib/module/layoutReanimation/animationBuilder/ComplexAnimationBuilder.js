@@ -1,7 +1,7 @@
 'use strict';
 
 import { withSpring, withTiming } from "../../animation/index.js";
-import { assertEasingIsWorklet } from "../../animation/util.js";
+import { assertEasingIsWorklet } from '../../animation/util';
 import { BaseAnimationBuilder } from "./BaseAnimationBuilder.js";
 
 /**

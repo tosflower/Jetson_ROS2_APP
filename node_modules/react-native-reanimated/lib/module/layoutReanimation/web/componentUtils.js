@@ -5,14 +5,14 @@ import { removeElementAnimation } from "../../common/web/index.js";
 import { LayoutAnimationType, ReduceMotion } from "../../commonTypes.js";
 import { EasingNameSymbol } from "../../Easing.js";
 import { _updatePropsJS } from "../../ReanimatedModule/js-reanimated/index.js";
-import { ReducedMotionManager } from "../../ReducedMotion.js";
+import { ReducedMotionManager } from '../../ReducedMotion';
 import { Keyframe } from "../animationBuilder/index.js";
 import { setElementPosition, snapshots } from "./componentStyle.js";
 import { Animations, TransitionType } from "./config.js";
 import { TransitionGenerator } from "./createAnimation.js";
 import { scheduleAnimationCleanup } from "./domUtils.js";
-import { getEasingByName, maybeGetBezierEasing, WebEasings } from "./Easing.web.js";
-import { prepareCurvedTransition } from "./transition/Curved.web.js";
+import { getEasingByName, maybeGetBezierEasing, WebEasings } from "./Easing.js";
+import { prepareCurvedTransition } from "./transition/Curved.js";
 function getSnapshotForElement(element) {
   const existingSnapshot = snapshots.get(element);
   if (existingSnapshot) {

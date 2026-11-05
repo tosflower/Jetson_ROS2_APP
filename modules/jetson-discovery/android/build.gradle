@@ -6,6 +6,11 @@ plugins {
 group = 'expo.modules.jetsondiscovery'
 version = '1.0.0'
 
+// 本地发现模块只随应用构建，不发布到 Maven；关闭发布配置所需的 release/versionName 检查。
+expoModule {
+  canBePublished false
+}
+
 android {
   namespace 'expo.modules.jetsondiscovery'
 }

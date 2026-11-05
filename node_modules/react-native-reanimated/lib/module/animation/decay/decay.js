@@ -1,9 +1,9 @@
 'use strict';
 
-import { defineAnimation, getReduceMotionForAnimation } from "../util.js";
+import { defineAnimation, getReduceMotionForAnimation } from '../util';
 import { rigidDecay } from "./rigidDecay.js";
 import { rubberBandDecay } from "./rubberBandDecay.js";
-import { isValidRubberBandConfig } from "./utils.js";
+import { isValidRubberBandConfig } from './utils';
 
 // TODO TYPESCRIPT This is a temporary type to get rid of .d.ts file.
 

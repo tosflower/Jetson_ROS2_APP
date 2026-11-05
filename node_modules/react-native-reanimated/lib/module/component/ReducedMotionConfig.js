@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { logger } from "../common/index.js";
 import { ReduceMotion } from "../commonTypes.js";
-import { isReducedMotionEnabledInSystem, ReducedMotionManager } from "../ReducedMotion.js";
+import { isReducedMotionEnabledInSystem, ReducedMotionManager } from '../ReducedMotion';
 
 /**
  * A component that lets you overwrite default reduce motion behavior globally

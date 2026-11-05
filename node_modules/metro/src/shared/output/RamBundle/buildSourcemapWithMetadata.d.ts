@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<669a46ab2a802ea2b93d98edf337fff0>>
+ * @generated SignedSource<<29dbb4ae72dd9770f59bc70f28370686>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/shared/output/RamBundle/buildSourcemapWithMetadata.js
@@ -25,6 +25,5 @@ type Params = {
   startupModules: ReadonlyArray<ModuleTransportLike>;
 };
 declare const $$EXPORT_DEFAULT_DECLARATION$$: ($$PARAM_0$$: Params) => IndexMap;
-declare type $$EXPORT_DEFAULT_DECLARATION$$ =
-  typeof $$EXPORT_DEFAULT_DECLARATION$$;
+declare type $$EXPORT_DEFAULT_DECLARATION$$ = typeof $$EXPORT_DEFAULT_DECLARATION$$;
 export default $$EXPORT_DEFAULT_DECLARATION$$;

@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<53b0e844540afad09974c4bcc9b0668c>>
+ * @generated SignedSource<<efe7b20edc7c2e1cb82a7c9e503399e6>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-config/src/defaults/exclusionList.js
@@ -15,7 +15,5 @@
  *   yarn run build-ts-defs (OSS) 
  */
 
-declare function exclusionList(
-  additionalExclusions?: ReadonlyArray<RegExp | string>,
-): RegExp;
+declare function exclusionList(additionalExclusions?: ReadonlyArray<RegExp | string>): RegExp;
 export default exclusionList;

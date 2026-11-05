@@ -8,7 +8,7 @@ require "json"
 package = JSON.parse(File.read(File.join(__dir__, "..", "package.json")))
 version = package['version']
 
-source = { :git => 'https://github.com/react/react-native.git' }
+source = { :git => 'https://github.com/facebook/react-native.git' }
 if version == '1000.0.0'
   # This is an unpublished version, use the latest commit hash of the react-native repo, which we’re presumably in.
   source[:commit] = `git rev-parse HEAD`.strip if system("git rev-parse --git-dir > /dev/null 2>&1")
@@ -26,15 +26,24 @@ Pod::Spec.new do |s|
   s.platforms              = min_supported_versions
   s.source                 = source
   s.source_files           = podspec_sources("react/renderer/mapbuffer/*.{cpp,h}", "react/renderer/mapbuffer/*.h")
-  s.exclude_files          = "react/renderer/mapbuffer/tests"
+  s.exclude_files          = ["react/renderer/mapbuffer/tests", "react/renderer/mapbuffer/React"]
   s.public_header_files    = 'react/renderer/mapbuffer/*.h'
   s.header_dir             = "react/renderer/mapbuffer"
   s.pod_target_xcconfig = {  "HEADER_SEARCH_PATHS" => ["\"$(PODS_TARGET_SRCROOT)\""], "USE_HEADERMAP" => "YES",
                             "CLANG_CXX_LANGUAGE_STANDARD" => rct_cxx_language_standard() }
 
+  s.subspec "mapbufferUmbrella" do |ss|
+    ss.source_files        = "react/renderer/mapbuffer/React/*.h"
+    ss.header_dir          = ""
+    ss.header_mappings_dir = "react/renderer/mapbuffer"
+  end
+
   resolve_use_frameworks(s, header_mappings_dir: './', module_name: "React_Mapbuffer")
 
+  s.dependency "React-cxxstableapi"
   add_dependency(s, "React-debug")
   add_rn_third_party_dependencies(s)
   add_rncore_dependency(s)
+
+  mark_as_react_native_build(s)
 end

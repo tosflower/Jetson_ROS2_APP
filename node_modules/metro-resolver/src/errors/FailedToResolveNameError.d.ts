@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<a36641315baa7d27d1b9ab17f41dbb35>>
+ * @generated SignedSource<<8d852a8087e3651991e9dbe9e5ad9664>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro-resolver/src/errors/FailedToResolveNameError.js
@@ -18,9 +18,6 @@
 declare class FailedToResolveNameError extends Error {
   dirPaths: ReadonlyArray<string>;
   extraPaths: ReadonlyArray<string>;
-  constructor(
-    dirPaths: ReadonlyArray<string>,
-    extraPaths: ReadonlyArray<string>,
-  );
+  constructor(dirPaths: ReadonlyArray<string>, extraPaths: ReadonlyArray<string>);
 }
 export default FailedToResolveNameError;

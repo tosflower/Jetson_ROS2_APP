@@ -13,6 +13,7 @@ import android.graphics.PointF
 import android.view.View
 import android.view.ViewGroup
 import com.facebook.common.logging.FLog
+import com.facebook.react.R
 import com.facebook.react.bridge.UiThreadUtil
 import com.facebook.react.common.ReactConstants
 import com.facebook.react.touch.ReactHitSlopView
@@ -298,7 +299,11 @@ public object TouchTargetHelper {
   ): Boolean {
     var localX = x + parent.scrollX - child.left
     var localY = y + parent.scrollY - child.top
-    val matrix = child.matrix
+    // BaseViewManager applies skewX / skewY through View.setAnimationMatrix, which is composed
+    // for drawing but not exposed via View.getMatrix(); fall back to the stashed matrix so hit
+    // testing follows the rendered parallelogram and not the original rectangle.
+    val skewMatrix = child.getTag(R.id.skew_animation_matrix) as? Matrix
+    val matrix = skewMatrix ?: child.matrix
     if (!matrix.isIdentity) {
       val inverseMatrix = inverseMatrix
       if (!matrix.invert(inverseMatrix)) {
@@ -350,25 +355,23 @@ public object TouchTargetHelper {
       }
       PointerEvents.BOX_ONLY -> {
         // This view may be the target, its children don't matter
-        val targetView =
-            findTouchTargetView(
-                eventCoords,
-                view,
-                EnumSet.of(TouchTargetReturnType.SELF),
-                pathAccumulator,
-            )
+        val targetView = findTouchTargetView(
+            eventCoords,
+            view,
+            EnumSet.of(TouchTargetReturnType.SELF),
+            pathAccumulator,
+        )
         targetView?.let { pathAccumulator?.add(ViewTarget(view.id, view)) }
         targetView
       }
       PointerEvents.BOX_NONE -> {
         // This view can't be the target, but its children might.
-        val targetView =
-            findTouchTargetView(
-                eventCoords,
-                view,
-                EnumSet.of(TouchTargetReturnType.CHILD),
-                pathAccumulator,
-            )
+        val targetView = findTouchTargetView(
+            eventCoords,
+            view,
+            EnumSet.of(TouchTargetReturnType.CHILD),
+            pathAccumulator,
+        )
 
         if (targetView != null) {
           pathAccumulator?.add(ViewTarget(view.id, view))
@@ -407,13 +410,12 @@ public object TouchTargetHelper {
           return view
         }
 
-        val result =
-            findTouchTargetView(
-                eventCoords,
-                view,
-                EnumSet.of(TouchTargetReturnType.SELF, TouchTargetReturnType.CHILD),
-                pathAccumulator,
-            )
+        val result = findTouchTargetView(
+            eventCoords,
+            view,
+            EnumSet.of(TouchTargetReturnType.SELF, TouchTargetReturnType.CHILD),
+            pathAccumulator,
+        )
         result?.let { pathAccumulator?.add(ViewTarget(view.id, view)) }
         result
       }

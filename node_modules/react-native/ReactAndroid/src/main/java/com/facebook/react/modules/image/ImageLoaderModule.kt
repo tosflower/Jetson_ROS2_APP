@@ -13,13 +13,16 @@ import android.util.SparseArray
 import com.facebook.common.executors.CallerThreadExecutor
 import com.facebook.common.memory.PooledByteBuffer
 import com.facebook.common.references.CloseableReference
+import com.facebook.common.util.UriUtil
 import com.facebook.datasource.BaseDataSubscriber
 import com.facebook.datasource.DataSource
 import com.facebook.datasource.DataSubscriber
 import com.facebook.drawee.backends.pipeline.Fresco
 import com.facebook.fbreact.specs.NativeImageLoaderAndroidSpec
 import com.facebook.imagepipeline.common.RotationOptions
+import com.facebook.imagepipeline.core.DownsampleMode
 import com.facebook.imagepipeline.core.ImagePipeline
+import com.facebook.imagepipeline.image.CloseableImage
 import com.facebook.imagepipeline.image.EncodedImage
 import com.facebook.imagepipeline.request.ImageRequest
 import com.facebook.imagepipeline.request.ImageRequestBuilder
@@ -35,6 +38,7 @@ import com.facebook.react.module.annotations.ReactModule
 import com.facebook.react.modules.fresco.ReactNetworkImageRequest
 import com.facebook.react.views.image.ReactCallerContextFactory
 import com.facebook.react.views.imagehelper.ImageSource
+import com.facebook.react.views.imagehelper.ResourceDrawableIdHelper
 
 @ReactModule(name = NativeImageLoaderAndroidSpec.NAME)
 internal class ImageLoaderModule : NativeImageLoaderAndroidSpec, LifecycleEventListener {
@@ -85,6 +89,18 @@ internal class ImageLoaderModule : NativeImageLoaderAndroidSpec, LifecycleEventL
       return
     }
     val source = ImageSource(reactApplicationContext, uriString)
+    // Fast path: resolve resource drawables (including VectorDrawables) via the
+    // Android resource system instead of Fresco's encoded-image pipeline, which
+    // does not support res:// URIs.
+    if (source.isResource) {
+      resolveResourceSize(uriString, promise)
+      return
+    }
+    // Fast path: data: URIs are served by the decoded pipeline; see resolveDataUriSize.
+    if (UriUtil.isDataUri(source.uri)) {
+      resolveDataUriSize(source.uri, promise)
+      return
+    }
     val request: ImageRequest =
         ImageRequestBuilder.newBuilderWithSource(source.uri)
             .setRotationOptions(RotationOptions.disableRotation())
@@ -109,6 +125,16 @@ internal class ImageLoaderModule : NativeImageLoaderAndroidSpec, LifecycleEventL
       return
     }
     val source = ImageSource(reactApplicationContext, uriString)
+    // Fast path: resource drawables are resolved locally; headers are not applicable.
+    if (source.isResource) {
+      resolveResourceSize(uriString, promise)
+      return
+    }
+    // Fast path: a data: URI carries its own bytes, so headers are not applicable.
+    if (UriUtil.isDataUri(source.uri)) {
+      resolveDataUriSize(source.uri, promise)
+      return
+    }
     val imageRequestBuilder: ImageRequestBuilder =
         ImageRequestBuilder.newBuilderWithSource(source.uri)
             .setRotationOptions(RotationOptions.disableRotation())
@@ -120,7 +146,7 @@ internal class ImageLoaderModule : NativeImageLoaderAndroidSpec, LifecycleEventL
   }
 
   private fun createSizeSubscriber(
-      promise: Promise
+      promise: Promise,
   ): DataSubscriber<CloseableReference<PooledByteBuffer>> =
       object : BaseDataSubscriber<CloseableReference<PooledByteBuffer>>() {
         override fun onNewResultImpl(dataSource: DataSource<CloseableReference<PooledByteBuffer>>) {
@@ -166,6 +192,104 @@ internal class ImageLoaderModule : NativeImageLoaderAndroidSpec, LifecycleEventL
           promise.reject(ERROR_GET_SIZE_FAILURE, dataSource.failureCause)
         }
       }
+
+  /**
+   * Resolve the intrinsic size of a `data:` URI: Fresco's encoded-image pipeline has no producer
+   * sequence for the scheme and throws, while its decoded pipeline has one.
+   *
+   * Both request options are load-bearing. `autoRotate` matches
+   * [com.facebook.react.views.image.ReactImageView], so the decode warms the bitmap cache under the
+   * key that view later reads — `disableRotation` would warm a dead one. `DownsampleMode.NEVER`
+   * keeps the reported size intrinsic, at the cost of caching a larger bitmap than that view alone
+   * would decode above `maxBitmapDimension`.
+   */
+  private fun resolveDataUriSize(uri: Uri, promise: Promise) {
+    val request =
+        ImageRequestBuilder.newBuilderWithSource(uri)
+            .setRotationOptions(RotationOptions.autoRotate())
+            .setDownsampleOverride(DownsampleMode.NEVER)
+            .build()
+    val dataSource = imagePipeline.fetchDecodedImage(request, callerContext)
+    dataSource.subscribe(createDecodedSizeSubscriber(promise), CallerThreadExecutor.getInstance())
+  }
+
+  private fun createDecodedSizeSubscriber(
+      promise: Promise,
+  ): DataSubscriber<CloseableReference<CloseableImage>> =
+      object : BaseDataSubscriber<CloseableReference<CloseableImage>>() {
+        override fun onNewResultImpl(dataSource: DataSource<CloseableReference<CloseableImage>>) {
+          if (!dataSource.isFinished) {
+            return
+          }
+          val ref = dataSource.result
+          if (ref == null) {
+            promise.reject(ERROR_GET_SIZE_FAILURE, "Failed to get the size of the image")
+            return
+          }
+          try {
+            // Already the visible dimensions: the decode applied the EXIF rotation, which is why
+            // this does not repeat the axis swap the encoded subscriber has to do by hand.
+            val image = ref.get()
+            val width = image.width
+            val height = image.height
+            if (width < 0 || height < 0) {
+              promise.reject(ERROR_GET_SIZE_FAILURE, "Failed to get the size of the image")
+              return
+            }
+            promise.resolve(
+                buildReadableMap {
+                  put("width", width)
+                  put("height", height)
+                },
+            )
+          } catch (e: Exception) {
+            promise.reject(ERROR_GET_SIZE_FAILURE, e)
+          } finally {
+            CloseableReference.closeSafely(ref)
+          }
+        }
+
+        override fun onFailureImpl(dataSource: DataSource<CloseableReference<CloseableImage>>) {
+          promise.reject(ERROR_GET_SIZE_FAILURE, dataSource.failureCause)
+        }
+      }
+
+  /**
+   * Resolve the intrinsic size of a drawable resource by name. Works for all drawable types
+   * including VectorDrawable, which cannot be decoded by Fresco's encoded-image pipeline.
+   *
+   * Drawables without intrinsic dimensions (e.g. ColorDrawable) will cause the promise to be
+   * rejected since there is no meaningful size to return.
+   */
+  private fun resolveResourceSize(name: String, promise: Promise) {
+    val context = reactApplicationContext
+    val drawable =
+        try {
+          ResourceDrawableIdHelper.getResourceDrawable(context, name)
+        } catch (e: Exception) {
+          promise.reject(ERROR_GET_SIZE_FAILURE, e)
+          return
+        }
+    if (drawable == null) {
+      promise.reject(ERROR_GET_SIZE_FAILURE, "Could not resolve drawable resource: $name")
+      return
+    }
+    val width = drawable.intrinsicWidth
+    val height = drawable.intrinsicHeight
+    if (width < 0 || height < 0) {
+      promise.reject(
+          ERROR_GET_SIZE_FAILURE,
+          "Drawable resource has no intrinsic size: $name",
+      )
+      return
+    }
+    promise.resolve(
+        buildReadableMap {
+          put("width", width)
+          put("height", height)
+        },
+    )
+  }
 
   /**
    * Prefetches the given image to the Fresco image disk cache.

@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<0a49d828c4a80d52ccab4d4766b84c86>>
+ * @generated SignedSource<<c4af481aa1b77c69be582949d8b423fc>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/DeltaBundler/Serializers/getAssets.js
@@ -25,8 +25,5 @@ type Options = {
   projectRoot: string;
   publicPath: string;
 };
-declare function getAssets(
-  dependencies: ReadOnlyDependencies,
-  options: Options,
-): Promise<ReadonlyArray<AssetData>>;
+declare function getAssets(dependencies: ReadOnlyDependencies, options: Options): Promise<ReadonlyArray<AssetData>>;
 export default getAssets;

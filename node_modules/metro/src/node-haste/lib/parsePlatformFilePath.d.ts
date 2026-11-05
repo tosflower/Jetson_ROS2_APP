@@ -6,7 +6,7 @@
  *
  * @noformat
  * @oncall react_native
- * @generated SignedSource<<61c16b5ef31517dc44347558a4dd431a>>
+ * @generated SignedSource<<98249ae77c7e37e5f94c8235a071868f>>
  *
  * This file was translated from Flow by scripts/generateTypeScriptDefinitions.js
  * Original file: packages/metro/src/node-haste/lib/parsePlatformFilePath.js
@@ -25,8 +25,5 @@ type PlatformFilePathParts = {
  * Extract the components of a file path that can have a platform specifier: Ex.
  * `index.ios.js` is specific to the `ios` platform and has the extension `js`.
  */
-declare function parsePlatformFilePath(
-  filePath: string,
-  platforms: ReadonlySet<string>,
-): PlatformFilePathParts;
+declare function parsePlatformFilePath(filePath: string, platforms: ReadonlySet<string>): PlatformFilePathParts;
 export default parsePlatformFilePath;

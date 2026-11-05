@@ -18,7 +18,10 @@ object PropertyUtils {
   const val HERMES_ENABLED = "hermesEnabled"
   const val SCOPED_HERMES_ENABLED = "react.hermesEnabled"
 
-  /** Public property that toggles Hermes V1 */
+  /**
+   * Deprecated property that used to toggle Hermes V1. Hermes V1 is now always enabled. Kept here
+   * so we can detect usage and warn users to remove it from their gradle.properties.
+   */
   const val HERMES_V1_ENABLED = "hermesV1Enabled"
   const val SCOPED_HERMES_V1_ENABLED = "react.hermesV1Enabled"
 
@@ -59,6 +62,11 @@ object PropertyUtils {
    */
   const val INTERNAL_REACT_NATIVE_MAVEN_LOCAL_REPO = "react.internal.mavenLocalRepo"
 
+  /** Internal property that controls the React Native Maven mirror, which is enabled by default. */
+  const val INTERNAL_REACT_NATIVE_MAVEN_MIRROR_ENABLED =
+      "react.internal.reactNativeMavenMirrorEnabled"
+  const val INTERNAL_REACT_NATIVE_MAVEN_MIRROR_ENABLED_DEFAULT = true
+
   /**
    * Internal property used to specify where the Windows Bash executable is located. This is useful
    * for contributors who are running Windows on their machine.
@@ -92,5 +100,4 @@ object PropertyUtils {
    * are stored in sdks/hermes-engine/version.properties
    */
   const val INTERNAL_HERMES_VERSION_NAME = "HERMES_VERSION_NAME"
-  const val INTERNAL_HERMES_V1_VERSION_NAME = "HERMES_V1_VERSION_NAME"
 }

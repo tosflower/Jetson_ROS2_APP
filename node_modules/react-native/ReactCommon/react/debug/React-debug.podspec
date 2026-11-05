@@ -8,12 +8,18 @@ require "json"
 package = JSON.parse(File.read(File.join(__dir__, "..", "..", "..", "package.json")))
 version = package['version']
 
-source = { :git => 'https://github.com/react/react-native.git' }
+source = { :git => 'https://github.com/facebook/react-native.git' }
 if version == '1000.0.0'
   # This is an unpublished version, use the latest commit hash of the react-native repo, which we’re presumably in.
   source[:commit] = `git rev-parse HEAD`.strip if system("git rev-parse --git-dir > /dev/null 2>&1")
 else
   source[:tag] = "v#{version}"
+end
+
+header_search_paths = []
+
+if ENV['USE_FRAMEWORKS']
+  header_search_paths << "\"$(PODS_TARGET_SRCROOT)/../..\"" # ReactCommon, for <react/cxxstableapi/...>
 end
 
 Pod::Spec.new do |s|
@@ -28,13 +34,24 @@ Pod::Spec.new do |s|
   s.source_files           = podspec_sources("*.{cpp,h}", "*.h")
   s.header_dir             = "react/debug"
   s.pod_target_xcconfig    = { "CLANG_CXX_LANGUAGE_STANDARD" => rct_cxx_language_standard(),
-                               "DEFINES_MODULE" => "YES" }
+                               "DEFINES_MODULE" => "YES",
+                               "HEADER_SEARCH_PATHS" => header_search_paths.join(' ') }
 
   resolve_use_frameworks(s, header_mappings_dir: "../..", module_name: "React_debug")
+
+  s.subspec "debugUmbrella" do |ss|
+    ss.source_files         = "React/*.h"
+    ss.header_dir           = ""
+    ss.header_mappings_dir  = "."
+  end
 
   s.subspec "redbox" do |ss|
     ss.source_files         = podspec_sources("redbox/*.{cpp,h}", "redbox/*.h")
     ss.exclude_files        = "redbox/tests/**/*.{cpp,h}"
     ss.header_dir           = "react/debug/redbox"
   end
+
+  s.dependency "React-cxxstableapi"
+
+  mark_as_react_native_build(s)
 end

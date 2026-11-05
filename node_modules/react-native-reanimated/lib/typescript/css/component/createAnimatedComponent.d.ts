@@ -2,8 +2,8 @@ import type { ComponentRef, ComponentType, ReactNode, Ref } from 'react';
 import type React from 'react';
 import type { FlatList, FlatListProps } from 'react-native';
 import type { AnimatedRef } from '../../hook';
-import type { PropsWithCSS } from '../types';
-type AnimatedComponentType<Props extends object = object, Instance = unknown> = (props: Omit<PropsWithCSS<Props>, 'ref'> & {
+import type { CSSCallbackProps, PropsWithCSS } from '../types';
+type AnimatedComponentType<Props extends object = object, Instance = unknown> = (props: Omit<PropsWithCSS<Props>, 'ref'> & CSSCallbackProps & {
     ref?: Ref<Instance> | AnimatedRef;
 }) => ReactNode;
 /**

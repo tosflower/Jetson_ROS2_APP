@@ -1,32 +1,46 @@
 {
   "name": "expo-image",
-  "title": "Expo Image",
-  "version": "57.0.5",
+  "version": "58.0.18",
   "description": "A cross-platform, performant image component for React Native and Expo with Web support",
-  "main": "src/index.ts",
-  "types": "build/index.d.ts",
-  "sideEffects": false,
+  "keywords": [
+    "react-native"
+  ],
   "homepage": "https://docs.expo.dev/versions/latest/sdk/image/",
+  "license": "MIT",
+  "author": "650 Industries, Inc.",
   "repository": {
     "type": "git",
     "url": "https://github.com/expo/expo.git",
     "directory": "packages/expo-image"
   },
-  "keywords": [
-    "react-native"
-  ],
-  "author": "650 Industries, Inc.",
-  "license": "MIT",
+  "sideEffects": false,
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "exports": {
+    ".": {
+      "types": {
+        "expo-source": "./src/index.ts",
+        "default": "./build/index.d.ts"
+      },
+      "expo-source": "./src/index.ts",
+      "default": "./build/index.js"
+    },
+    "./app.plugin.js": "./app.plugin.js",
+    "./plugin": "./plugin/build/index.js",
+    "./package.json": "./package.json"
+  },
   "dependencies": {
     "sf-symbols-typescript": "^2.2.0"
   },
   "devDependencies": {
+    "@expo/internal-scripts": "58.0.5",
+    "@testing-library/react-native": "^14.0.1",
+    "@types/jest": "^30.0.0",
     "@types/node": "^22.14.0",
-    "@types/react": "~19.2.0",
-    "expo": "57.0.22",
-    "expo-observe": "57.0.21",
-    "expo-module-scripts": "56.0.3",
-    "expo-app-metrics": "57.0.18"
+    "@types/react": "~19.3.0",
+    "expo": "58.0.21",
+    "expo-app-metrics": "58.0.14",
+    "expo-observe": "58.0.16"
   },
   "peerDependencies": {
     "expo": "*",
@@ -39,17 +53,18 @@
       "optional": true
     }
   },
-  "jest": {
-    "preset": "expo-module-scripts"
-  },
-  "gitHead": "9e5319c0f821a27b7924841903abae50e2b41790",
+  "title": "Expo Image",
   "scripts": {
-    "build": "expo-module build",
-    "build:plugin": "expo-module build plugin",
+    "precompile-ios": "et prebuild-package-for-publish",
+    "precompile-android": "et prebuild-android-package-for-publish",
+    "build": "pnpm run build:lib && pnpm run build:plugin",
+    "build:lib": "expo-build src",
+    "build:plugin": "expo-build --base plugin cjs:src",
     "clean": "expo-module clean",
-    "lint": "expo-module lint",
-    "test": "expo-module test",
-    "test:rsc": "jest --config jest-rsc.config.js",
-    "expo-module": "expo-module"
+    "lint": "oxlint --config oxlint.config.mjs .",
+    "format": "expo-module format",
+    "test": "jest",
+    "depscheck": "expo-module depscheck",
+    "typecheck": "tsc -b tsconfig.all.json"
   }
 }

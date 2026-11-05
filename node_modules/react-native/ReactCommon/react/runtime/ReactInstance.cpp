@@ -8,19 +8,18 @@
 #include "ReactInstance.h"
 
 #include <ReactCommon/RuntimeExecutor.h>
-#include <cxxreact/ErrorUtils.h>
 #include <cxxreact/JSBigString.h>
-#include <cxxreact/JSExecutor.h>
 #include <cxxreact/ReactMarker.h>
 #include <cxxreact/TraceSection.h>
 #include <glog/logging.h>
+#include <jserrorhandler/ErrorUtils.h>
 #include <jsi/JSIDynamic.h>
 #include <jsi/hermes-interfaces.h>
 #include <jsi/instrumentation.h>
 #include <jsinspector-modern/HostTarget.h>
 #include <react/featureflags/ReactNativeFeatureFlags.h>
-#include <react/renderer/core/ShadowNode.h>
 #include <react/renderer/runtimescheduler/RuntimeSchedulerBinding.h>
+#include <react/renderer/runtimescheduler/RuntimeSchedulerCallInvoker.h>
 #include <react/runtime/JSRuntimeBindings.h>
 #include <react/timing/primitives.h>
 #include <react/utils/jsi-utils.h>
@@ -44,8 +43,17 @@ std::shared_ptr<RuntimeScheduler> createRuntimeScheduler(
       // FIXME: Move creation of PerformanceEntryReporter to here and
       // guarantee that its lifetime is the same as the runtime.
       PerformanceEntryReporter::getInstance().get());
-
   return scheduler;
+}
+
+void setHermesEventLoopControl(
+    jsi::Runtime& runtime,
+    facebook::hermes::IEventLoopControl* eventLoopControl) {
+  auto* setEventLoopControl =
+      jsi::castInterface<facebook::hermes::ISetEventLoopControl>(&runtime);
+  if (setEventLoopControl != nullptr) {
+    setEventLoopControl->setEventLoopControl(eventLoopControl);
+  }
 }
 
 std::string getSyntheticBundlePath(uint32_t bundleId) {
@@ -89,7 +97,6 @@ ReactInstance::ReactInstance(
             jsi::Runtime& jsiRuntime = runtime->getRuntime();
             TraceSection s("ReactInstance::_runtimeExecutor[Callback]");
             try {
-              ShadowNode::setUseRuntimeShadowNodeReferenceUpdateOnThread(true);
               callback(jsiRuntime);
             } catch (jsi::JSError& originalError) {
               jsErrorHandler->handleError(jsiRuntime, originalError, true);
@@ -105,8 +112,18 @@ ReactInstance::ReactInstance(
   if (parentInspectorTarget_ != nullptr) {
     auto executor = parentInspectorTarget_->executorFromThis();
 
+    // This buffer sits *below* the RuntimeScheduler — it is what feeds it — so
+    // there is nothing here that could act on a priority, and passing one
+    // through would have nowhere to go. Its only caller is
+    // `runtimeExecutorThatExecutesAfterInspectorSetup` below, a plain
+    // RuntimeExecutor, so in practice everything arrives at the default.
     auto bufferedRuntimeExecutorThatWaitsForInspectorSetup =
-        std::make_shared<BufferedRuntimeExecutor>(runtimeExecutor);
+        std::make_shared<BufferedRuntimeExecutor>(
+            [runtimeExecutor](
+                SchedulerPriority /*priority*/,
+                std::function<void(jsi::Runtime & runtime)>&& callback) {
+              runtimeExecutor(std::move(callback));
+            });
     auto runtimeExecutorThatExecutesAfterInspectorSetup =
         [bufferedRuntimeExecutorThatWaitsForInspectorSetup](
             std::function<void(jsi::Runtime & runtime)>&& callback) {
@@ -156,13 +173,27 @@ ReactInstance::ReactInstance(
         });
   }
 
+  runtimeExecutor(
+      [runtimeScheduler = runtimeScheduler_.get()](jsi::Runtime& runtime) {
+        setHermesEventLoopControl(runtime, runtimeScheduler);
+      });
+
+  // `scheduleWork` is `scheduleTask(ImmediatePriority)` on the modern
+  // scheduler, which is the only one bridgeless uses, so routing everything
+  // through `scheduleTask` leaves unprioritised callers where they were.
   bufferedRuntimeExecutor_ = std::make_shared<BufferedRuntimeExecutor>(
       [runtimeScheduler = runtimeScheduler_.get()](
+          SchedulerPriority priority,
           std::function<void(jsi::Runtime & runtime)>&& callback) {
-        runtimeScheduler->scheduleWork(std::move(callback));
+        runtimeScheduler->scheduleTask(priority, std::move(callback));
       });
 }
 ReactInstance::~ReactInstance() noexcept {
+  // This is thread safe because there is no JSI call at this point, and there
+  // won't be any concurrent calls to getEventLoopControl().
+  // We need to clear this pointer before runtimeScheduler_ is destroyed.
+  setHermesEventLoopControl(runtime_->getRuntime(), nullptr);
+
   if (timerManager_ != nullptr) {
     timerManager_->quit();
   }
@@ -209,6 +240,19 @@ ReactInstance::getRuntimeScheduler() noexcept {
   return runtimeScheduler_;
 }
 
+std::shared_ptr<CallInvoker> ReactInstance::createJSCallInvoker() noexcept {
+  if (ReactNativeFeatureFlags::enableBufferedCallInvoker()) {
+    return std::make_shared<CallInvokerImpl>(
+        bufferedRuntimeExecutor_, runtimeScheduler_);
+  }
+  // The flag-off path, and the last use of the deprecated invoker. It goes when
+  // `enableBufferedCallInvoker` is cleaned up.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+  return std::make_shared<RuntimeSchedulerCallInvoker>(runtimeScheduler_);
+#pragma clang diagnostic pop
+}
+
 namespace {
 
 // Copied from JSIExecutor.cpp
@@ -235,62 +279,63 @@ void ReactInstance::loadScript(
   std::shared_ptr<const jsi::Buffer> buffer(std::move(script));
   std::string scriptName = simpleBasename(sourceURL);
 
-  runtimeScheduler_->scheduleWork([this,
-                                   scriptName,
-                                   sourceURL,
-                                   buffer = std::move(buffer),
-                                   weakBufferedRuntimeExecuter =
-                                       std::weak_ptr<BufferedRuntimeExecutor>(
-                                           bufferedRuntimeExecutor_),
-                                   beforeLoad,
-                                   afterLoad](jsi::Runtime& runtime) mutable {
-    if (beforeLoad) {
-      beforeLoad(runtime);
-    }
-    TraceSection s("ReactInstance::loadScript");
-    bool hasLogger(ReactMarker::logTaggedMarkerBridgelessImpl != nullptr);
-    if (hasLogger) {
-      ReactMarker::logTaggedMarkerBridgeless(
-          ReactMarker::RUN_JS_BUNDLE_START, scriptName.c_str());
-      ReactMarker::logMarkerBridgeless(ReactMarker::INIT_REACT_RUNTIME_START);
-      ReactMarker::logMarkerBridgeless(ReactMarker::APP_STARTUP_START);
-    }
+  runtimeScheduler_->scheduleWork(
+      [jsErrorHandler = jsErrorHandler_,
+       scriptName,
+       sourceURL = sourceURL,
+       buffer = std::move(buffer),
+       weakBufferedRuntimeExecuter =
+           std::weak_ptr<BufferedRuntimeExecutor>(bufferedRuntimeExecutor_),
+       beforeLoad,
+       afterLoad](jsi::Runtime& runtime) mutable {
+        if (beforeLoad) {
+          beforeLoad(runtime);
+        }
+        TraceSection s("ReactInstance::loadScript");
+        bool hasLogger(ReactMarker::logTaggedMarkerImpl);
+        if (hasLogger) {
+          ReactMarker::logTaggedMarker(
+              ReactMarker::RUN_JS_BUNDLE_START, scriptName.c_str());
+          ReactMarker::logMarker(ReactMarker::INIT_REACT_RUNTIME_START);
+          ReactMarker::logMarker(ReactMarker::APP_STARTUP_START);
+        }
 
-    // Check if the shermes unit is avaliable.
-    auto* shUnitAPI = jsi::castInterface<hermes::IHermesSHUnit>(&runtime);
-    auto* shUnitCreator = shUnitAPI ? shUnitAPI->getSHUnitCreator() : nullptr;
-    if (shUnitCreator) {
-      LOG(WARNING) << "ReactInstance: evaluateSHUnit";
-      auto* hermesAPI = jsi::castInterface<hermes::IHermes>(&runtime);
-      hermesAPI->evaluateSHUnit(shUnitCreator);
-    } else {
-      LOG(WARNING) << "ReactInstance: evaluateJavaScript() with JS bundle";
-      runtime.evaluateJavaScript(buffer, sourceURL);
-    }
+        // Check if the shermes unit is avaliable.
+        auto* shUnitAPI = jsi::castInterface<hermes::IHermesSHUnit>(&runtime);
+        auto* shUnitCreator =
+            shUnitAPI ? shUnitAPI->getSHUnitCreator() : nullptr;
+        if (shUnitCreator) {
+          LOG(WARNING) << "ReactInstance: evaluateSHUnit";
+          auto* hermesAPI = jsi::castInterface<hermes::IHermes>(&runtime);
+          hermesAPI->evaluateSHUnit(shUnitCreator);
+        } else {
+          LOG(WARNING) << "ReactInstance: evaluateJavaScript() with JS bundle";
+          runtime.evaluateJavaScript(buffer, sourceURL);
+        }
 
-    /**
-     * TODO(T183610671): We need a safe/reliable way to enable the js
-     * pipeline from javascript. Remove this after we figure that out, or
-     * after we just remove the js pipeline.
-     */
-    if (!jsErrorHandler_->hasHandledFatalError()) {
-      jsErrorHandler_->setRuntimeReady();
-    }
+        /**
+         * TODO(T183610671): We need a safe/reliable way to enable the js
+         * pipeline from javascript. Remove this after we figure that out, or
+         * after we just remove the js pipeline.
+         */
+        if (!jsErrorHandler->hasHandledFatalError()) {
+          jsErrorHandler->setRuntimeReady();
+        }
 
-    if (hasLogger) {
-      ReactMarker::logTaggedMarkerBridgeless(
-          ReactMarker::RUN_JS_BUNDLE_STOP, scriptName.c_str());
-      ReactMarker::logMarkerBridgeless(ReactMarker::INIT_REACT_RUNTIME_STOP);
-      ReactMarker::logMarkerBridgeless(ReactMarker::APP_STARTUP_STOP);
-    }
-    if (auto strongBufferedRuntimeExecuter =
-            weakBufferedRuntimeExecuter.lock()) {
-      strongBufferedRuntimeExecuter->flush();
-    }
-    if (afterLoad) {
-      afterLoad(runtime);
-    }
-  });
+        if (hasLogger) {
+          ReactMarker::logTaggedMarker(
+              ReactMarker::RUN_JS_BUNDLE_STOP, scriptName.c_str());
+          ReactMarker::logMarker(ReactMarker::INIT_REACT_RUNTIME_STOP);
+          ReactMarker::logMarker(ReactMarker::APP_STARTUP_STOP);
+        }
+        if (auto strongBufferedRuntimeExecuter =
+                weakBufferedRuntimeExecuter.lock()) {
+          strongBufferedRuntimeExecuter->flush();
+        }
+        if (afterLoad) {
+          afterLoad(runtime);
+        }
+      });
 }
 
 /*
@@ -301,12 +346,6 @@ void ReactInstance::callFunctionOnModule(
     const std::string& moduleName,
     const std::string& methodName,
     folly::dynamic&& args) {
-  if (bufferedRuntimeExecutor_ == nullptr) {
-    LOG(ERROR)
-        << "Calling callFunctionOnModule with null BufferedRuntimeExecutor";
-    return;
-  }
-
   bufferedRuntimeExecutor_->execute([this,
                                      moduleName = moduleName,
                                      methodName = methodName,
@@ -360,31 +399,39 @@ void ReactInstance::registerSegment(
     const std::string& segmentPath) {
   LOG(WARNING) << "Starting to run ReactInstance::registerSegment with segment "
                << segmentId;
-  runtimeScheduler_->scheduleWork([=](jsi::Runtime& runtime) {
-    TraceSection s("ReactInstance::registerSegment");
-    auto tag = std::to_string(segmentId);
-    auto script = JSBigFileString::fromPath(segmentPath);
-    if (script->size() == 0) {
-      throw std::invalid_argument(
-          "Empty segment registered with ID " + tag + " from " + segmentPath);
-    }
-
-    bool hasLogger(ReactMarker::logTaggedMarkerBridgelessImpl != nullptr);
-    if (hasLogger) {
-      ReactMarker::logTaggedMarkerBridgeless(
-          ReactMarker::REGISTER_JS_SEGMENT_START, tag.c_str());
-    }
-    LOG(WARNING) << "Starting to evaluate segment " << segmentId
-                 << " in ReactInstance::registerSegment";
-    runtime.evaluateJavaScript(
-        std::move(script), getSyntheticBundlePath(segmentId));
-    LOG(WARNING) << "Finished evaluating segment " << segmentId
-                 << " in ReactInstance::registerSegment";
-    if (hasLogger) {
-      ReactMarker::logTaggedMarkerBridgeless(
-          ReactMarker::REGISTER_JS_SEGMENT_STOP, tag.c_str());
-    }
-  });
+  // Build the segment buffer off the JS thread: there's no need to block the
+  // JS thread on file I/O. The segment lives in an OS-purgeable /
+  // LRU-evictable on-demand cache and can already be gone by the time we get
+  // here, in which case fromPath throws. Catch it and return early so a
+  // missing segment degrades gracefully instead of surfacing as an unhandled
+  // exception.
+  std::shared_ptr<const JSBigFileString> script;
+  try {
+    script = JSBigFileString::fromPath(segmentPath);
+  } catch (const std::exception& e) {
+    LOG(ERROR) << "ReactInstance::registerSegment - could not load segment "
+               << segmentId << " from " << segmentPath << ": " << e.what();
+    return;
+  }
+  if (script->size() == 0) {
+    throw std::invalid_argument(
+        "Empty segment registered with ID " + std::to_string(segmentId) +
+        " from " + segmentPath);
+  }
+  runtimeScheduler_->scheduleWork(
+      [script = std::move(script), segmentId](jsi::Runtime& runtime) {
+        TraceSection s("ReactInstance::registerSegment");
+        auto tag = std::to_string(segmentId);
+        ReactMarker::logTaggedMarker(
+            ReactMarker::REGISTER_JS_SEGMENT_START, tag.c_str());
+        LOG(WARNING) << "Starting to evaluate segment " << segmentId
+                     << " in ReactInstance::registerSegment";
+        runtime.evaluateJavaScript(script, getSyntheticBundlePath(segmentId));
+        LOG(WARNING) << "Finished evaluating segment " << segmentId
+                     << " in ReactInstance::registerSegment";
+        ReactMarker::logTaggedMarker(
+            ReactMarker::REGISTER_JS_SEGMENT_STOP, tag.c_str());
+      });
 }
 
 namespace {

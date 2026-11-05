@@ -1,7 +1,7 @@
 'use strict';
 
 import { withDelay } from "../../animation/index.js";
-import { getReduceMotionFromConfig } from "../../animation/util.js";
+import { getReduceMotionFromConfig } from '../../animation/util';
 import { ReduceMotion } from "../../commonTypes.js";
 export class BaseAnimationBuilder {
   reduceMotionV = ReduceMotion.System;
