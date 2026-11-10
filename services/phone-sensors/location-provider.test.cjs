@@ -8,9 +8,11 @@ const ts = require('typescript');
 function device(os = 'android') {
   const slots = [], effects = [], intervals = new Map(), timeouts = new Map();
   let cursor = 0, timerId = 0, gpsCallback, nextCallback, nextError, disposed = 0;
-  const published = [];
+  const published = [], advertised = [], unadvertised = [];
   const rosbridge = {
-    connectionState: 'connected', advertiseTopic() {}, unadvertiseTopic() {},
+    connectionState: 'connected',
+    advertiseTopic: (topic, type) => advertised.push({ topic, type }),
+    unadvertiseTopic: (topic) => unadvertised.push(topic),
     publishTopic: (topic, message) => published.push({ topic, message }),
   };
   const equal = (a, b) => a && b && a.length === b.length && a.every((v, i) => v === b[i]);
@@ -94,7 +96,7 @@ function device(os = 'android') {
     return provider.usePhoneSensors();
   }
   return {
-    render, published, intervals, timeouts,
+    render, published, advertised, unadvertised, rosbridge, intervals, timeouts,
     emit: (position) => os === 'android' ? nextCallback?.(position) : gpsCallback?.(position),
     initial: (position) => resolveInitial?.(position),
     error: (message) => nextError?.({ code: 'UNAVAILABLE', message }),
@@ -211,4 +213,60 @@ test('iOS 保持原定位接口和数据格式', async () => {
   assert.ok(d.published.some((message) => message.topic === '/phone/gps'));
   d.render().stopGps();
   assert.equal(d.disposed, 1);
+});
+
+test('官方转换晚于新 GPS 到达时仍使用对应原始采样，原始话题不变', async () => {
+  const d = device();
+  d.render().startGps();
+  await flush();
+  const raw = position(Date.now() - 1000);
+  d.emit(raw);
+  d.tick();
+  assert.ok(d.advertised.some(({ topic, type }) => topic === '/phone/gps_gcj02' && type === 'std_msgs/msg/String'));
+  assert.ok(!d.published.some(({ topic }) => topic === '/phone/gps_gcj02'), '转换成功前不能发布原始坐标冒充 GCJ-02');
+  d.emit({ ...position(), altitude: 25, horizontalAccuracy: 2 });
+  d.tick();
+  const fix = { position: [121.5045, 31.198], timestamp: raw.timestamp, accuracyM: 999, speedMps: 0 };
+  await d.render().publishGcj02Location(fix);
+  const converted = d.published.filter(({ topic }) => topic === '/phone/gps_gcj02');
+  assert.equal(converted.length, 1);
+  assert.deepEqual(JSON.parse(converted[0].message.data), {
+    longitude: fix.position[0], latitude: fix.position[1], altitude: null,
+    accuracy_m: 8, timestamp_ms: raw.timestamp, coordinate_system: 'GCJ-02',
+    source_coordinate_system: 'WGS84', conversion_provider: 'AMap.convertFrom',
+  });
+  const original = JSON.parse(d.published.find(({ topic }) => topic === '/phone/gps_data').message.data);
+  assert.equal(original.longitude, raw.coordinates.longitude);
+  assert.equal(original.latitude, raw.coordinates.latitude);
+});
+
+test('转换结果断线时缓存，重连补发；旧结果和停止后的回调不再发布', async () => {
+  const d = device();
+  d.render().startGps();
+  await flush();
+  const raw = position();
+  d.emit(raw);
+  d.tick();
+  const fix = { position: [121.5045, 31.198], timestamp: raw.timestamp, accuracyM: 8, speedMps: 0 };
+  d.rosbridge.connectionState = 'disconnected';
+  d.render();
+  await d.render().publishGcj02Location(fix);
+  assert.ok(!d.published.some(({ topic }) => topic === '/phone/gps_gcj02'));
+  d.rosbridge.connectionState = 'connected';
+  d.render();
+  d.tick();
+  const count = d.published.length;
+  const packet = d.published.find(({ topic }) => topic === '/phone/gps_gcj02');
+  assert.equal(JSON.parse(packet.message.data).timestamp_ms, raw.timestamp);
+  await d.render().publishGcj02Location({ ...fix, timestamp: raw.timestamp - 1 });
+  await d.render().publishGcj02Location(fix);
+  assert.equal(d.published.length, count, '倒序和重复回调不能覆盖已转换结果');
+  d.render().stopGps();
+  await d.render().publishGcj02Location(fix);
+  assert.equal(d.published.length, count);
+  assert.ok(d.unadvertised.includes('/phone/gps_gcj02'));
+  d.render().startGps();
+  await flush();
+  await d.render().publishGcj02Location(fix);
+  assert.equal(d.published.length, count, '重新启动后不能复用上次采集的转换回调');
 });

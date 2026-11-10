@@ -25,6 +25,25 @@ export type PhoneLocationSample = {
 
 const UNKNOWN_COVARIANCE = [-1, 0, 0, 0, 0, 0, 0, 0, 0] as const;
 
+/** 只封装官方转换成功的坐标；时间、海拔和精度沿用对应的原始采样。 */
+export function buildGcj02GpsMessage(
+  sample: PhoneLocationSample,
+  position: readonly [number, number],
+): { data: string } {
+  const [longitude, latitude] = position;
+  if (!Number.isFinite(longitude) || !Number.isFinite(latitude)
+    || Math.abs(longitude) > 180 || Math.abs(latitude) > 90) {
+    throw new Error('GCJ-02 经纬度无效');
+  }
+  return { data: JSON.stringify({
+    ...JSON.parse(buildGpsDataMessage(sample).data),
+    longitude, latitude,
+    coordinate_system: 'GCJ-02',
+    source_coordinate_system: 'WGS84',
+    conversion_provider: 'AMap.convertFrom',
+  }) };
+}
+
 /** Unix 毫秒转 ROS 2 sec/nanosec，并确保 nanosec 始终在合法范围内。 */
 export function rosTimeFromUnixMilliseconds(timestampMs: number): RosTime {
   const safeTimestamp = Number.isFinite(timestampMs) && timestampMs >= 0 ? timestampMs : Date.now();

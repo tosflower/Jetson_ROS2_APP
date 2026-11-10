@@ -1,0 +1,35 @@
+# 本机 GNSS / 网络定位测试
+
+安装包含本模块的 Android APK 后，从连接页的“本机诊断 → GNSS / 网络定位测试”进入，无需登录或连接开发板；已连接时也可从“设置”进入。
+
+本模块分别订阅 Android `LocationManager.GPS_PROVIDER` 和 `NETWORK_PROVIDER`，不经过 GMS、高德、坐标转换或 ROS 网关。可单独测试 GNSS、单独测试网络，或同时测试。请求间隔为 1000 ms、最小移动距离为 0；这只是请求参数，不保证系统每秒产生一个新位置。网络来源不能进一步区分 WLAN 和基站。
+
+所有频率与包龄在独立 Android `HandlerThread` 中计算，使用 `SystemClock.elapsedRealtimeNanos()` 和 `Location.elapsedRealtimeNanos` 同一开机时钟。JS 每秒只接收统计快照；界面刷新速度不作为位置频率。页面另外显示快照传到界面的耗时，用于识别 JS/UI 卡顿。
+
+- **回调间隔**：应用相邻两次实际收到位置回调的间隔。
+- **新采样间隔**：相邻两个递增的采样开机时间戳之间的间隔；重复和倒序样本不计作新位置。
+- **回调时包龄**：收到回调时，位置已经有多久。
+- **当前位置包龄**：最新有效采样到当前时刻的年龄；重复收到旧采样不会让它变新。
+- **首次回调等待**与**首次收到本轮生成的位置**分开记录，避免把启动前缓存当作首次新定位。
+
+先在露天开阔处、系统定位和精确权限开启、WLAN 正常联网且扫描开启时，各单独测试约三分钟。再同时测试两种来源进行对照。页面保持亮屏；进入后台会停止本轮，回到前台后手动重新开始。进入此页时暂停本 App 常规传感器监听，离开时恢复原来的开关；其他 App 是否正在定位仍可能影响系统行为。
+
+“分享 CSV 日志”导出本轮最近 2000 条回调，超过上限时丢弃最早记录并注明数量。日志包含经纬度、实际来源、事件类型、采样时间、回调时间和精度。模式切换后需停止再开始，新一轮清空上一轮；先分享需要保留的数据。
+
+普通 Expo Go、iOS 和网页不会包含这个 Android 原生模块，页面会明确显示不支持，不能通过扫码加载 JS 获得模块。
+
+## 本地构建
+
+在项目根目录配置项目所需 JDK 17 和 Android SDK，运行：
+
+```bash
+export JAVA_HOME=/实际路径/jdk-17
+export ANDROID_HOME=/实际路径/android-sdk
+bash scripts/build-local-android.sh
+```
+
+脚本首次生成 `android/` 工程，再运行原生指标单元测试和 Gradle release 构建；已有工程直接增量编译，更改 Expo 插件或 `app.json` 后使用 `REGENERATE_ANDROID=1 bash scripts/build-local-android.sh` 重新生成。默认生成 arm64 安装包，适用于 MatePad 11（2021）；需要其他架构时设置 `ANDROID_ARCHITECTURES`。首次运行需要下载 Gradle、SDK/NDK 和 Maven 依赖，后续复用缓存。整个 App 的 JS 和地图网页资源包含在 APK 中，不依赖 Metro；在线地图服务自身仍需要联网。
+
+产物为 `artifacts/app-navigation-gps-metrics.apk`，同目录生成 SHA256 校验文件；构建后只保留这一份终版安装包。这是本地测试签名，不能承诺覆盖安装由其他签名生成的已有 App；发布时应使用对应的发布签名。
+
+测试只能测出系统向 App 提供位置的表现，不能单独拆解卫星芯片内部解算耗时或网络定位服务器处理耗时。

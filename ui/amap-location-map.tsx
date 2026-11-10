@@ -20,6 +20,7 @@ import { PositionEstimator, estimatedProgress, type EstimatedPosition } from '..
 import { CoordinateConverter } from '../services/navigation/coordinate-converter';
 import { makeNavigationStatus, navigationFixMessage } from '../services/navigation/navigation-status';
 import type { NavigationEvent, PublishReceipt } from '../services/navigation/navigation-publisher';
+import type { GpsUpdateTiming } from '../services/phone-sensors/gps-update-metrics';
 
 type AMapPosition = MapCoordinate | { lng: number; lat: number };
 type MapEvent = { lnglat?: AMapPosition };
@@ -81,9 +82,11 @@ type AmapLocationMapProps = {
   longitude: number | null;
   accuracy: number | null;
   gpsTimestamp: number | null;
+  gpsTiming: GpsUpdateTiming | null;
   speedMps: number | null;
   rosConnected: boolean;
   onNavigationEvent: (event: NavigationEvent) => Promise<PublishReceipt>;
+  onGcj02Location: (fix: PositionSample) => Promise<void>;
   onPageReady: () => Promise<void>;
   headingDegrees: number | null;
   headingAccuracy: number | null;
@@ -135,7 +138,7 @@ function normalizeHeading(value: number): number {
 /** 高德地图与路线均使用 GCJ-02；原生 GPS 在 convertFrom 成功后才能作为路线起点。 */
 export default function AmapLocationMap({
   apiKey, securityJsCode, latitude, longitude, accuracy,
-  headingDegrees, headingAccuracy, headingTimestamp, headingSource, locationStatus, dark, gpsTimestamp, speedMps, rosConnected, onNavigationEvent, onPageReady,
+  headingDegrees, headingAccuracy, headingTimestamp, headingSource, locationStatus, dark, gpsTimestamp, gpsTiming, speedMps, rosConnected, onNavigationEvent, onPageReady, onGcj02Location,
 }: AmapLocationMapProps): React.JSX.Element {
   useEffect(() => {
     // 控件挂载即通知原生层；无需等待高德请求、GPS 或 ROS 连接。
@@ -171,6 +174,8 @@ export default function AmapLocationMap({
   const navigationRouteRef = useRef<NavigationRoute | null>(null);
   const progressRef = useRef<NavigationProgress | null>(null);
   const eventCallbackRef = useRef(onNavigationEvent);
+  const gcj02CallbackRef = useRef(onGcj02Location);
+  useEffect(() => { gcj02CallbackRef.current = onGcj02Location; }, [onGcj02Location]);
   const receiptSequence = useRef(0);
   useEffect(() => { eventCallbackRef.current = onNavigationEvent; }, [onNavigationEvent]);
   const publishEvent = useCallback((event: NavigationEvent): void => {
@@ -434,6 +439,10 @@ export default function AmapLocationMap({
         done(status === 'complete' && result.info === 'ok' ? mapCoordinate(result.locations?.[0]) : null);
       });
     }, (fix) => {
+      // 与地图起点共用官方转换结果；不能发布 PositionEstimator 推算的位置。
+      void gcj02CallbackRef.current(fix).catch(() => {
+        setTransportMessage('GCJ-02 定位发送失败，等待连接恢复后补发');
+      });
       originRef.current = fix.position;
       setConvertedFix(fix);
       setOriginReady(true);
@@ -590,6 +599,19 @@ export default function AmapLocationMap({
   const visibleMessage = sdkState === 'ready' && latitude === null ? locationStatus : mapMessage;
   const hasOrigin = originReady && latitude !== null && longitude !== null;
   const canPlan = sdkState === 'ready' && hasOrigin && destination !== null && routeState !== 'loading';
+  const gpsSeconds = (milliseconds: number | null | undefined): string => milliseconds == null ? '—' : `${(milliseconds / 1000).toFixed(3)} 秒`;
+  // 使用采集回调完成的周期统计；地图时钟刷新和最后一次回调后的等待不改变这些数值。
+  const gpsMetrics = <>
+    <dl className="navigation-metrics gps-timing-metrics" aria-label="GPS 更新耗时">
+      <div title="上一条 GPS 的到达包龄加两次回调间隔，即上一条采样生成到下一条新定位到达 App 的耗时">
+        <dt>GPS 更新耗时 · 最近</dt><dd data-testid="gps-update-cycle">{gpsSeconds(gpsTiming?.updateCycleMs)}</dd>
+      </div>
+      <div title="仅统计收到下一条新定位后完成的周期；不计最后一次回调后仍在等待的时间，不含开发板传输">
+        <dt>GPS 更新耗时 · 平均</dt><dd data-testid="gps-mean-update-cycle">{gpsSeconds(gpsTiming?.meanUpdateCycleMs)}</dd>
+      </div>
+    </dl>
+    <p className="route-caption">上条到达包龄 {gpsSeconds(gpsTiming?.previousArrivalAgeMs)} + 更新间隔 {gpsSeconds(gpsTiming?.callbackIntervalMs)} · 已统计 {gpsTiming?.completedCycles ?? 0} 次</p>
+  </>;
 
   return (
     <main className="map-shell">
@@ -614,6 +636,7 @@ export default function AmapLocationMap({
         .navigation-metrics dt { color: var(--muted); font-size: 11px; margin-bottom: 5px; }
         .navigation-metrics dd { margin: 0; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
         .navigation-metrics .angle-metric { grid-column: span 3; }
+        .gps-timing-metrics div { grid-column: span 3; }
         .navigation-metrics small { font-size: 10px; font-weight: 400; }
         .route-panel.navigating { max-width: 360px; padding: 12px; border-radius: 16px; }
         .navigating .route-header { margin-bottom: 5px; }
@@ -680,6 +703,7 @@ export default function AmapLocationMap({
         {navigationActive ? <>
           <div className="route-header"><h2>导航中</h2><span className="route-mode">自行车</span></div>
           <p className="route-caption">手机 GPS 统计 · {navigationRoute?.waypoints.length ?? 0} 个航点</p>
+          {gpsMetrics}
           <dl className="navigation-metrics">
             <div><dt>已行驶距离</dt><dd data-testid="travelled">{formatRouteDistance(status.travelledM)}</dd></div>
             <div><dt>{status.fixState === 'off_route' ? '剩余距离（估算）' : '剩余距离'}</dt><dd data-testid="remaining">{status.remainingM === null ? '—' : formatRouteDistance(status.remainingM)}</dd></div>
@@ -694,6 +718,7 @@ export default function AmapLocationMap({
         </> : <>
         <div className="route-header"><h2>路线规划</h2><span className="route-mode">自行车</span></div>
         <p className="route-caption">从当前位置出发，搜索目的地或轻点地图选终点。</p>
+        {gpsMetrics}
         <form className="place-search" role="search" onSubmit={(event) => { event.preventDefault(); void searchDestination(); }}>
           <input
             ref={searchInputRef}

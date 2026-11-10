@@ -78,7 +78,7 @@ class RouteRosTests(unittest.TestCase):
         self.assertFalse(self.node.trail)
 
     def test_live_json_gps_without_altitude_and_out_of_order_packets(self) -> None:
-        self.start_node("live")
+        self.start_node("live", "--gps-coordinates", "WGS84")
         self.assertIsNone(self.node.gps_publisher)
         payload = demo_route_payload()
         self.wait_for(lambda: self.node.route is not None, self.send_route(payload))
@@ -98,6 +98,33 @@ class RouteRosTests(unittest.TestCase):
                       lambda: gps_publisher.publish(self.String(data=json.dumps(packet))))
         self.assertEqual(self.node.last_gps, gps)
 
+    def test_live_defaults_to_gcj02_and_rejects_mislabeled_coordinates(self) -> None:
+        """GCJ-02 逐点原样进入轨迹，原始 GPS 或坐标系混用不能静默错位。"""
+        options, _ = self.options(['--mode', 'live'])
+        self.assertEqual(options.gps_topic, '/phone/gps_gcj02')
+        self.assertEqual(options.gps_coordinates, 'GCJ-02')
+        self.assertEqual(options.gps_type, 'json')
+        raw_options, _ = self.options(['--mode', 'live', '--gps-topic', '/phone/gps_data'])
+        self.assertEqual(raw_options.gps_coordinates, 'WGS84')
+        self.start_node('live')
+        packet = {'longitude': 113.38, 'latitude': 23.05, 'altitude': None,
+                  'timestamp_ms': int(time.time() * 1000), 'accuracy_m': 4.0}
+        for system in (None, 'WGS84'):
+            if system:
+                packet['coordinate_system'] = system
+            self.node.on_gps(self.String(data=json.dumps(packet)))
+            self.assertIsNone(self.node.last_gps)
+            self.assertIn('coordinate_system', self.node.notice)
+        packet['coordinate_system'] = 'GCJ-02'
+        with patch('route_simulator.wgs84_to_gcj02', side_effect=AssertionError('重复转换')):
+            self.node.on_gps(self.String(data=json.dumps(packet)))
+        self.assertEqual(self.node.last_gps, (113.38, 23.05))
+        self.assertEqual(self.node.last_gcj, self.node.last_gps)
+        self.assertEqual(tuple(self.node.trail), ((113.38, 23.05),))
+        packet.update(longitude=113.39, timestamp_ms=packet['timestamp_ms'] - 1)
+        self.node.on_gps(self.String(data=json.dumps(packet)))
+        self.assertEqual(self.node.last_gcj, (113.38, 23.05))
+
     def test_live_receives_heading_and_records_route_gps_and_heading(self) -> None:
         from std_msgs.msg import Float64
         import matplotlib
@@ -114,9 +141,9 @@ class RouteRosTests(unittest.TestCase):
             self.wait_for(lambda: getattr(self.node, "heading_degrees", None) == 90,
                           lambda: heading.publish(Float64(data=90.0)))
             gps = self.source.create_publisher(self.String, "/route_sim/test/gps", 10)
-            longitude, latitude = gcj02_to_wgs84(self.node.route.path[0])
+            longitude, latitude = self.node.route.path[0]
             packet = {"longitude": longitude, "latitude": latitude, "altitude": None,
-                      "accuracy_m": 5.0, "timestamp_ms": int(time.time() * 1000)}
+                      "accuracy_m": 5.0, "timestamp_ms": int(time.time() * 1000), "coordinate_system": "GCJ-02"}
             self.wait_for(lambda: self.node.last_gps is not None,
                           lambda: gps.publish(self.String(data=json.dumps(packet))))
             plot.update()
@@ -143,7 +170,7 @@ class RouteRosTests(unittest.TestCase):
             self.addCleanup(plt.close, plot.figure)
             gps = self.source.create_publisher(self.String, "/route_sim/test/gps", 10)
             packet = {"longitude": 113.38, "latitude": 23.05, "accuracy_m": 10.0,
-                      "timestamp_ms": int(time.time() * 1000)}
+                      "timestamp_ms": int(time.time() * 1000), "coordinate_system": "GCJ-02"}
             self.wait_for(lambda: self.node.last_gps is not None,
                           lambda: gps.publish(self.String(data=json.dumps(packet))))
             plot.update()
@@ -173,6 +200,44 @@ class RouteRosTests(unittest.TestCase):
         self.wait_for(lambda: "GPS 尚未定位" in self.node.notice, lambda: gps_publisher.publish(message))
         self.assertEqual(self.node.last_gps, previous)
 
+    def test_live_gates_and_resets_odometry_over_dds(self) -> None:
+        from nav_msgs.msg import Odometry
+        self.start_node('live', '--odom-topic', '/route_sim/test/odom')
+        publisher = self.source.create_publisher(Odometry, '/route_sim/test/odom', 10)
+        gps_publisher = self.source.create_publisher(self.String, '/route_sim/test/gps', 10)
+        message = Odometry()
+        message.header.frame_id, message.child_frame_id = 'zed_dds_test', 'zed_camera'
+        message.pose.pose.orientation.w = 1.0
+
+        def publish_odom() -> None:
+            message.header.stamp = self.source.get_clock().now().to_msg()
+            publisher.publish(message)
+
+        self.wait_for(lambda: self.node.odom_received_packets > 0, publish_odom)
+        self.assertEqual(self.node.odom_packets, 0, '没有路线和 GPS 时只能接收，不能记录')
+        self.wait_for(lambda: self.node.route is not None, self.send_route(demo_route_payload()))
+        received = self.node.odom_received_packets
+        self.wait_for(lambda: self.node.odom_received_packets > received, publish_odom)
+        self.assertEqual(self.node.odom_packets, 0, '只有路线但没有 GPS 仍不能记录')
+        gps = self.String(data=json.dumps({'longitude': 113.38, 'latitude': 23.05,
+            'coordinate_system': 'GCJ-02', 'timestamp_ms': time.time_ns() / 1e6, 'accuracy_m': 5.0}))
+        self.wait_for(lambda: self.node.last_gps is not None, lambda: gps_publisher.publish(gps))
+        message.pose.pose.position.x = 200.0
+        self.wait_for(lambda: self.node.odom_packets > 0, publish_odom)
+        self.assertEqual(self.node.odometry.records()[0]['relative_position_m'], [0, 0, 0])
+        first_gps = self.node.last_gps
+        message.pose.pose.position.x = 210.0
+        self.wait_for(lambda: self.node.odom_packets > 1, publish_odom)
+        self.assertEqual(self.node.last_gps, first_gps, '里程计不能修改 GPS')
+        payload = demo_route_payload()
+        payload['route_id'] = 'second-dds-round'
+        self.wait_for(lambda: self.node.route.route_id == 'second-dds-round', self.send_route(payload))
+        self.assertEqual(self.node.odom_packets, 0)
+        self.assertEqual(self.node.odometry.samples, [])
+        message.pose.pose.position.x = 500.0
+        self.wait_for(lambda: self.node.odom_packets > 0, publish_odom)
+        self.assertEqual(self.node.odometry.records()[0]['relative_position_m'], [0, 0, 0])
+
     def test_record_keeps_full_old_route_and_trail_before_replanning(self) -> None:
         import matplotlib
         matplotlib.use("Agg")
@@ -194,7 +259,8 @@ class RouteRosTests(unittest.TestCase):
                 xy = (-1000, 2000) if index == 2500 else (index * 0.2, 0)
                 longitude, latitude = first_route.frame.from_xy(xy)
                 self.node.on_gps(self.String(data=json.dumps({
-                    "longitude": longitude, "latitude": latitude, "timestamp_ms": stamp + index})))
+                    "longitude": longitude, "latitude": latitude, "timestamp_ms": stamp + index,
+                    "coordinate_system": "GCJ-02"})))
             self.assertEqual(len(self.node.trail), 5002)
             original_trail = tuple(self.node.trail)
             plot.axes.set_xlim(-1, 1)
@@ -223,7 +289,7 @@ class RouteRosTests(unittest.TestCase):
             with patch.object(plot.figure, "savefig", side_effect=inspect_record):
                 self.node.on_route(self.String(data=json.dumps(payload)))
             self.assertEqual(saved_routes, [first_route.route_id])
-            self.assertFalse(self.node.trail)
+            self.assertFalse(self.node.trail, "重新规划后应清空上一轮 GPS 轨迹")
             first_image, = Path(directory).glob("*.png")
             self.assertRegex(first_image.name, r"^\d{8}_\d{6}_\d{6}\.png$")
             self.assertEqual(first_image.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")

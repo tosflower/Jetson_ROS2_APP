@@ -25,6 +25,8 @@ from std_msgs.msg import Float64, String
 PUBLISH_TYPES = {
     "/phone/gps": ("sensor_msgs/msg/NavSatFix", NavSatFix),
     "/phone/gps_data": ("std_msgs/msg/String", String),
+    # 透传手机经高德官方转换的 GCJ-02 JSON，不在开发板重复转换。
+    "/phone/gps_gcj02": ("std_msgs/msg/String", String),
     "/phone/heading": ("std_msgs/msg/Float64", Float64),
     "/phone/imu": ("sensor_msgs/msg/Imu", Imu),
     "/phone/magnetic_field": ("sensor_msgs/msg/MagneticField", MagneticField),

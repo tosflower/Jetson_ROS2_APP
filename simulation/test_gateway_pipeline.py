@@ -9,6 +9,7 @@ import threading
 import time
 import types
 import unittest
+from unittest.mock import patch
 
 
 @unittest.skipUnless(os.environ.get('RUN_ROS_INTEGRATION') == '1', '需要隔离域的真实 ROS2 网络')
@@ -23,7 +24,7 @@ class GatewayPipelineTests(unittest.IsolatedAsyncioTestCase):
         sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'gateway'))
         from phone_bridge import PhoneBridgeNode, PhoneBridgeServer, PUBLISH_TYPES
         from route_simulator import RouteSimulationNode, RoutePlot, parse_options
-        from route_geometry import demo_route_payload, gcj02_to_wgs84
+        from route_geometry import demo_route_payload
 
         rclpy.init()
         bridge_node = PhoneBridgeNode(asyncio.get_running_loop())
@@ -49,22 +50,27 @@ class GatewayPipelineTests(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(set(server.status()['advertised_topics']), set(PUBLISH_TYPES))
                     self.assertEqual(server.status()['published'], {})
                     route = demo_route_payload()
-                    longitude, latitude = gcj02_to_wgs84(tuple(route['path'][0]))
+                    longitude, latitude = route['path'][0]
                     gps = {'longitude': longitude, 'latitude': latitude, 'altitude': None,
+                           'coordinate_system': 'GCJ-02', 'conversion_provider': 'AMap.convertFrom',
                            'accuracy_m': 4.0, 'timestamp_ms': int(time.time() * 1000)}
                     packets = [('/phone/navigation/route', {'data': json.dumps(route)}),
                                ('/phone/heading', {'data': 90.0}),
-                               ('/phone/gps_data', {'data': json.dumps(gps)})]
+                               ('/phone/gps_gcj02', {'data': json.dumps(gps)})]
                     deadline = time.monotonic() + 4
-                    while time.monotonic() < deadline:
-                        for topic, fields in packets:
-                            await socket.send(json.dumps({'op': 'publish', 'topic': topic, 'msg': fields}))
-                        await asyncio.sleep(.1)
-                        if consumer.route and consumer.last_gps and consumer.heading_degrees == 90:
-                            break
+                    # 真实 WebSocket → 网关 → DDS 回调中严禁再次调用离线近似转换。
+                    with patch('route_simulator.wgs84_to_gcj02', side_effect=AssertionError('发生重复转换')):
+                        while time.monotonic() < deadline:
+                            for topic, fields in packets:
+                                await socket.send(json.dumps({'op': 'publish', 'topic': topic, 'msg': fields}))
+                            await asyncio.sleep(.1)
+                            if consumer.route and consumer.last_gps and consumer.heading_degrees == 90:
+                                break
                     self.assertIsNotNone(consumer.route)
                     self.assertIsNotNone(consumer.last_gps)
                     self.assertEqual(consumer.heading_degrees, 90)
+                    self.assertEqual(consumer.last_gps, (longitude, latitude))
+                    self.assertEqual(consumer.last_gcj, (longitude, latitude))
                     self.assertEqual(server.status()['authenticated_clients'], 1)
                 executor.remove_node(consumer)
                 plot = RoutePlot(consumer)
@@ -75,6 +81,8 @@ class GatewayPipelineTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(len(data['route']['path']), len(route['path']))
                 self.assertTrue(data['gps'])
                 self.assertTrue(data['heading'])
+                self.assertEqual(data['gps_coordinate_system'], 'GCJ-02')
+                self.assertEqual(data['topics']['gps'], '/phone/gps_gcj02')
         finally:
             await server.close()
             executor.shutdown()

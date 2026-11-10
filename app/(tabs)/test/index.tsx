@@ -40,6 +40,7 @@ export default function MapScreen(): React.JSX.Element {
     gpsStatus,
     latestGps,
     latestHeading,
+    publishGcj02Location,
     startAll,
   } = usePhoneSensors();
   const dark = useColorScheme() !== 'light';
@@ -90,9 +91,11 @@ export default function MapScreen(): React.JSX.Element {
         longitude={latestGps?.longitude ?? null}
         accuracy={latestGps?.accuracy ?? null}
         gpsTimestamp={latestGps?.timestamp ?? null}
+        gpsTiming={latestGps?.timing ?? null}
         speedMps={latestGps?.speedMps ?? null}
         rosConnected={connectionState === 'connected'}
         onNavigationEvent={onNavigationEvent}
+        onGcj02Location={publishGcj02Location}
         onPageReady={onPageReady}
         headingDegrees={latestHeading?.headingDegrees ?? null}
         headingAccuracy={latestHeading?.accuracy ?? null}

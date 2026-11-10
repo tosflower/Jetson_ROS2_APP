@@ -69,3 +69,17 @@ test('航向角叠加安装偏角后规范到 0 至 360 度', () => {
   assert.deepEqual(messages.buildHeadingMessage(10, -30), { data: 340 });
   assert.equal(messages.buildHeadingMessage(Number.NaN), null);
 });
+
+test('GCJ-02 JSON 明确坐标语义，保留原始时间和海拔，拒绝无效经纬度', () => {
+  const sample = {
+    timestamp: 2000,
+    coords: { latitude: 31.2, longitude: 121.5, altitude: 12, accuracy: 3, altitudeAccuracy: 5 },
+  };
+  const packet = JSON.parse(messages.buildGcj02GpsMessage(sample, [121.5045, 31.198]).data);
+  assert.equal(packet.coordinate_system, 'GCJ-02');
+  assert.equal(packet.altitude, 12);
+  assert.equal(packet.timestamp_ms, 2000);
+  for (const invalid of [[NaN, 31], [121, Infinity], [181, 31], [121, 91]]) {
+    assert.throws(() => messages.buildGcj02GpsMessage(sample, invalid), /经纬度无效/);
+  }
+});

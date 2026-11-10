@@ -58,6 +58,8 @@ ROS_IMAGE_TOPIC=/your/camera/image/compressed python3 gateway/gateway.py
 
 当前仅支持手机 App 使用的操作：向 `/phone/gps_data` (`std_msgs/msg/String`) 与 `/phone/gps` (`sensor_msgs/msg/NavSatFix`) 发布定位；向 `/phone/heading`、`/phone/imu`、`/phone/magnetic_field` 发布传感器数据；向 `/phone/navigation/route` 和 `/phone/navigation/status` 发布现有导航消息；订阅 `/rosout` (`rcl_interfaces/msg/Log`) 显示 ROS 日志。服务调用返回不支持，不提供任意 ROS 话题发布或全局地图传输。所有发布者使用可靠 QoS、深度 10；`/rosout` 订阅使用可靠 QoS、深度 100。连接断开时清除该连接的订阅，日志转发队列最多保留 10 条。
 
+同时支持 `/phone/gps_gcj02`（`std_msgs/msg/String`）：原样转发手机高德官方转换后的 GCJ-02 JSON，保留 `coordinate_system`、原始 `timestamp_ms`、`accuracy_m` 和可空 `altitude`。网关不进行坐标转换；原始 `/phone/gps_data` 与 `/phone/gps` 继续保留。新话题沿用上述可靠 QoS、深度 10。
+
 ## 验证
 
 在 Jetson 上先检查网关：

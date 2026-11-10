@@ -11,11 +11,15 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { useRosbridge } from './rosbridge-provider';
 import { watchDevicePosition } from '@/services/phone-sensors/location-watch';
+import { GpsUpdateMetrics, type GpsUpdateTiming } from '@/services/phone-sensors/gps-update-metrics';
+import type { PositionSample } from '@/services/navigation/route-geometry';
 import {
   PHONE_GPS_TOPIC,
   PHONE_GPS_TYPE,
   PHONE_GPS_DATA_TOPIC,
   PHONE_GPS_DATA_TYPE,
+  PHONE_GPS_GCJ02_TOPIC,
+  PHONE_GPS_GCJ02_TYPE,
   PHONE_HEADING_TOPIC,
   PHONE_HEADING_TYPE,
   PHONE_IMU_TOPIC,
@@ -29,6 +33,7 @@ import {
   buildMagneticFieldMessage,
   buildNavSatFixMessage,
   buildGpsDataMessage,
+  buildGcj02GpsMessage,
 } from '@/services/phone-sensors/messages';
 
 type StreamState = 'idle' | 'starting' | 'active' | 'paused' | 'error';
@@ -39,6 +44,7 @@ export type PhoneGpsSnapshot = {
   accuracy: number | null;
   speedMps: number | null;
   timestamp: number;
+  timing: GpsUpdateTiming | null;
 };
 
 export type PhoneHeadingSnapshot = {
@@ -60,6 +66,7 @@ type PhoneSensorsContextValue = {
   imuStatus: string;
   latestGps: PhoneGpsSnapshot | null;
   latestHeading: PhoneHeadingSnapshot | null;
+  publishGcj02Location: (fix: PositionSample) => Promise<void>;
   startGps: () => void;
   stopGps: () => void;
   startHeading: () => void;
@@ -132,6 +139,11 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
   const imuTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const magneticTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const latestLocationRef = useRef<Location.LocationObject | null>(null);
+  const gpsUpdateMetricsRef = useRef(new GpsUpdateMetrics());
+  const latestGpsTimingRef = useRef<GpsUpdateTiming | null>(null);
+  // 保留有限的原始采样，允许官方转换晚于下一次 GPS 更新完成。
+  const conversionSamplesRef = useRef(new Map<number, Location.LocationObject>());
+  const gcj02MessageRef = useRef<{ timestamp: number; message: { data: string } } | null>(null);
   const lastGpsDisplayedAtRef = useRef(0);
   const latestHeadingRef = useRef<TimedHeadingSample | null>(null);
   const lastHeadingDisplayedAtRef = useRef(0);
@@ -151,12 +163,25 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
     if (gpsFirstFixTimerRef.current) clearTimeout(gpsFirstFixTimerRef.current);
     gpsFirstFixTimerRef.current = null;
     latestLocationRef.current = null;
+    gpsUpdateMetricsRef.current = new GpsUpdateMetrics();
+    latestGpsTimingRef.current = null;
+    conversionSamplesRef.current.clear();
+    gcj02MessageRef.current = null;
     lastGpsDisplayedAtRef.current = 0;
     if (gpsDesiredRef.current) {
       setGpsState('paused');
       setGpsStatus(status ?? '等待 App 回到前台并恢复 rosbridge 连接');
     }
   }, []);
+
+  const publishGcj02Location = useCallback(async (fix: PositionSample): Promise<void> => {
+    if (!gpsDesiredRef.current || !foregroundRef.current) return;
+    const raw = conversionSamplesRef.current.get(fix.timestamp);
+    if (!raw || fix.timestamp <= (gcj02MessageRef.current?.timestamp ?? 0)) return;
+    const message = buildGcj02GpsMessage(raw, fix.position);
+    gcj02MessageRef.current = { timestamp: raw.timestamp, message };
+    if (connectionStateRef.current === 'connected') publishTopic(PHONE_GPS_GCJ02_TOPIC, message);
+  }, [publishTopic]);
 
   const pauseHeadingRuntime = useCallback((status?: string): void => {
     headingGenerationRef.current += 1;
@@ -239,6 +264,8 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
         if (generation !== gpsGenerationRef.current || !gpsDesiredRef.current || !foregroundRef.current) return;
         // 采样回调只更新最新值，发布由独立 2 Hz 定时器负责。
         latestLocationRef.current = location;
+        // 在定位回调入口记录时间，避免把下方 500ms 发布定时器的等待算入定位周期。
+        latestGpsTimingRef.current = gpsUpdateMetricsRef.current.record(location.timestamp, Date.now(), performance.now());
         if (gpsFirstFixTimerRef.current) clearTimeout(gpsFirstFixTimerRef.current);
         gpsFirstFixTimerRef.current = null;
       }, (message) => {
@@ -267,6 +294,11 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
         if (!location) return;
         if (location.timestamp !== lastGpsDisplayedAtRef.current) {
           lastGpsDisplayedAtRef.current = location.timestamp;
+          conversionSamplesRef.current.set(location.timestamp, location);
+          if (conversionSamplesRef.current.size > 32) {
+            const oldest = conversionSamplesRef.current.keys().next().value;
+            if (oldest !== undefined) conversionSamplesRef.current.delete(oldest);
+          }
           setLatestGps({
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
@@ -274,6 +306,7 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
             speedMps: typeof location.coords.speed === 'number' && Number.isFinite(location.coords.speed) && location.coords.speed >= 0
               ? location.coords.speed : null,
             timestamp: location.timestamp,
+            timing: latestGpsTimingRef.current,
           });
         }
         if (connectionStateRef.current !== 'connected') {
@@ -285,6 +318,8 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
           publishTopic(PHONE_GPS_DATA_TOPIC, buildGpsDataMessage(location));
           const message = buildNavSatFixMessage(location);
           if (message) publishTopic(PHONE_GPS_TOPIC, message);
+          // 重连后补发同一官方转换结果，保留原始时间戳，接收端可识别重复/过期包。
+          if (gcj02MessageRef.current) publishTopic(PHONE_GPS_GCJ02_TOPIC, gcj02MessageRef.current.message);
           setGpsStatus(message
             ? `正在以最高 ${1000 / GPS_PUBLISH_INTERVAL_MS} Hz 发布 ${PHONE_GPS_TOPIC} 与 ${PHONE_GPS_DATA_TOPIC}`
             : `已发布 ${PHONE_GPS_DATA_TOPIC}；海拔缺失，${PHONE_GPS_TOPIC} 暂停`);
@@ -301,6 +336,7 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
       setGpsEnabled(false);
       unadvertiseTopic(PHONE_GPS_TOPIC);
       unadvertiseTopic(PHONE_GPS_DATA_TOPIC);
+      unadvertiseTopic(PHONE_GPS_GCJ02_TOPIC);
       setGpsState('error');
       setGpsStatus(error instanceof Error ? error.message : 'GPS 启动失败');
     } finally {
@@ -500,6 +536,7 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
     setGpsEnabled(true);
     advertiseTopic(PHONE_GPS_TOPIC, PHONE_GPS_TYPE);
     advertiseTopic(PHONE_GPS_DATA_TOPIC, PHONE_GPS_DATA_TYPE);
+    advertiseTopic(PHONE_GPS_GCJ02_TOPIC, PHONE_GPS_GCJ02_TYPE);
     void activateGps();
   }, [activateGps, advertiseTopic]);
 
@@ -509,6 +546,7 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
     pauseGpsRuntime();
     unadvertiseTopic(PHONE_GPS_TOPIC);
     unadvertiseTopic(PHONE_GPS_DATA_TOPIC);
+    unadvertiseTopic(PHONE_GPS_GCJ02_TOPIC);
     setGpsState('idle');
     setGpsStatus('GPS 已停止');
   }, [pauseGpsRuntime, unadvertiseTopic]);
@@ -598,6 +636,7 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
     pauseImuRuntime();
     unadvertiseTopic(PHONE_GPS_TOPIC);
     unadvertiseTopic(PHONE_GPS_DATA_TOPIC);
+    unadvertiseTopic(PHONE_GPS_GCJ02_TOPIC);
     unadvertiseTopic(PHONE_HEADING_TOPIC);
     unadvertiseTopic(PHONE_IMU_TOPIC);
     unadvertiseTopic(PHONE_MAGNETIC_FIELD_TOPIC);
@@ -615,6 +654,7 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
     imuStatus,
     latestGps,
     latestHeading,
+    publishGcj02Location,
     startGps,
     stopGps,
     startHeading,

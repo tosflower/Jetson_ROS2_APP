@@ -5,3 +5,14 @@
 .expo/
 node_modules/
 __pycache__/
+
+# 本地生成的 Android 工程与安装包可由 Expo 配置重新生成。
+/android/
+/artifacts/
+/.build-cache/
+
+# 本地原生模块的 Gradle/CMake 编译产物。
+/modules/*/android/build/
+/modules/*/android/.cxx/
+/modules/*/android/.gradle/
+/modules/*/android/.kotlin/

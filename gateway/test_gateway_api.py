@@ -294,6 +294,18 @@ class GatewayApiTests(unittest.TestCase):
         self.assertEqual(status['authenticated_clients'], 0)
         self.assertTrue(all(not publisher.messages for publisher in self.runtime.phone_node.publishers))
 
+    def test_phone_bridge_forwards_gcj02_json_without_coordinate_changes(self) -> None:
+        """官方转换结果按 String 原样发布，海拔为空也不阻塞。"""
+        payload = {'longitude': 113.38, 'latitude': 23.05, 'altitude': None,
+                   'coordinate_system': 'GCJ-02', 'timestamp_ms': 1234567890000}
+        fields = {'data': json.dumps(payload)}
+        future = self.runtime.phone_node.publish_from_phone('/phone/gps_gcj02', fields)
+        self.runtime.phone_node._drain()
+        future.result(timeout=1)
+        publisher, = self.runtime.phone_node.publishers
+        self.assertEqual(publisher.topic, '/phone/gps_gcj02')
+        self.assertEqual(publisher.messages[0].data, fields['data'])
+
     def test_private_api_requires_bearer_and_power_rechecks_password(self) -> None:
         from fastapi import HTTPException
         with self.assertRaises(HTTPException) as error:

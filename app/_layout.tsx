@@ -56,6 +56,7 @@ export default function RootLayout(): React.JSX.Element {
                 <Stack screenOptions={{ contentStyle: { backgroundColor: colors.background }, animation: 'slide_from_right', ...nativeStatusBar }}>
                   <Stack.Screen name="index" options={{ headerShown: false }} />
                   <Stack.Screen name="connection" options={{ title: '连接 Jetson', headerLargeTitle: true }} />
+                  <Stack.Screen name="location-test" options={{ title: '本机定位测试' }} />
                   <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                   <Stack.Screen name="image-viewer" options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: false, contentStyle: { backgroundColor: '#000000' } }} />
                   <Stack.Screen name="+not-found" options={{ title: '页面不存在' }} />

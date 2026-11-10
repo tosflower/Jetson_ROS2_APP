@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { useGateway } from '@/providers/gateway-provider';
 import GatewayAddressPicker from '@/ui/gateway-address-picker';
-import { Field, NativeButton, Screen, Section, StatusBanner } from '@/ui/primitives';
+import { Field, NativeButton, Row, Screen, Section, StatusBanner } from '@/ui/primitives';
 import { spacing, useThemeColors } from '@/ui/tokens';
 
 export default function ConnectionScreen(): React.JSX.Element {
@@ -36,6 +36,9 @@ export default function ConnectionScreen(): React.JSX.Element {
           <NativeButton label={gateway.gatewayState === '连接中' ? '正在验证并连接…' : '验证密码并连接'} onPress={() => { void gateway.checkGateway(password).finally(() => setPassword('')); }} disabled={gateway.discoveryState === 'searching' || gateway.gatewayState === '连接中' || !gateway.gatewayAddress.trim() || !password.trim()} />
           <StatusBanner message={gateway.lastMessage} tone={connected ? 'success' : gateway.gatewayState === '错误' ? 'danger' : 'neutral'} />
         </View>
+      </Section>
+      <Section title="本机诊断">
+        <Row label="GNSS / 网络定位测试" detail="无需连接开发板，查看本机采样间隔、包龄和精度" href="/location-test" last />
       </Section>
     </Screen>
   );

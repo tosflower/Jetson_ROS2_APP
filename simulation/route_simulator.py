@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """ROS2 全局路线/GPS 仿真与可视化，兼容 Foxy 及以上版本。
 
-订阅：/phone/navigation/route (String JSON)、真实 GPS (String JSON 或 NavSatFix)。
+订阅：/phone/navigation/route (String JSON)、真实 GPS (String JSON 或 NavSatFix)、
+/zed2i/odom (nav_msgs/msg/Odometry，live 模式)。三种源数据独立，不融合或相互纠偏。
 仿真：发布 /route_sim/gps (NavSatFix/WGS84)，显示位置只由 GPS 订阅回调更新。
 演示：额外发布隔离命名的 /route_sim/route (String)，无需手机或网关。
 ROS 回调和 Matplotlib 界面在同一线程轮询，不在 ROS 回调中操作其他线程的 GUI。
@@ -15,6 +16,7 @@ import math
 from pathlib import Path
 import random
 import sys
+import textwrap
 import time
 from typing import Any, Callable, Deque, Dict, List, Optional, Sequence, Tuple
 
@@ -22,10 +24,12 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import NavSatFix
+from nav_msgs.msg import Odometry
 from std_msgs.msg import Float64, String
 
 from route_geometry import (Coordinate, LocalFrame, Route, coordinate, demo_route_payload, distance_m,
                             finite_number, gcj02_to_wgs84, parse_route, wgs84_to_gcj02)
+from odometry_comparison import OdometryComparison, odom_sample
 
 
 class RouteSimulationNode(Node):
@@ -37,6 +41,7 @@ class RouteSimulationNode(Node):
         self.route: Optional[Route] = None
         self.route_version = 0
         self.route_packets = 0
+        self.route_records: List[Dict[str, Any]] = []
         self.gps_packets = 0
         self.last_gps: Optional[Coordinate] = None
         self.last_gcj: Optional[Coordinate] = None
@@ -47,8 +52,15 @@ class RouteSimulationNode(Node):
         self.heading_packets = 0
         self.gps_records: List[Dict[str, Any]] = []
         self.heading_records: List[Dict[str, Any]] = []
-        self._live_frame: Optional[LocalFrame] = None
-        # 留存本次规划的全部有效轨迹点，避免长时间行走后丢失记录开头。
+        self.odometry = OdometryComparison(options.odom_break_gap_s)
+        self.odom_packets = 0
+        self.odom_received_packets = 0
+        self._last_odom_received_ns = 0
+        self._route_started_ns = 0
+        self.odom_notice = "等待 GPS 和全局路径，暂不记录里程计"
+        self._live_frame: Optional[LocalFrame] = (LocalFrame(tuple(options.odom_origin))
+                                                if options.odom_origin else None)
+        # 每条规划对应一轮记录；换路前保存，换路后清空上一轮轨迹。
         self.trail: Deque[Coordinate] = deque()
         self.before_route_reset: Optional[Callable[[], None]] = None
         self.along_m = 0.0
@@ -70,6 +82,7 @@ class RouteSimulationNode(Node):
         self.create_subscription(gps_type, options.gps_topic, self.on_gps, gps_qos)
         if options.mode == "live":
             self.create_subscription(Float64, options.heading_topic, self.on_heading, gps_qos)
+            self.create_subscription(Odometry, options.odom_topic, self.on_odometry, gps_qos)
         self.gps_publisher = (self.create_publisher(NavSatFix, options.gps_topic, 10)
                               if options.mode != "live" else None)
         self.demo_publisher = (self.create_publisher(String, options.route_topic, 10)
@@ -79,7 +92,7 @@ class RouteSimulationNode(Node):
             options.mode, options.route_topic, options.gps_topic, options.gps_type))
 
     def on_route(self, message: String) -> None:
-        """整包校验成功才替换路线；清空消息停止仿真并清除旧轨迹。"""
+        """换路或清除时先保存旧轮记录，再清空轨迹与里程计局部原点。"""
         try:
             route = parse_route(message.data)
         except (ValueError, TypeError, KeyError) as error:
@@ -92,13 +105,19 @@ class RouteSimulationNode(Node):
         # 绘图与 ROS 回调位于同一线程；在替换路线和清空轨迹之前保存旧记录。
         if self.before_route_reset is not None:
             self.before_route_reset()
+        # 规划消息通常没有统一采样时钟，单独记录接收时刻与完整原始 JSON。
+        self.route_records.append({"received_at_ms": time.time() * 1000, "data": json.loads(message.data)})
         self.route = route
         self.route_version += 1
         self.along_m = 0.0
+        self._last_tick = time.monotonic()
         self.trail.clear()
         self.gps_records.clear()
         self.heading_records.clear()
-        self._last_tick = time.monotonic()
+        self.odometry = OdometryComparison(self.options.odom_break_gap_s)
+        self.odom_packets = 0
+        self._route_started_ns = time.time_ns() if route else 0
+        self.odom_notice = "等待 GPS 和本轮 ZED 采样" if route else "路线已清除，里程计停止记录"
         if self.options.mode != "live":
             self.last_gps = self.last_gcj = None
             self.gps_timestamp = 0.0
@@ -124,6 +143,12 @@ class RouteSimulationNode(Node):
                 payload = json.loads(message.data)
                 if not isinstance(payload, dict):
                     raise ValueError("GPS JSON 必须为对象")
+                # 官方转换话题必须携带坐标系；避免把原始 GPS 静默当成高德坐标。
+                system = self.options.gps_coordinates
+                declared_system = payload.get("coordinate_system")
+                if ((system == "GCJ-02" and declared_system != system)
+                        or (declared_system is not None and declared_system != system)):
+                    raise ValueError("GPS coordinate_system 与输入坐标系不一致")
                 point = coordinate([payload.get("longitude"), payload.get("latitude")])
                 stamp = finite_number(payload.get("timestamp_ms"), "timestamp_ms") / 1000
                 raw_accuracy = payload.get("accuracy_m")
@@ -141,12 +166,18 @@ class RouteSimulationNode(Node):
             self.gps_timestamp, self.gps_accuracy = stamp, accuracy
             if self._live_frame is None:
                 self._live_frame = LocalFrame(gcj)
+            raw_altitude = message.altitude if isinstance(message, NavSatFix) else payload.get("altitude")
+            altitude = (float(raw_altitude) if isinstance(raw_altitude, (int, float))
+                        and not isinstance(raw_altitude, bool) and math.isfinite(raw_altitude) else None)
             self.gps_records.append({"timestamp_ms": stamp * 1000, "received_at_ms": time.time() * 1000,
                                      "longitude": point[0], "latitude": point[1],
                                      "gcj02_longitude": gcj[0], "gcj02_latitude": gcj[1],
-                                     "accuracy_m": accuracy, "heading_degrees": self.heading_degrees})
+                                     "accuracy_m": accuracy, "heading_degrees": self.heading_degrees,
+                                     "coordinate_system": system,
+                                     "altitude": altitude})
             if not self.trail or distance_m(self.trail[-1], gcj) >= 0.05:
                 self.trail.append(gcj)
+            self.try_align_odometry()
         except (ValueError, TypeError, KeyError, OverflowError) as error:
             self.notice = "GPS 被拒绝：%s" % error
             self.get_logger().warning(self.notice)
@@ -154,6 +185,70 @@ class RouteSimulationNode(Node):
     @property
     def frame(self) -> Optional[LocalFrame]:
         return self.route.frame if self.route else self._live_frame
+
+    def on_odometry(self, message: Odometry) -> None:
+        """GPS+路线就绪后才记录；每轮首个有效位姿建立零点，不重置相机驱动。"""
+        try:
+            sample = odom_sample(message)
+            if sample.timestamp_ns / 1e9 > time.time() + 2:
+                raise ValueError("里程计时间晚于当前时间，请同步设备时钟")
+            if sample.timestamp_ns <= self._last_odom_received_ns:
+                return
+            self._last_odom_received_ns = sample.timestamp_ns
+            self.odom_received_packets += 1
+            if self.route is None:
+                self.odom_notice = "等待全局路径，里程计暂不记录"
+                return
+            if sample.timestamp_ns < self._route_started_ns:
+                self.odom_notice = "等待重新规划后的新 ZED 采样"
+                return
+            if self.odometry.alignment is None:
+                if self.last_gcj is None or not -2 <= time.time() - self.gps_timestamp <= 10:
+                    self.odom_notice = "等待有效 GPS，里程计暂不记录"
+                    return
+                limit = self.options.odom_anchor_max_accuracy_m
+                if limit is not None and (self.gps_accuracy is None or self.gps_accuracy > limit):
+                    self.odom_notice = "等待 GPS 满足指定精度阈值"
+                    return
+            if not self.odometry.add(sample):
+                return
+            self.odom_packets += 1
+            self.try_align_odometry()
+            if self.odometry.alignment is not None:
+                if self.odometry.points[-1] is None:
+                    self.odom_notice = "ZED 坐标系已变化；请重新规划以开始新一轮记录"
+                elif self.odometry.alignment['direction_aligned']:
+                    self.odom_notice = "固定变换叠图，未融合 GPS/路线"
+                else:
+                    self.odom_notice = "仅初始起点对齐，原始 x/y 不旋转"
+        except (ValueError, TypeError, OverflowError) as error:
+            self.odom_notice = "里程计被拒绝：%s" % error
+            self.get_logger().warning(self.odom_notice)
+
+    def try_align_odometry(self) -> None:
+        """默认仅以初始 GPS 平移绘图起点，不估计朝向，不修改原始记录。"""
+        if self.odometry.alignment is not None or not self.odometry.samples or self.route is None:
+            return
+        if self.options.odom_anchor == "manual":
+            if self.options.odom_origin is None:
+                self.odom_notice = "手工叠图需设置 --odom-origin 经度 纬度"
+                return
+            self.odometry.align(self.odometry.samples[0], tuple(self.options.odom_origin),
+                                self.options.odom_heading_deg, "manual")
+        else:
+            if self.last_gcj is None or not -2 <= time.time() - self.gps_timestamp <= 10:
+                self.odom_notice = "等待初始 GPS 对齐起点"
+                return
+            accuracy_limit = self.options.odom_anchor_max_accuracy_m
+            if accuracy_limit is not None and (self.gps_accuracy is None or self.gps_accuracy > accuracy_limit):
+                self.odom_notice = "等待 GPS 满足指定精度阈值"
+                return
+            # 就绪后的首帧作为本轮零点；GPS 只初始化一次，不持续修改里程计。
+            source = "initial_gps_translation" if self.options.odom_heading_deg is None else "initial_gps_only"
+            self.odometry.align(self.odometry.samples[0], self.last_gcj,
+                                self.options.odom_heading_deg, source, self.gps_timestamp * 1000)
+        self.odom_notice = ("仅初始起点对齐，原始 x/y 不旋转" if self.options.odom_heading_deg is None
+                            else "固定变换叠图，未融合 GPS/路线")
 
     def on_heading(self, message: Float64) -> None:
         try:
@@ -172,10 +267,10 @@ class RouteSimulationNode(Node):
     def record_payload(self) -> Dict[str, Any]:
         route = self.route
         return {
-            "version": 1, "mode": self.options.mode, "saved_at_ms": time.time() * 1000,
+            "version": 2, "mode": self.options.mode, "saved_at_ms": time.time() * 1000,
             "ros_domain_id": self.context.get_domain_id(),
             "topics": {"gps": self.options.gps_topic, "heading": self.options.heading_topic,
-                       "route": self.options.route_topic},
+                       "route": self.options.route_topic, "odometry": self.options.odom_topic},
             "gps_coordinate_system": self.options.gps_coordinates if self.options.mode == "live" else "WGS84",
             "heading_convention": "degrees clockwise from north; true or magnetic north follows phone source",
             "route": {"route_id": route.route_id, "coordinate_system": "GCJ-02",
@@ -183,6 +278,16 @@ class RouteSimulationNode(Node):
                           {"index": point.index, "longitude": point.position[0], "latitude": point.position[1]}
                           for point in route.waypoints]} if route else None,
             "gps": self.gps_records, "heading": self.heading_records,
+            "route_updates": self.route_records,
+            "recording_round": {"route_started_ns": self._route_started_ns,
+                                "odom_received_packets": self.odom_received_packets,
+                                "odom_recorded_packets": self.odom_packets},
+            "odometry": self.odometry.records(), "odometry_alignment": self.odometry.alignment,
+            "gps_odom_pairs": self.odometry.matched_gps(self.gps_records, self.options.odom_sync_tolerance_s),
+            "comparison": {"synchronization": "nearest source timestamps; no hardware synchronization",
+                           "tolerance_s": self.options.odom_sync_tolerance_s,
+                           "direction_aligned": bool(self.odometry.alignment and self.odometry.alignment['direction_aligned']),
+                           "gps_fusion": False, "route_matching": False},
             "last_heading_degrees": self.heading_degrees,
             "last_heading_received_at_ms": self.heading_received_at * 1000 if self.heading_received_at else None,
         }
@@ -224,6 +329,10 @@ class RouteSimulationNode(Node):
         self.trail.clear()
         self.gps_records.clear()
         self.heading_records.clear()
+        self.odometry = OdometryComparison(self.options.odom_break_gap_s)
+        self.odom_packets = 0
+        self._route_started_ns = time.time_ns() if self.route else 0
+        self.odom_notice = "已重置本轮里程计，等待 GPS 和新 ZED 采样"
         self.last_gps = self.last_gcj = None
         self.gps_timestamp = 0.0
         self._last_tick = time.monotonic()
@@ -249,11 +358,12 @@ class RoutePlot:
                      if name in installed), "DejaVu Sans")
         plt.rcParams.update({"font.sans-serif": [font], "axes.unicode_minus": False})
         self.figure = plt.figure(figsize=(12, 8), facecolor="#0c1623")
-        self.figure.canvas.manager.set_window_title("高德全局路径与 GPS 仿真")
+        self.figure.canvas.manager.set_window_title("高德路线 / 手机 GPS / ZED 里程计")
         self.axes = self.figure.add_axes([0.08, 0.18, 0.63, 0.71])
-        self.figure.text(0.08, 0.95, "全局路径与 GPS 定位", fontsize=21, color="white", weight="bold")
-        self.info = self.figure.text(0.75, 0.86, "", va="top", color="#c5d6e8", fontsize=10, linespacing=1.8)
-        self.figure.text(0.75, 0.20, "蓝线：完整全局路径\n金点：全部规划航点\n青线：已收到的 GPS 轨迹\n圆点：当前位置与精度范围", color="#a7bfd9", fontsize=10, linespacing=1.8)
+        self.figure.text(0.08, 0.95, "全局路径、GPS 与独立里程计", fontsize=21, color="white", weight="bold")
+        self.info = self.figure.text(0.75, 0.88, "", va="top", color="#c5d6e8", fontsize=9, linespacing=1.5)
+        self.figure.text(0.08, 0.91, "蓝线：高德全局路径 · 青线：手机 GPS · 红线：本轮 ZED 里程计",
+                         color="#a7bfd9", fontsize=9)
         self.buttons: List[Any] = []
         for x, label, callback in ((0.08, "暂停 / 继续", self.toggle_pause),
                                     (0.29, "回到起点", self.restart),
@@ -271,7 +381,7 @@ class RoutePlot:
         self.gps_marker: Any = None
         self.accuracy_circle: Any = None
         self.heading_arrow: Any = None
-        self._saved_record: Optional[Tuple[int, float, int, int]] = None
+        self._saved_record: Optional[Tuple[int, float, int, int, int]] = None
         self.update()
         node.before_route_reset = self.save_record
         self.figure.canvas.mpl_connect("close_event", self.on_close)
@@ -282,8 +392,8 @@ class RoutePlot:
     def save_record(self) -> None:
         """保存当前完整规划与已收到的 GPS 轨迹；关闭事件和退出清理不重复保存。"""
         node = self.node
-        record = (node.route_version, node.gps_timestamp, len(node.trail), node.heading_packets)
-        if (node.route is None and not node.gps_records) or record == self._saved_record:
+        record = (node.route_version, node.gps_timestamp, len(node.trail), node.heading_packets, node.odom_packets)
+        if (node.route is None and not node.gps_records and not node.odometry.samples) or record == self._saved_record:
             return
         limits = self.axes.get_xlim(), self.axes.get_ylim()
         try:
@@ -300,7 +410,7 @@ class RoutePlot:
             with destination.with_suffix(".json").open("x", encoding="utf-8") as output:
                 json.dump(node.record_payload(), output, ensure_ascii=False, allow_nan=False, indent=2)
             self._saved_record = record
-            print("已保存路线 / GPS / 航向记录：%s 和同名 JSON" % destination)
+            print("已保存路线 / GPS / ZED 里程计记录：%s 和同名 JSON" % destination)
         except (OSError, ValueError, RuntimeError) as error:
             # 目录不可写等问题应明确提示，同时保持实时定位和后续退出清理可用。
             node.get_logger().error("路径与 GPS 轨迹保存失败：%s" % error)
@@ -322,6 +432,7 @@ class RoutePlot:
             return
         points = [frame.to_xy(point) for point in self.node.route.path] if self.node.route else []
         points.extend(frame.to_xy(point) for point in self.node.trail)
+        points.extend(frame.to_xy(point) for point in self.node.odometry.points if point is not None)
         if self.node.last_gcj:
             points.append(frame.to_xy(self.node.last_gcj))
         if not points:
@@ -357,6 +468,7 @@ class RoutePlot:
             self.axes.scatter([xs[0]], [ys[0]], s=75, marker="s", color="#5ed39a", zorder=4)
             self.axes.scatter([xs[-1]], [ys[-1]], s=100, marker="*", color="#ff8f88", zorder=4)
         self.trail_line, = self.axes.plot([], [], color="#51ddd3", linewidth=1.4, alpha=0.85, zorder=5)
+        self.odom_line, = self.axes.plot([], [], '.-', color="#ff4040", linewidth=1.8, markersize=4, zorder=8)
         self.gps_marker, = self.axes.plot([], [], "o", color="#51ddd3", markersize=10,
                                          markeredgecolor="white", zorder=7)
         self.accuracy_circle = self._circle_type((0, 0), 0, color="#51ddd3", alpha=0.12, zorder=1)
@@ -371,6 +483,8 @@ class RoutePlot:
         if self.version != self.node.route_version:
             self.rebuild_route()
         node, route = self.node, self.node.route
+        odom_points = node.odometry.plot_points(node.frame) if node.frame else []
+        self.odom_line.set_data(*zip(*odom_points)) if odom_points else self.odom_line.set_data([], [])
         age = time.time() - node.gps_timestamp if node.gps_timestamp else None
         if node.frame and node.last_gcj:
             x, y = node.frame.to_xy(node.last_gcj)
@@ -400,6 +514,8 @@ class RoutePlot:
             lines.extend(["收到航向包：%d" % node.heading_packets,
                           "朝向：%s" % ("%.1f°" % node.heading_degrees if node.heading_degrees is not None else "等待接收"),
                           "ROS 域：%d" % node.context.get_domain_id()])
+            lines.extend(["ZED 收到 / 本轮记录：%d / %d" % (node.odom_received_packets, node.odom_packets),
+                          textwrap.fill("ZED：%s" % node.odom_notice, width=20)])
         if node.last_gps:
             lines.extend(["经度：%.7f" % node.last_gps[0], "纬度：%.7f" % node.last_gps[1],
                           "GPS 包龄：%.1f 秒%s" % (age, "（已过期）" if age > 10 else ""),
@@ -417,10 +533,20 @@ def parse_options(argv: Optional[Sequence[str]] = None) -> Tuple[argparse.Namesp
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--mode", choices=("demo", "simulate", "live"), default="demo")
     parser.add_argument("--route-topic", help="默认：demo 用 /route_sim/route，其余用 /phone/navigation/route")
-    parser.add_argument("--gps-topic", help="默认：仿真用 /route_sim/gps，live 用 /phone/gps_data")
+    parser.add_argument("--gps-topic", help="默认：仿真用 /route_sim/gps，live 用 /phone/gps_gcj02")
     parser.add_argument("--gps-type", choices=("json", "navsatfix"))
     parser.add_argument("--heading-topic", default="/phone/heading", help="live 模式朝向角 Float64 话题")
-    parser.add_argument("--gps-coordinates", choices=("WGS84", "GCJ-02"), default="WGS84", help="live 输入坐标系")
+    parser.add_argument("--odom-topic", default="/zed2i/odom", help="独立 nav_msgs/Odometry，live 模式订阅")
+    parser.add_argument("--odom-anchor", choices=("manual", "gps"),
+                        help="默认 gps：只将起点平移到初始 GPS；指定 odom-origin 时默认 manual")
+    parser.add_argument("--odom-origin", nargs=2, type=float, metavar=("LONGITUDE", "LATITUDE"),
+                        help="首个接收的 ZED 位姿所对应的 GCJ-02 经度、纬度")
+    parser.add_argument("--odom-heading-deg", type=float,
+                        help="可选：显式旋转叠图时的相机初始朝向；默认不旋转，记录点无需此参数")
+    parser.add_argument("--odom-sync-tolerance-s", type=float, default=0.5, help="GPS/里程计最近采样配对容差")
+    parser.add_argument("--odom-anchor-max-accuracy-m", type=float, help="可选 GPS 起点精度阈值；默认不限制")
+    parser.add_argument("--odom-break-gap-s", type=float, default=1.0, help="里程计超过此采样间隔时红线断开")
+    parser.add_argument("--gps-coordinates", choices=("WGS84", "GCJ-02"), help="live 默认 GCJ-02；原始 GPS 可显式选择 WGS84")
     parser.add_argument("--route-file", help="demo 模式加载保存的 App 路线 JSON")
     parser.add_argument("--speed-mps", type=float, default=3.0)
     parser.add_argument("--rate-hz", type=float, default=10.0)
@@ -440,11 +566,33 @@ def parse_options(argv: Optional[Sequence[str]] = None) -> Tuple[argparse.Namesp
             parser.error("%s 必须为有效正数（速度和噪声可为 0）" % name)
     if options.rate_hz > 100:
         parser.error("rate-hz 不能超过 100")
+    for name in ("odom_sync_tolerance_s", "odom_anchor_max_accuracy_m", "odom_break_gap_s"):
+        value = getattr(options, name)
+        if value is not None and (not math.isfinite(value) or value <= 0):
+            parser.error("%s 必须为有效正数" % name)
+    if options.odom_heading_deg is not None:
+        if not math.isfinite(options.odom_heading_deg):
+            parser.error("odom-heading-deg 必须为有限数值")
+        options.odom_heading_deg %= 360
+    options.odom_anchor = options.odom_anchor or ('manual' if options.odom_origin is not None else 'gps')
+    if options.odom_origin is not None:
+        try:
+            LocalFrame(coordinate(options.odom_origin)).from_xy((0, 0))
+        except ValueError as error:
+            parser.error(str(error))
+        if options.odom_anchor != "manual":
+            parser.error("odom-origin 仅用于 manual 对齐")
     if options.route_file and options.mode != "demo":
         parser.error("route-file 仅用于 demo 模式")
     options.route_topic = options.route_topic or ("/route_sim/route" if options.mode == "demo" else "/phone/navigation/route")
-    options.gps_topic = options.gps_topic or ("/phone/gps_data" if options.mode == "live" else "/route_sim/gps")
+    options.gps_topic = options.gps_topic or ("/phone/gps_gcj02" if options.mode == "live" else "/route_sim/gps")
     options.gps_type = options.gps_type or ("json" if options.mode == "live" else "navsatfix")
+    # 保留原始 GPS 调试入口；默认手机链路直接绘制 GCJ-02，跳过离线近似转换。
+    options.gps_coordinates = options.gps_coordinates or (
+        "WGS84" if options.mode != "live" or options.gps_type == "navsatfix"
+        or options.gps_topic in ("/phone/gps", "/phone/gps_data") else "GCJ-02")
+    if options.gps_topic == "/phone/gps_gcj02" and (options.gps_type != "json" or options.gps_coordinates != "GCJ-02"):
+        parser.error("/phone/gps_gcj02 固定使用 GCJ-02 JSON")
     if options.mode != "live" and (options.gps_type != "navsatfix" or options.gps_coordinates != "WGS84"):
         parser.error("仿真 GPS 固定使用 WGS84 NavSatFix")
     if options.mode != "live" and options.gps_topic.startswith("/phone/"):
