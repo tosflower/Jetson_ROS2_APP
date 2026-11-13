@@ -5,10 +5,27 @@ const { test } = require('node:test');
 const ts = require('typescript');
 
 // 执行真实 Provider，只替换系统定位边界和 React 调度；模拟无 GMS 的 Android 设备。
-function device(os = 'android') {
+function device(os = 'android', options = {}) {
   const slots = [], effects = [], intervals = new Map(), timeouts = new Map();
   let cursor = 0, timerId = 0, gpsCallback, nextCallback, nextError, disposed = 0;
   const published = [], advertised = [], unadvertised = [];
+  const nativeStarts = [], nativeStops = [], nativeListeners = new Map();
+  const storage = new Map([['phone-location-mode', options.savedMode ?? null]]);
+  let appStateCallback;
+  const native = {
+    addListener: (event, callback) => {
+      const callbacks = nativeListeners.get(event) ?? new Set();
+      callbacks.add(callback);
+      nativeListeners.set(event, callbacks);
+      return { remove: () => callbacks.delete(callback) };
+    },
+    watchPositionAsync: async (sessionId, provider) => {
+      nativeStarts.push({ sessionId, provider });
+      if (options.startError) throw new Error(options.startError);
+      await options.startPromise;
+    },
+    stopPositionWatchAsync: async (sessionId) => { nativeStops.push(sessionId); },
+  };
   const rosbridge = {
     connectionState: 'connected',
     advertiseTopic: (topic, type) => advertised.push({ topic, type }),
@@ -69,9 +86,17 @@ function device(os = 'android') {
     const requireMock = (id) => {
       if (id === 'react') return react;
       if (id === 'react/jsx-runtime') return { jsx: (type, props) => { type.value = props.value; return props.children; } };
-      if (id === 'react-native') return { Platform: { OS: os }, AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } };
+      if (id === 'react-native') return { Platform: { OS: os }, AppState: { currentState: 'active', addEventListener: (_event, callback) => {
+        appStateCallback = callback;
+        return { remove() {} };
+      } } };
       if (id === 'expo-location') return legacy;
       if (id === 'expo-location/next') return next;
+      if (id === '@/modules/location-probe') return { locationProbe: options.unsupported ? null : native };
+      if (id === 'expo-secure-store') return {
+        getItemAsync: async (key) => options.storageRead ? options.storageRead : storage.get(key),
+        setItemAsync: async (key, value) => { storage.set(key, value); },
+      };
       if (id === 'expo-sensors') return {};
       if (id === './rosbridge-provider') return { useRosbridge: () => rosbridge };
       if (id.startsWith('@/')) return load(path.join(root, `${id.slice(2)}.ts`));
@@ -81,10 +106,12 @@ function device(os = 'android') {
     const compiled = ts.transpileModule(readFileSync(filename, 'utf8'), {
       compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
     }).outputText;
-    new Function('exports', 'require', 'setInterval', 'clearInterval', 'setTimeout', 'clearTimeout', compiled)(
+    new Function('exports', 'require', 'setInterval', 'clearInterval', 'setTimeout', 'clearTimeout', 'Date', 'performance', compiled)(
       exports, requireMock,
       (fn) => { intervals.set(++timerId, fn); return timerId; }, (id) => intervals.delete(id),
       (fn, delay) => { timeouts.set(++timerId, { fn, delay }); return timerId; }, (id) => timeouts.delete(id),
+      options.clock ? class extends Date { static now() { return options.clock.unixMs; } } : Date,
+      options.clock ? { now: () => options.clock.jsMs } : performance,
     );
     return exports;
   }
@@ -97,6 +124,19 @@ function device(os = 'android') {
   }
   return {
     render, published, advertised, unadvertised, rosbridge, intervals, timeouts,
+    nativeStarts, nativeStops, nativeListeners, storage,
+    appState: (state) => appStateCallback?.(state),
+    direct: (fix, sessionId = nativeStarts.at(-1)?.sessionId) => {
+      nativeListeners.get('onPosition')?.forEach((callback) => callback({
+        sessionId, provider: nativeStarts.find((item) => item.sessionId === sessionId)?.provider,
+        nativeTiming: fix.nativeTiming,
+        timestamp: fix.timestamp, coords: {
+          latitude: fix.coordinates.latitude, longitude: fix.coordinates.longitude,
+          accuracy: fix.horizontalAccuracy, altitude: fix.altitude, altitudeAccuracy: fix.verticalAccuracy,
+          speed: fix.speed, heading: fix.heading,
+        },
+      }));
+    },
     emit: (position) => os === 'android' ? nextCallback?.(position) : gpsCallback?.(position),
     initial: (position) => resolveInitial?.(position),
     error: (message) => nextError?.({ code: 'UNAVAILABLE', message }),
@@ -111,6 +151,171 @@ const position = (timestamp = Date.now()) => ({
   speed: 0, heading: null, mocked: false,
 });
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
+
+test('GNSS 的原生包龄为74ms、采样10秒时，系统时钟快10秒不能将地图周期变为20秒', async () => {
+  const clock = { unixMs: 1_000_000, jsMs: 200_000 };
+  const d = device('android', { savedMode: 'gnss', clock });
+  d.render().startGps();
+  await flush();
+  d.direct({ ...position(clock.unixMs - 10_074), nativeTiming: {
+    sampleMonotonicMs: 100_000, receivedMonotonicMs: 100_074,
+  } });
+  d.tick();
+  clock.unixMs += 10_000;
+  // 第二次 JS 调度额外滞后5秒；原生接收间隔仍为10秒。
+  clock.jsMs += 15_000;
+  d.direct({ ...position(clock.unixMs - 10_074), nativeTiming: {
+    sampleMonotonicMs: 110_000, receivedMonotonicMs: 110_074,
+  } });
+  d.tick();
+  const timing = d.render().latestGps?.timing;
+  assert.equal(timing.arrivalAgeMs, 74);
+  assert.equal(timing.callbackIntervalMs, 10_000);
+  assert.equal(timing.meanUpdateCycleMs, 10_074);
+});
+
+test('保存的 GNSS 模式直接订阅 gps，默认融合和网络辅助均不参与', async () => {
+  const d = device('android', { savedMode: 'gnss' });
+  d.render().startGps();
+  await flush();
+  assert.equal(d.render().locationMode, 'gnss');
+  assert.equal(d.nativeStarts[0].provider, 'gps');
+  d.emit(position());
+  d.initial(position());
+  d.tick();
+  assert.equal(d.render().latestGps, null);
+  const fix = position();
+  d.direct(fix);
+  d.tick();
+  assert.equal(d.render().latestGps?.timestamp, fix.timestamp);
+  assert.equal(d.render().latestGps?.provider, 'gps');
+  assert.ok(d.published.some(({ topic }) => topic === '/phone/gps_data'));
+});
+
+test('运行中 GNSS 切到网络模式立即清空旧采样和统计，旧回调与转换不能污染新模式', async () => {
+  const d = device('android', { savedMode: 'gnss' });
+  d.render().startGps();
+  await flush();
+  const first = position(Date.now() - 2000);
+  d.direct(first);
+  d.direct(position(first.timestamp + 1000));
+  d.tick();
+  assert.equal(d.render().latestGps?.timing.completedCycles, 1);
+  const oldSession = d.nativeStarts[0].sessionId;
+  const oldListener = [...d.nativeListeners.get('onPosition')][0];
+  await d.render().setLocationMode('network');
+  await flush();
+  assert.equal(d.storage.get('phone-location-mode'), 'network');
+  assert.ok(d.nativeStops.includes(oldSession));
+  assert.equal(d.nativeStarts.at(-1).provider, 'network');
+  assert.equal(d.render().latestGps, null);
+  const count = d.published.length;
+  await d.render().publishGcj02Location({ position: [121.5, 31.2], timestamp: first.timestamp });
+  oldListener({ sessionId: oldSession, timestamp: Date.now(), coords: { latitude: 9, longitude: 9 } });
+  d.direct(position(), oldSession);
+  d.tick();
+  assert.equal(d.published.length, count);
+  assert.equal(d.render().latestGps, null);
+  d.direct(position());
+  d.tick();
+  assert.equal(d.render().latestGps?.provider, 'network');
+  assert.equal(d.render().latestGps?.timing.completedCycles, 0);
+  d.render().stopGps();
+  assert.equal(d.nativeListeners.get('onPosition').size, 0);
+  assert.equal(d.nativeListeners.get('onPositionError').size, 0);
+});
+
+test('首次启动等待读取来源偏好，用户提前选择不会被迟到的存储读取覆盖', async () => {
+  let finishRead;
+  const d = device('android', { storageRead: new Promise((resolve) => { finishRead = resolve; }) });
+  d.render().startGps();
+  await flush();
+  assert.equal(d.nativeStarts.length, 0);
+  await d.render().setLocationMode('network');
+  finishRead('gnss');
+  await flush();
+  assert.equal(d.render().locationMode, 'network');
+  assert.deepEqual(d.nativeStarts.map((item) => item.provider), ['network']);
+});
+
+test('指定来源启动失败清理事件，不静默降级到融合定位', async () => {
+  const d = device('android', { savedMode: 'gnss', startError: 'GNSS 模式需要精确位置权限' });
+  d.render().startGps();
+  await flush();
+  assert.equal(d.render().gpsState, 'error');
+  assert.match(d.render().gpsStatus, /精确位置权限/);
+  assert.equal(d.nativeListeners.get('onPosition').size, 0);
+  assert.equal(d.nativeListeners.get('onPositionError').size, 0);
+  assert.equal(d.disposed, 0);
+});
+
+test('原生启动尚未完成时停止，迟到的订阅仍会释放且不发布位置', async () => {
+  let finishStart;
+  const d = device('android', { savedMode: 'gnss', startPromise: new Promise((resolve) => { finishStart = resolve; }) });
+  d.render().startGps();
+  await flush();
+  d.render().stopGps();
+  d.direct(position());
+  finishStart();
+  await flush();
+  d.tick();
+  assert.equal(d.render().latestGps, null);
+  assert.equal(d.published.length, 0);
+  assert.ok(d.nativeStops.includes(d.nativeStarts[0].sessionId));
+});
+
+test('缺少新版原生模块时默认可用，不能把指定来源伪装为自动定位', async () => {
+  const d = device('android', { savedMode: 'gnss', unsupported: true });
+  d.render().startGps();
+  await flush();
+  assert.equal(d.render().locationMode, 'auto');
+  assert.equal(d.render().directLocationSupported, false);
+  await assert.rejects(d.render().setLocationMode('gnss'), /新版 Android/);
+  d.emit(position());
+  d.tick();
+  assert.ok(d.render().latestGps);
+});
+
+test('默认自动与指定来源可以双向切换，已停止时修改偏好不自行开启采集', async () => {
+  const d = device();
+  await d.render().setLocationMode('gnss');
+  assert.equal(d.nativeStarts.length, 0);
+  assert.equal(d.render().gpsEnabled, false);
+  d.render().startGps();
+  await flush();
+  assert.equal(d.nativeStarts.at(-1).provider, 'gps');
+  await d.render().setLocationMode('auto');
+  await flush();
+  d.direct(position());
+  d.tick();
+  assert.equal(d.render().latestGps, null);
+  d.emit(position());
+  d.tick();
+  assert.ok(d.render().latestGps);
+  await d.render().setLocationMode('network');
+  await flush();
+  assert.equal(d.disposed, 1);
+  assert.equal(d.nativeStarts.at(-1).provider, 'network');
+});
+
+test('后台暂停和前台恢复保留所选来源，恢复后重建独立会话与周期统计', async () => {
+  const d = device('android', { savedMode: 'network' });
+  d.render().startGps();
+  await flush();
+  d.direct(position());
+  d.tick();
+  const previous = d.nativeStarts[0].sessionId;
+  d.appState('background');
+  assert.ok(d.nativeStops.includes(previous));
+  d.appState('active');
+  await flush();
+  assert.equal(d.nativeStarts.length, 2);
+  assert.equal(d.nativeStarts[1].provider, 'network');
+  assert.notEqual(d.nativeStarts[1].sessionId, previous);
+  d.direct(position());
+  d.tick();
+  assert.equal(d.render().latestGps?.timing.completedCycles, 0);
+});
 
 test('无 GMS 的 Android 仍将系统定位的首个位置送到地图和 ROS', async () => {
   const d = device();

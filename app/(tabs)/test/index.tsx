@@ -9,6 +9,7 @@ import { loadAmapCredentials, type AmapCredentials } from '@/services/amap-crede
 import { NavigationPublisher, type NavigationEvent, type PublishReceipt } from '@/services/navigation/navigation-publisher';
 import { ActionButton, StatusBanner } from '@/ui/primitives';
 import { AMAP_WEBVIEW_DIAGNOSTICS } from '@/ui/amap-webview-diagnostics';
+import { LOCATION_MODE_LABELS } from '@/services/phone-sensors/location-mode';
 import { spacing, useThemeColors } from '@/ui/tokens';
 
 export default function MapScreen(): React.JSX.Element {
@@ -38,6 +39,7 @@ export default function MapScreen(): React.JSX.Element {
   ), [navigationPublisher]);
   const {
     gpsStatus,
+    locationMode,
     latestGps,
     latestHeading,
     publishGcj02Location,
@@ -75,6 +77,13 @@ export default function MapScreen(): React.JSX.Element {
     // 在页面内测量原生栏的安全区，使用 Expo Go 已支持的稳定组件承载 WebView。
     <SafeAreaProvider style={{ flex: 1, backgroundColor: colors.background }}>
     <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={{ flex: 1 }}>
+      <View style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+        <Text style={{ flex: 1, color: colors.secondaryLabel, fontSize: 13 }}>
+          {LOCATION_MODE_LABELS[locationMode]} · {latestGps?.provider === 'gps' ? '来源：GNSS'
+            : latestGps?.provider === 'network' ? '来源：网络定位' : latestGps ? '来源：系统自动' : '等待定位'}
+        </Text>
+        <ActionButton label="切换定位" variant="text" onPress={() => router.push('/settings/location')} />
+      </View>
       {!credentials || configurationMissing || webError ? <View style={{ flex: 1, padding: spacing.lg, gap: spacing.md, justifyContent: 'center' }}>
         <Text selectable style={{ color: colors.label, fontSize: 22, fontWeight: '700' }}>地图与导航</Text>
         <StatusBanner message={webError || (configurationMissing

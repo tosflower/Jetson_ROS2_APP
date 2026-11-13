@@ -1,4 +1,5 @@
 import * as Location from 'expo-location';
+import * as SecureStore from 'expo-secure-store';
 import {
   Accelerometer,
   Gyroscope,
@@ -10,7 +11,8 @@ import {
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { useRosbridge } from './rosbridge-provider';
-import { watchDevicePosition } from '@/services/phone-sensors/location-watch';
+import { supportsDirectLocation, watchDevicePosition, type DeviceLocationObject } from '@/services/phone-sensors/location-watch';
+import { isLocationMode, LOCATION_MODE_LABELS, LOCATION_MODE_STORAGE_KEY, type LocationMode } from '@/services/phone-sensors/location-mode';
 import { GpsUpdateMetrics, type GpsUpdateTiming } from '@/services/phone-sensors/gps-update-metrics';
 import type { PositionSample } from '@/services/navigation/route-geometry';
 import {
@@ -45,6 +47,7 @@ export type PhoneGpsSnapshot = {
   speedMps: number | null;
   timestamp: number;
   timing: GpsUpdateTiming | null;
+  provider: string | null;
 };
 
 export type PhoneHeadingSnapshot = {
@@ -55,6 +58,9 @@ export type PhoneHeadingSnapshot = {
 };
 
 type PhoneSensorsContextValue = {
+  locationMode: LocationMode;
+  directLocationSupported: boolean;
+  setLocationMode: (mode: LocationMode) => Promise<void>;
   gpsEnabled: boolean;
   headingEnabled: boolean;
   imuEnabled: boolean;
@@ -114,6 +120,24 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
   const [imuStatus, setImuStatus] = useState('IMU 与磁力计尚未启动');
   const [latestGps, setLatestGps] = useState<PhoneGpsSnapshot | null>(null);
   const [latestHeading, setLatestHeading] = useState<PhoneHeadingSnapshot | null>(null);
+  const [locationMode, setLocationModeState] = useState<LocationMode>('auto');
+  const locationModeRef = useRef<LocationMode>('auto');
+  const modeRevisionRef = useRef(0);
+  const modeReadyRef = useRef<Promise<void> | null>(null);
+  const modeWriteRef = useRef<Promise<void>>(Promise.resolve());
+
+  useEffect(() => {
+    let active = true;
+    const revision = modeRevisionRef.current;
+    // 首次定位等待偏好加载，避免重启 App 后先短暂使用默认来源。
+    modeReadyRef.current = SecureStore.getItemAsync(LOCATION_MODE_STORAGE_KEY).then((saved) => {
+      if (!active || revision !== modeRevisionRef.current || !isLocationMode(saved)) return;
+      const restored = saved === 'auto' || supportsDirectLocation() ? saved : 'auto';
+      locationModeRef.current = restored;
+      setLocationModeState(restored);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   const connectionStateRef = useRef(connectionState);
   // React Native 启动时可能暂时返回 null；只在明确进入后台时暂停采集。
@@ -138,7 +162,7 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
   const headingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const imuTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const magneticTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const latestLocationRef = useRef<Location.LocationObject | null>(null);
+  const latestLocationRef = useRef<DeviceLocationObject | null>(null);
   const gpsUpdateMetricsRef = useRef(new GpsUpdateMetrics());
   const latestGpsTimingRef = useRef<GpsUpdateTiming | null>(null);
   // 保留有限的原始采样，允许官方转换晚于下一次 GPS 更新完成。
@@ -253,6 +277,7 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
     setGpsState('starting');
     setGpsStatus('正在请求定位权限并启动 GPS');
     try {
+      await modeReadyRef.current;
       await ensureForegroundLocationPermission();
       if (
         generation !== gpsGenerationRef.current
@@ -264,15 +289,17 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
         if (generation !== gpsGenerationRef.current || !gpsDesiredRef.current || !foregroundRef.current) return;
         // 采样回调只更新最新值，发布由独立 2 Hz 定时器负责。
         latestLocationRef.current = location;
-        // 在定位回调入口记录时间，避免把下方 500ms 发布定时器的等待算入定位周期。
-        latestGpsTimingRef.current = gpsUpdateMetricsRef.current.record(location.timestamp, Date.now(), performance.now());
+        // 指定来源时使用原生采样/接收时钟，与测试页一致；默认链路兼容 JS 入口计时。
+        latestGpsTimingRef.current = gpsUpdateMetricsRef.current.record(
+          location.timestamp, Date.now(), performance.now(), location.nativeTiming,
+        );
         if (gpsFirstFixTimerRef.current) clearTimeout(gpsFirstFixTimerRef.current);
         gpsFirstFixTimerRef.current = null;
       }, (message) => {
         if (generation === gpsGenerationRef.current && gpsDesiredRef.current && foregroundRef.current) {
           setGpsStatus(`定位暂不可用：${message}；正在等待设备恢复定位`);
         }
-      });
+      }, locationModeRef.current);
       if (
         generation !== gpsGenerationRef.current
         || !gpsDesiredRef.current
@@ -286,7 +313,12 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
         gpsFirstFixTimerRef.current = setTimeout(() => {
           gpsFirstFixTimerRef.current = null;
           if (generation !== gpsGenerationRef.current || latestLocationRef.current) return;
-          setGpsStatus('尚未收到首个位置，仍在等待定位。请检查精确位置权限，联网并到窗边或室外重试；部分平板仅支持网络定位。');
+          const hint = locationModeRef.current === 'gnss'
+            ? '请允许精确位置并到露天开阔处；当前只等待卫星定位，不切换网络来源。'
+            : locationModeRef.current === 'network'
+              ? '请检查系统网络定位、联网和 WLAN 扫描；当前不切换到 GNSS。'
+              : '请检查精确位置权限，联网并到窗边或室外重试；部分平板仅支持网络定位。';
+          setGpsStatus(`尚未收到首个位置，仍在等待定位。${hint}`);
         }, GPS_FIRST_FIX_TIMEOUT_MS);
       }
       gpsTimerRef.current = setInterval(() => {
@@ -307,6 +339,7 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
               ? location.coords.speed : null,
             timestamp: location.timestamp,
             timing: latestGpsTimingRef.current,
+            provider: location.provider ?? null,
           });
         }
         if (connectionStateRef.current !== 'connected') {
@@ -343,6 +376,24 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
       if (generation === gpsGenerationRef.current) gpsStartingRef.current = false;
     }
   }, [ensureForegroundLocationPermission, publishTopic, unadvertiseTopic]);
+
+  const setLocationMode = useCallback(async (next: LocationMode): Promise<void> => {
+    if (!isLocationMode(next)) throw new Error('未知定位模式');
+    if (next !== 'auto' && !supportsDirectLocation()) throw new Error('指定定位来源需要新版 Android 安装包');
+    modeRevisionRef.current++;
+    if (next !== locationModeRef.current) {
+      locationModeRef.current = next;
+      setLocationModeState(next);
+      // 清空旧位置和转换缓存，避免切换后继续发布旧来源，或混算两个来源的平均周期。
+      pauseGpsRuntime(`正在切换到${LOCATION_MODE_LABELS[next]}`);
+      setLatestGps(null);
+      if (gpsDesiredRef.current && foregroundRef.current) void activateGps();
+    }
+    // 连续切换时按操作顺序保存；晚完成的旧写入不能覆盖新选择。
+    const saving = modeWriteRef.current.catch(() => {}).then(() => SecureStore.setItemAsync(LOCATION_MODE_STORAGE_KEY, next));
+    modeWriteRef.current = saving;
+    await saving;
+  }, [activateGps, pauseGpsRuntime]);
 
   const activateHeading = useCallback(async (): Promise<void> => {
     if (
@@ -643,6 +694,9 @@ export function PhoneSensorsProvider({ children }: React.PropsWithChildren): Rea
   }, [pauseGpsRuntime, pauseHeadingRuntime, pauseImuRuntime, unadvertiseTopic]);
 
   const value: PhoneSensorsContextValue = {
+    locationMode,
+    directLocationSupported: supportsDirectLocation(),
+    setLocationMode,
     gpsEnabled,
     headingEnabled,
     imuEnabled,

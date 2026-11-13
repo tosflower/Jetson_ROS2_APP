@@ -35,6 +35,11 @@ class LocationProbeModule : Module() {
   private val states = mutableMapOf<String, ProviderState>()
   private val log = ArrayDeque<String>()
   private var droppedLogCount = 0
+  private val directWatcher by lazy {
+    DirectLocationWatcher(::context, worker.looper,
+      { if (!destroyed) sendEvent("onPosition", it) },
+      { if (!destroyed) sendEvent("onPositionError", it) })
+  }
 
   private class ProviderState(startedNs: Long) {
     val metrics = ProbeMetrics(startedNs)
@@ -52,7 +57,14 @@ class LocationProbeModule : Module() {
 
   override fun definition() = ModuleDefinition {
     Name("LocationProbe")
-    Events("onSnapshot")
+    Events("onSnapshot", "onPosition", "onPositionError")
+
+    AsyncFunction("watchPositionAsync") { sessionId: String, provider: String, promise: Promise ->
+      onWorker(promise) { directWatcher.start(sessionId, provider); null }
+    }
+    AsyncFunction("stopPositionWatchAsync") { sessionId: String, promise: Promise ->
+      onWorker(promise) { directWatcher.stop(sessionId); null }
+    }
 
     AsyncFunction("getStatusAsync") { promise: Promise ->
       onWorker(promise) { snapshot() }
@@ -80,11 +92,14 @@ class LocationProbeModule : Module() {
       }
     }
     OnActivityEntersBackground {
-      handler.post { if (running) stop("App 进入后台，测试已停止；回到前台后请重新开始") }
+      handler.post {
+        directWatcher.stop()
+        if (running) stop("App 进入后台，测试已停止；回到前台后请重新开始")
+      }
     }
     OnDestroy {
       destroyed = true
-      handler.post { stop("模块已关闭"); worker.quitSafely() }
+      handler.post { directWatcher.stop(); stop("模块已关闭"); worker.quitSafely() }
     }
   }
 

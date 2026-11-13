@@ -1,8 +1,61 @@
 import * as LegacyLocation from 'expo-location';
 import type { Position } from 'expo-location/next';
 import { Platform } from 'react-native';
+import { locationProbe } from '@/modules/location-probe';
+import type { LocationMode } from './location-mode';
+import type { NativeLocationTiming } from './gps-update-metrics';
 
 const INITIAL_POSITION_MAX_AGE_MS = 15000;
+let sessionCounter = 0;
+export type DeviceLocationObject = LegacyLocation.LocationObject & {
+  provider?: string | null;
+  nativeTiming?: NativeLocationTiming;
+};
+
+export function supportsDirectLocation(): boolean {
+  return Platform.OS === 'android' && typeof locationProbe?.watchPositionAsync === 'function';
+}
+
+/** 显式选择来源：原生会话和 JS 回调都隔离，快速切换后不接受旧来源的迟到位置。 */
+async function watchDirectPosition(
+  mode: 'gnss' | 'network',
+  onLocation: (location: DeviceLocationObject) => void,
+  onError: (message: string) => void,
+): Promise<{ remove: () => void }> {
+  const native = locationProbe;
+  if (!supportsDirectLocation() || !native) {
+    throw new Error('指定定位来源需要新版 Android 安装包；当前环境请使用默认自动模式');
+  }
+  const sessionId = `${Date.now()}-${++sessionCounter}`;
+  let disposed = false;
+  let latestTimestamp = -Infinity;
+  const positionSubscription = native.addListener('onPosition', (position) => {
+    if (disposed || position.sessionId !== sessionId) return;
+    const { latitude, longitude } = position.coords;
+    if (!Number.isFinite(position.timestamp) || position.timestamp <= latestTimestamp
+      || !Number.isFinite(latitude) || Math.abs(latitude) > 90
+      || !Number.isFinite(longitude) || Math.abs(longitude) > 180) return;
+    latestTimestamp = position.timestamp;
+    onLocation(position);
+  });
+  const errorSubscription = native.addListener('onPositionError', (event) => {
+    if (!disposed && event.sessionId === sessionId) onError(event.message);
+  });
+  const remove = (): void => {
+    if (disposed) return;
+    disposed = true;
+    positionSubscription.remove();
+    errorSubscription.remove();
+    void native.stopPositionWatchAsync(sessionId).catch(() => {});
+  };
+  try {
+    await native.watchPositionAsync(sessionId, mode === 'gnss' ? 'gps' : 'network');
+  } catch (error) {
+    remove();
+    throw error;
+  }
+  return { remove };
+}
 
 function locationObject(position: Position): LegacyLocation.LocationObject {
   return {
@@ -22,9 +75,11 @@ function locationObject(position: Position): LegacyLocation.LocationObject {
 
 /** Android 使用 SDK 的 GMS → 系统 LocationManager 回退，iOS 保留原定位接口。 */
 export async function watchDevicePosition(
-  onLocation: (location: LegacyLocation.LocationObject) => void,
+  onLocation: (location: DeviceLocationObject) => void,
   onError: (message: string) => void,
+  mode: LocationMode = 'auto',
 ): Promise<{ remove: () => void }> {
+  if (mode !== 'auto') return watchDirectPosition(mode, onLocation, onError);
   if (Platform.OS !== 'android') {
     return LegacyLocation.watchPositionAsync({
       accuracy: LegacyLocation.Accuracy.High,

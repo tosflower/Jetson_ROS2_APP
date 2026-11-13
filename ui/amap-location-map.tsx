@@ -611,6 +611,7 @@ export default function AmapLocationMap({
       </div>
     </dl>
     <p className="route-caption">上条到达包龄 {gpsSeconds(gpsTiming?.previousArrivalAgeMs)} + 更新间隔 {gpsSeconds(gpsTiming?.callbackIntervalMs)} · 已统计 {gpsTiming?.completedCycles ?? 0} 次</p>
+    <p className="route-caption">新采样间隔 {gpsSeconds(gpsTiming?.sampleIntervalMs)} · 本条到达包龄 {gpsSeconds(gpsTiming?.arrivalAgeMs)} · {gpsTiming ? gpsTiming.timeBasis === 'native' ? '原生单调时钟' : 'JS 回调计时' : '等待计时'}</p>
   </>;
 
   return (

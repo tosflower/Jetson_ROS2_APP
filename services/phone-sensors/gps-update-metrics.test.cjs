@@ -63,3 +63,34 @@ test('缺失、未来位置时间及单调时钟倒退不会生成负数或伪�
   assert.equal(next.completedCycles, 0);
   assert.equal(next.meanUpdateCycleMs, null);
 });
+
+test('原生计时在 UTC 时钟回拨或领先时仍按采样时钟统计10秒周期', () => {
+  const metrics = new GpsUpdateMetrics();
+  metrics.record(200000, 100000, 9000, { sampleMonotonicMs: 1000, receivedMonotonicMs: 1074 });
+  const second = metrics.record(190000, 90000, 25000, { sampleMonotonicMs: 11000, receivedMonotonicMs: 11074 });
+  assert.equal(second.timeBasis, 'native');
+  assert.equal(second.sampleIntervalMs, 10000);
+  assert.equal(second.callbackIntervalMs, 10000);
+  assert.equal(second.arrivalAgeMs, 74);
+  assert.equal(second.updateCycleMs, 10074);
+});
+
+test('原生采样重复或倒序时，不因 UTC 时间递增而误算新周期', () => {
+  const metrics = new GpsUpdateMetrics();
+  const first = metrics.record(100000, 100074, 1, { sampleMonotonicMs: 1000, receivedMonotonicMs: 1074 });
+  assert.equal(metrics.record(101000, 101074, 2, { sampleMonotonicMs: 1000, receivedMonotonicMs: 2074 }), first);
+  assert.equal(metrics.record(102000, 102074, 3, { sampleMonotonicMs: 900, receivedMonotonicMs: 3074 }), first);
+  assert.equal(first.completedCycles, 0);
+  const valid = metrics.record(110000, 110074, 4, { sampleMonotonicMs: 11000, receivedMonotonicMs: 11074 });
+  assert.equal(valid.callbackIntervalMs, 10000);
+  assert.equal(valid.completedCycles, 1);
+});
+
+test('原生未来采样不产生负包龄，也不与后续有效采样拼接周期', () => {
+  const metrics = new GpsUpdateMetrics();
+  const invalid = metrics.record(100000, 100074, 1, { sampleMonotonicMs: 2000, receivedMonotonicMs: 1000 });
+  assert.equal(invalid.arrivalAgeMs, null);
+  const next = metrics.record(110000, 110074, 2, { sampleMonotonicMs: 11000, receivedMonotonicMs: 11074 });
+  assert.equal(next.arrivalAgeMs, 74);
+  assert.equal(next.updateCycleMs, null);
+});
